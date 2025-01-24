@@ -45,8 +45,8 @@ class UITreeNode(object):
             self.children.append(child.get("address"))
 
     def get_center(self):
-        x = self.x + self.attrs["_displayWidth"] // 2
-        y = self.y + self.attrs["_displayHeight"] // 2
+        x = self.x + self.attrs.get("_displayWidth", 20) // 2
+        y = self.y + self.attrs.get("_displayHeight", 20) // 2
         return x, y
 
     def get_region(self, add_size=0):
@@ -56,7 +56,7 @@ class UITreeNode(object):
         height = self.attrs.get("_displayHeight") + add_size * 2
         return left, top, width, height
 
-    def find_image(self, img_file_path, region_size_offset, confidence):
+    def find_image(self, img_file_path, region_size_offset=30, confidence=0.9):
         img = pyautogui.locateOnScreen(
             img_file_path,
             region=self.get_region(region_size_offset),

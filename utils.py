@@ -18,7 +18,7 @@ AGENT_NAME = "vairosen"  # lvl3
 # AGENT_NAME = "naninen" # lvl4
 
 previousCursorLocation = (0, 0)
-failsafeTimers = []
+failsafeTimers = dict()
 fatalErrorCount = 0
 
 
@@ -95,19 +95,16 @@ def drag_and_drop(
     win32api.mouse_event(up_evnt, 0, 0)
 
 
-def failsafe(delta, msg="", timer_index=0):
+def failsafe(delta, msg="", timer_name=""):
     global failsafeTimers
     d = timedelta(seconds=delta)
-    if datetime.now() - failsafeTimers[timer_index] > d:
+    if datetime.now() - failsafeTimers.get(timer_name) > d:
         raise Exception(f"Timeout {msg}")
 
 
-def start_failsafe(timer_index=0):
+def start_failsafe(timer_name=""):
     global failsafeTimers
-    if timer_index >= len(failsafeTimers):
-        failsafeTimers.extend([datetime.now()] * (timer_index - len(failsafeTimers) + 1))
-    else:
-        failsafeTimers[timer_index] = datetime.now()
+    failsafeTimers.update({timer_name: datetime.now()})
 
 
 # def add_waypoint(location_link_coordinates):
@@ -175,3 +172,16 @@ def start_game(player_name):
     start_img = pyautogui.screenshot()
     start_img.save(fr"startImg{fatalErrorCount}.png")
     time.sleep(5)
+
+
+def wait_for_not_falsy(func, timeout, check_interval=0.5):
+    start = datetime.now()
+    d = timedelta(seconds=timeout)
+    now = datetime.now()
+    while now - start < d:
+        return_value = func()
+        if return_value:
+            return return_value
+        time.sleep(check_interval)
+        now = datetime.now()
+    return None

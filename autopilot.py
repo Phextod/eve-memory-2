@@ -1,7 +1,7 @@
 import time
 
 from interface import UITree
-from utils import log_console, start_failsafe, failsafe, CHARACTER_NAME, left_click
+from utils import log_console, start_failsafe, failsafe, CHARACTER_NAME, left_click, right_click, wait_for_not_falsy
 
 
 class Autopilot:
@@ -16,7 +16,7 @@ class Autopilot:
 
     def wait_until_warp_end(self, warp_timer=10, check_interval=5):
         time.sleep(warp_timer)
-        log_console("Warping")
+        log_console("Waiting for warp end")
         while self.is_in_warp():
             if warp_timer > 300:
                 raise Exception("Warping doesn't end")
@@ -24,45 +24,43 @@ class Autopilot:
             time.sleep(check_interval)
 
     def warp_through_route(self):
-        jumps_to_fin = self.get_route_length()
-        log_console("Warping through route")
-        jumps_count = 0
-        failed_jumps = 0
-        hardeners_active = False
-        while jumps_count < jumps_to_fin:
-            failsafe_counter = 0
-            while not self.is_in_warp():
-                failsafe_counter += 1
-                if failsafe_counter > 60:
-                    raise Exception("Can't start warping")
-                if jumps_to_fin == 1:  # 0 jumps route
-                    left_click(self.ui_tree.find_node(node_type="OverviewScrollEntry"))
-                    time.sleep(0.2)
-                    if self.ui_tree.find_node({'_name': 'selectedItemDock'}):
-                        self.toggle_hardeners()
-                        self.dock()
-                        return
-                left_click(self.ui_tree.find_node(node_type="OverviewScrollEntry"))
-                time.sleep(0.3)
-                left_click(self.ui_tree.find_node({'_name': 'selectedItemJump'}))
-                if jumps_count == 0 and not hardeners_active:
-                    self.toggle_hardeners()
-                    hardeners_active = True
+        start_failsafe("warp_through_route_1")
+        while True:
+            failsafe(10 * 60, "Warping through route timeout", "warp_through_route_1")
+            start_failsafe("warp_through_route_2")
+            while not self.ui_tree.find_node({'_setText': 'Establishing Warp Vector'}) \
+                    or self.ui_tree.find_node({'_setText': 'Jumping '})\
+                    or self.ui_tree.find_node({'_setText': 'Warp Drive Active'}):
+
+                failsafe(60, "Warp start timeout", "warp_through_route_2")
+
+                self.ui_tree.refresh()
+                route_markers = self.ui_tree.find_node(node_type="AutopilotDestinationIcon", select_many=True)
+                route_marker = route_markers[0]
+                if not route_marker:
+                    time.sleep(1)
+                    continue
+
+                right_click(route_marker)
                 time.sleep(1)
-            jumps_count += 1
-            log_console("Jumping: " + str(jumps_count) + "/" + str(jumps_to_fin))
-            try:
-                self.wait_until_warp_end()
-                time.sleep(2)
-                self.wait_until_jump_end()
-                hardeners_active = False
-            except Exception:
-                jumps_count -= 1
-                failed_jumps += 1
-            if failed_jumps > 3:
-                raise Exception(f"{failed_jumps} failed jumps attempts")
-            time.sleep(1)
-        self.dock()
+
+                btn_jump = self.ui_tree.find_node({'_name': 'context_menu_Jump'})
+                btn_dock = self.ui_tree.find_node({'_name': 'context_menu_DockInStation'})
+                while not btn_jump and not btn_dock:
+                    right_click(route_marker)
+                    time.sleep(2)
+                    btn_jump = self.ui_tree.find_node({'_name': 'context_menu_Jump'})
+                    btn_dock = self.ui_tree.find_node({'_name': 'context_menu_DockInStation'})
+
+                if not btn_jump:
+                    self.dock()
+                    return
+
+                left_click(btn_jump)
+
+            self.wait_until_warp_end()
+            time.sleep(2)
+            self.wait_until_jump_end()
 
     def toggle_mwd(self):
         pass
@@ -77,14 +75,21 @@ class Autopilot:
     def dock(self):
         log_console("Docking")
         start_failsafe()
-        while True:
-            left_click(self.ui_tree.find_node(node_type="OverviewScrollEntry"))
-            time.sleep(0.2)
-            left_click(self.ui_tree.find_node({'_name': 'selectedItemDock'}))
+        while self.is_in_space() and not self.is_in_warp():
+            failsafe(60, msg="Docking")
+            route_marker = self.ui_tree.find_node(node_type="AutopilotDestinationIcon")
+            if not route_marker:
+                time.sleep(0.5)
+                continue
+
+            right_click(route_marker)
+
+            btn_dock = wait_for_not_falsy(lambda: self.ui_tree.find_node({'_name': 'context_menu_DockInStation'}), 5)
+            if not btn_dock:
+                continue
+            left_click(btn_dock)
             time.sleep(1)
-            if not self.is_in_space() or self.is_in_warp():
-                break
-            failsafe(40, msg="Docking")
+
         self.wait_until_warp_end()
         # self.toggleMWD()
         self.wait_until_docked()
@@ -93,6 +98,10 @@ class Autopilot:
         route_markers = self.ui_tree.find_node(node_type="AutopilotDestinationIcon", select_many=True)
         icon_textures = [self.ui_tree.nodes.get(m.children[0]).attrs.get("_texturePath") for m in route_markers]
         route = [1 if "stationMarker" in texture_path else 0 for texture_path in icon_textures]
+        try:
+            route.index(1)
+        except ValueError:
+            return []
         return route
 
     def get_route_length(self):
@@ -127,7 +136,7 @@ class Autopilot:
             {'_name': 'jumpCloakTimer'},
             root=timer_container
         )
-        window_overview = self.ui_tree.find_node(node_type="OverviewScrollEntry")
+        window_overview = self.ui_tree.find_node(node_type="OverviewWindow")
 
         while cloak_icon is None or not window_overview:
             time.sleep(1)
@@ -141,7 +150,8 @@ class Autopilot:
                 {'texturePath': 'res:/UI/Texture/classes/war/atWar_64.png'},
                 root=timer_container
             )
-            window_overview = self.ui_tree.find_node(node_type="OverviewScrollEntry")
+            window_overview = self.ui_tree.find_node(node_type="OverviewWindow")
+        time.sleep(5)
 
 
 if __name__ == "__main__":
