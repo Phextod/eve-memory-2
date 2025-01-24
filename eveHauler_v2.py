@@ -28,6 +28,10 @@ class Hauler:
         item = self.ui_tree.find_node(node_type="InvItemIconContainer")
         ship = self.ui_tree.find_node({'_name': 'topCont_ShipHangar'})
         drag_and_drop(item.get_center(), ship.get_center())
+
+        left_click(ship.get_center())
+        wait_for_not_falsy(lambda: self.ui_tree.find_node(node_type="InvItemIconContainer"), 5)
+
         log_console("Moved item to ship")
 
     def wait_for_location_change_timer(self):
@@ -45,7 +49,9 @@ class Hauler:
         decline_count = 0
         start_failsafe("1")
         while True:
-            # clear all waypoints
+            failsafe(300, msg="Getting mission", timer_name="1")
+
+            # Clear all waypoints
             if self.route_waypoint_count() != 0:
                 route_markers = self.ui_tree.find_node(node_type="AutopilotDestinationIcon", select_many=True)
 
@@ -57,13 +63,21 @@ class Hauler:
 
                 left_click(self.ui_tree.find_node({'_name': 'context_menu_Remove Waypoint'}))
 
-            location_link_center_1 = self.ui_tree.find_node({'_name': 'tablecell 1-3'}).get_center()
-            right_click((location_link_center_1[0] - 20, location_link_center_1[1]))
-            time.sleep(1)
-            left_click(self.ui_tree.find_node({'_name': 'context_menu_Add Waypoint'}))
+            # Add destination waypoint
+            location_link_1 = self.ui_tree.find_node({'_name': 'tablecell 1-3'})
+            right_click(location_link_1.get_center(pos_y=0.3))
+            btn_add_waypoint = wait_for_not_falsy(
+                lambda: self.ui_tree.find_node({'_name': 'context_menu_Add Waypoint'}),
+                5
+            )
+            left_click(btn_add_waypoint)
 
-            wait_for_not_falsy(self.autopilot.get_route, 10, 0.5)
-            route = self.autopilot.get_route()
+            start_failsafe("waypoint_update")
+            while self.route_waypoint_count() != 1:
+                failsafe(10, "Waypoints fail to update", "waypoint_update")
+                time.sleep(1)
+
+            wait_for_not_falsy(self.autopilot.get_route, 10)
             route_length = self.autopilot.get_route_length()
             if route_length <= max_route_length:
                 break
@@ -80,13 +94,12 @@ class Hauler:
                 while not self.can_accept():
                     dialog_window = self.ui_tree.find_node(node_type="AgentDialogueWindow")
                     btn_group = self.ui_tree.find_node(node_type="ButtonGroup", root=dialog_window)
-                    btn_request = btn_group.find_image('images/btn_request_mission.png')
+                    btn_request = btn_group.find_image('images/btn_request_mission.png', confidence=0.99)
                     left_click(btn_request.get_center())
                     time.sleep(2)
                     failsafe(30)
             if decline_count > 10:
                 raise Exception("To many declines")
-            failsafe(300, msg="Getting mission", timer_name="1")
 
         location_link_center_2 = self.ui_tree.find_node({'_name': 'tablecell 0-3'}).get_center()
         right_click((location_link_center_2[0] - 20, location_link_center_2[1]))
@@ -95,8 +108,13 @@ class Hauler:
 
         dialog_window = self.ui_tree.find_node(node_type="AgentDialogueWindow")
         btn_group = self.ui_tree.find_node(node_type="ButtonGroup", root=dialog_window)
-        btn_accept = btn_group.find_image('images/btn_accept.png')
+        btn_accept = btn_group.find_image('images/btn_accept.png', confidence=0.7)
         left_click(btn_accept)
+
+        start_failsafe("waypoint_update")
+        while self.route_waypoint_count() != 2:
+            failsafe(10, "Waypoints fail to update after getting mission", "waypoint_update")
+            time.sleep(1)
 
     def route_waypoint_count(self):
         return self.autopilot.get_route().count(1)
@@ -118,16 +136,17 @@ class Hauler:
     def can_accept(self):
         dialog_window = self.ui_tree.find_node(node_type="AgentDialogueWindow")
         btn_group = self.ui_tree.find_node(node_type="ButtonGroup", root=dialog_window)
-        btn_accept = btn_group.find_image('images/btn_accept.png')
+        btn_accept = btn_group.find_image('images/btn_accept.png', confidence=0.7)
 
         return btn_accept is not None
 
     def test_stage_criteria(self, reset_connection_failed_checker=True):
         self.inSpace = self.autopilot.is_in_space()
+
         if not self.inSpace:
             dialog_window = self.ui_tree.find_node(node_type="AgentDialogueWindow")
             btn_group = self.ui_tree.find_node(node_type="ButtonGroup", root=dialog_window)
-            btn_request = btn_group.find_image('images/btn_request_mission.png', confidence=0.95)
+            btn_request = btn_group.find_image('images/btn_request_mission.png', confidence=0.99)
             if btn_request:
                 left_click(btn_request.get_center())
                 time.sleep(3)
@@ -144,7 +163,8 @@ class Hauler:
 
     def print_state(self, i):
         log_console(
-            f"Check {i} inSpace:{self.inSpace}, waypointCount:{self.waypointCount}, canComplete:{self.canComplete}")
+            f"Check {i} inSpace:{self.inSpace}, waypointCount:{self.waypointCount}, canComplete:{self.canComplete}, "
+            f"canAccept:{self.can_accept()}")
 
     def main_loop(self):
         self.missionStart = datetime.now()

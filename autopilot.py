@@ -1,5 +1,7 @@
 import time
 
+import pyautogui
+
 from interface import UITree
 from utils import log_console, start_failsafe, failsafe, CHARACTER_NAME, left_click, right_click, wait_for_not_falsy
 
@@ -34,7 +36,6 @@ class Autopilot:
 
                 failsafe(60, "Warp start timeout", "warp_through_route_2")
 
-                self.ui_tree.refresh()
                 route_markers = self.ui_tree.find_node(node_type="AutopilotDestinationIcon", select_many=True)
                 route_marker = route_markers[0]
                 if not route_marker:
@@ -44,33 +45,34 @@ class Autopilot:
                 right_click(route_marker)
                 time.sleep(1)
 
-                btn_jump = self.ui_tree.find_node({'_name': 'context_menu_Jump'})
-                btn_dock = self.ui_tree.find_node({'_name': 'context_menu_DockInStation'})
-                while not btn_jump and not btn_dock:
-                    right_click(route_marker)
-                    time.sleep(2)
-                    btn_jump = self.ui_tree.find_node({'_name': 'context_menu_Jump'})
-                    btn_dock = self.ui_tree.find_node({'_name': 'context_menu_DockInStation'})
+                btn_next_action = wait_for_not_falsy(
+                    lambda:
+                        self.ui_tree.find_node({'_name': 'context_menu_DockInStation'})
+                        or self.ui_tree.find_node({'_name': 'context_menu_Jump'}),
+                    10
+                )
+                if not btn_next_action:
+                    continue
 
-                if not btn_jump:
+                if "dock" in btn_next_action.attrs.get("_name").lower():
                     self.dock()
                     return
 
-                left_click(btn_jump)
+                left_click(btn_next_action)
 
             self.wait_until_warp_end()
             time.sleep(2)
             self.wait_until_jump_end()
 
-    def toggle_mwd(self):
-        pass
-        # customPrint("Toggle MWD")
-        # pyautogui.hotkey('alt', 'f1', interval=0.2)
+    @staticmethod
+    def toggle_mwd():
+        log_console("Toggle MWD")
+        pyautogui.hotkey('alt', 'f1', interval=0.2)
 
-    def toggle_hardeners(self):
-        pass
-        # customPrint("Toggle Hardeners")
-        # pyautogui.hotkey('alt', 'f2', 'f3', interval=0.2)
+    @staticmethod
+    def toggle_hardeners():
+        log_console("Toggle Hardeners")
+        pyautogui.hotkey('alt', 'f2', 'f3', interval=0.2)
 
     def dock(self):
         log_console("Docking")
@@ -91,16 +93,19 @@ class Autopilot:
             time.sleep(1)
 
         self.wait_until_warp_end()
-        # self.toggleMWD()
+        self.toggle_mwd()
         self.wait_until_docked()
 
     def get_route(self):
         route_markers = self.ui_tree.find_node(node_type="AutopilotDestinationIcon", select_many=True)
-        icon_textures = [self.ui_tree.nodes.get(m.children[0]).attrs.get("_texturePath") for m in route_markers]
-        route = [1 if "stationMarker" in texture_path else 0 for texture_path in icon_textures]
         try:
+            icon_textures = []
+            for m in route_markers:
+                children_node = self.ui_tree.nodes.get(m.children[0])
+                icon_textures.append(children_node.attrs.get("_texturePath"))
+            route = [1 if "stationMarker" in texture_path else 0 for texture_path in icon_textures]
             route.index(1)
-        except ValueError:
+        except ValueError or IndexError:
             return []
         return route
 

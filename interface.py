@@ -1,5 +1,6 @@
 import ctypes
 import json
+import time
 
 import pyautogui
 import win32gui
@@ -44,9 +45,11 @@ class UITreeNode(object):
         for child in node.get("children", list()):
             self.children.append(child.get("address"))
 
-    def get_center(self):
-        x = self.x + self.attrs.get("_displayWidth", 20) // 2
-        y = self.y + self.attrs.get("_displayHeight", 20) // 2
+    def get_center(self, pos_x=0.5, pos_y=0.5):
+        width = self.attrs.get("_displayWidth", 20) or 20
+        height = self.attrs.get("_displayHeight", 20) or 20
+        x = self.x + round(width * pos_x)
+        y = self.y + round(height * pos_y)
         return x, y
 
     def get_region(self, add_size=0):
@@ -57,12 +60,27 @@ class UITreeNode(object):
         return left, top, width, height
 
     def find_image(self, img_file_path, region_size_offset=30, confidence=0.9):
-        img = pyautogui.locateOnScreen(
-            img_file_path,
-            region=self.get_region(region_size_offset),
-            grayscale=True,
-            confidence=confidence
-        )
+        img = None
+
+        error_counter = 0
+        while True:
+            try:
+                img = pyautogui.locateOnScreen(
+                    img_file_path,
+                    region=self.get_region(region_size_offset),
+                    grayscale=True,
+                    confidence=confidence
+                )
+            except ValueError as ve:
+                # if img is larger than region
+                if error_counter >= 5:
+                    raise ve
+                error_counter += 1
+
+                time.sleep(1)
+                continue
+            break
+
         if not img:
             return None
 
