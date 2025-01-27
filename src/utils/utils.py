@@ -7,12 +7,15 @@ import win32api
 import win32con
 import win32gui
 
-from interface import UITree, UITreeNode
+#from interface import UITree, UITreeNode
 
 import pyscreeze
+
+from src.utils.interface import UITreeNode, UITree
+
 pyscreeze.USE_IMAGE_NOT_FOUND_EXCEPTION = False
 
-LOG_FILENAME = "data/logMissions.txt"
+LOG_FILENAME = "../../data/logMissions.txt"
 CHARACTER_NAME = "Ahonen Yatolila"
 AGENT_NAME = "vairosen"  # lvl3
 # AGENT_NAME = "naninen" # lvl4
@@ -135,10 +138,10 @@ def close_client(player_name):
 def start_game(player_name):
     log_console("Starting client")
     start_failsafe()
-    btn_play_now = pyautogui.locateOnScreen("images/btn_play_now.png", grayscale=True, confidence=0.7)
+    btn_play_now = pyautogui.locateOnScreen("../../images/btn_play_now.png", grayscale=True, confidence=0.7)
     while not btn_play_now:
         time.sleep(5)
-        btn_play_now = pyautogui.locateOnScreen("images/btn_complete_mission.png", grayscale=True, confidence=0.7)
+        btn_play_now = pyautogui.locateOnScreen("../../images/btn_complete_mission.png", grayscale=True, confidence=0.7)
         failsafe(60, "Finding play button")
     left_click((btn_play_now[0] + 15, btn_play_now[1] + 15))
     trial_count = 1

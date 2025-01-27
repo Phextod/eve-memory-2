@@ -8,7 +8,7 @@ import win32gui
 import pyscreeze
 pyscreeze.USE_IMAGE_NOT_FOUND_EXCEPTION = False
 
-eve_memory_reader = ctypes.WinDLL(r"D:\Projects\Python\eve-memory-2\eve-memory-reader.dll")
+eve_memory_reader = ctypes.WinDLL(r"D:\Projects\Python\eve-memory-2\src\utils\eve-memory-reader.dll")
 # eve_memory_reader = ctypes.WinDLL(r"D:\Projects\Python\eve-memory-2\eve-memory-reader(old).dll")
 
 eve_memory_reader.initialize.argtypes = []
