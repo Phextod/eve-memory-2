@@ -162,7 +162,7 @@ def start_game(player_name):
         time.sleep(9)
         failsafe(60)
     ui_tree = UITree(CHARACTER_NAME)
-    while not ui_tree.find_node({'_name': 'EVEMenuIcon'}):
+    while not ui_tree.find_node({'_name': 'EVEMenuIcon'}, refresh=True):
         log_console(f"Waiting for neo-com {trial_count}")
         trial_count += 1
         if trial_count > 10:

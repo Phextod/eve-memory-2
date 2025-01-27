@@ -12,7 +12,7 @@ class Autopilot:
         self.ui_tree = ui_tree
 
     def is_in_warp(self):
-        if self.ui_tree.find_node({'_setText': 'Warp Drive Active'}):
+        if self.ui_tree.find_node({'_setText': 'Warp Drive Active'}, refresh=True):
             return True
         return False
 
@@ -30,25 +30,28 @@ class Autopilot:
         while True:
             failsafe(10 * 60, "Warping through route timeout", "warp_through_route_1")
             start_failsafe("warp_through_route_2")
-            while not self.ui_tree.find_node({'_setText': 'Establishing Warp Vector'}) \
-                    or self.ui_tree.find_node({'_setText': 'Jumping '})\
-                    or self.ui_tree.find_node({'_setText': 'Warp Drive Active'}):
+            while not self.ui_tree.find_node({'_setText': 'Establishing Warp Vector'}, refresh=True) \
+                    or self.ui_tree.find_node({'_setText': 'Jumping '}, refresh=True)\
+                    or self.ui_tree.find_node({'_setText': 'Warp Drive Active'}, refresh=True):
 
                 failsafe(60, "Warp start timeout", "warp_through_route_2")
 
-                route_markers = self.ui_tree.find_node(node_type="AutopilotDestinationIcon", select_many=True)
-                route_marker = route_markers[0]
-                if not route_marker:
+                route_markers = self.ui_tree.find_node(
+                    node_type="AutopilotDestinationIcon",
+                    select_many=True,
+                    refresh=True
+                )
+                if not route_markers:
                     time.sleep(1)
                     continue
-
+                route_marker = route_markers[0]
                 right_click(route_marker)
                 time.sleep(1)
 
                 btn_next_action = wait_for_not_falsy(
                     lambda:
-                        self.ui_tree.find_node({'_name': 'context_menu_DockInStation'})
-                        or self.ui_tree.find_node({'_name': 'context_menu_Jump'}),
+                        self.ui_tree.find_node({'_name': 'context_menu_DockInStation'}, refresh=True)
+                        or self.ui_tree.find_node({'_name': 'context_menu_Jump'}, refresh=True),
                     10
                 )
                 if not btn_next_action:
@@ -79,14 +82,19 @@ class Autopilot:
         start_failsafe()
         while self.is_in_space() and not self.is_in_warp():
             failsafe(60, msg="Docking")
-            route_marker = self.ui_tree.find_node(node_type="AutopilotDestinationIcon")
+            route_marker = self.ui_tree.find_node(node_type="AutopilotDestinationIcon", refresh=True)
             if not route_marker:
                 time.sleep(0.5)
                 continue
 
             right_click(route_marker)
 
-            btn_dock = wait_for_not_falsy(lambda: self.ui_tree.find_node({'_name': 'context_menu_DockInStation'}), 5)
+            btn_dock = wait_for_not_falsy(
+                lambda: self.ui_tree.find_node(
+                    {'_name': 'context_menu_DockInStation'},
+                    refresh=True),
+                5
+            )
             if not btn_dock:
                 continue
             left_click(btn_dock)
@@ -97,7 +105,7 @@ class Autopilot:
         self.wait_until_docked()
 
     def get_route(self):
-        route_markers = self.ui_tree.find_node(node_type="AutopilotDestinationIcon", select_many=True)
+        route_markers = self.ui_tree.find_node(node_type="AutopilotDestinationIcon", select_many=True, refresh=True)
         try:
             icon_textures = []
             for m in route_markers:
@@ -105,7 +113,7 @@ class Autopilot:
                 icon_textures.append(children_node.attrs.get("_texturePath"))
             route = [1 if "stationMarker" in texture_path else 0 for texture_path in icon_textures]
             route.index(1)
-        except ValueError or IndexError:
+        except (ValueError, IndexError, TypeError):
             return []
         return route
 
@@ -120,7 +128,7 @@ class Autopilot:
         return route_len + 1
 
     def is_in_space(self):
-        return not self.ui_tree.find_node(node_type="UndockButton")
+        return not self.ui_tree.find_node(node_type="UndockButton", refresh=True)
 
     def wait_until_docked(self, waiting_counter=0, checking_interval=1):
         log_console("Waiting for dock")
@@ -136,12 +144,13 @@ class Autopilot:
     def wait_until_jump_end(self, waiting_counter=0):
         log_console("Waiting for jump cloak")
         # todo maybe i don't need the timer_container
-        timer_container = self.ui_tree.find_node(node_type="TimerContainer")
+        timer_container = self.ui_tree.find_node(node_type="TimerContainer", refresh=True)
         cloak_icon = self.ui_tree.find_node(
             {'_name': 'jumpCloakTimer'},
-            root=timer_container
+            root=timer_container,
+            refresh=True
         )
-        window_overview = self.ui_tree.find_node(node_type="OverviewWindow")
+        window_overview = self.ui_tree.find_node(node_type="OverviewWindow", refresh=True)
 
         while cloak_icon is None or not window_overview:
             time.sleep(1)
@@ -150,12 +159,13 @@ class Autopilot:
                 log_console("Error waiting for jump end")
                 raise Exception("Can't find jumpCloak or overview window")
 
-            timer_container = self.ui_tree.find_node(node_type="TimerContainer")
+            timer_container = self.ui_tree.find_node(node_type="TimerContainer", refresh=True)
             cloak_icon = self.ui_tree.find_node(
                 {'texturePath': 'res:/UI/Texture/classes/war/atWar_64.png'},
-                root=timer_container
+                root=timer_container,
+                refresh=True
             )
-            window_overview = self.ui_tree.find_node(node_type="OverviewWindow")
+            window_overview = self.ui_tree.find_node(node_type="OverviewWindow", refresh=True)
         time.sleep(5)
 
 

@@ -160,11 +160,21 @@ class UITree(object):
             return
 
     def find_node(
-            self, query=None, address=None, node_type=None, select_many=False, contains=False, root: UITreeNode = None
+            self,
+            query=None,
+            address=None,
+            node_type=None,
+            select_many=False,
+            contains=False,
+            root: UITreeNode = None,
+            refresh=False
     ):
         if query is None:
             query = {}
-        self.refresh()
+
+        if refresh:
+            self.refresh()
+
         nodes = list()
 
         candidates = self.nodes.items() \
