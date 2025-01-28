@@ -3,7 +3,8 @@ import time
 import pyautogui
 
 from src.utils.interface import UITree
-from src.utils.utils import log_console, start_failsafe, failsafe, CHARACTER_NAME, left_click, right_click, wait_for_not_falsy
+from src.utils.utils import log_console, start_failsafe, failsafe, CHARACTER_NAME, left_click, right_click,\
+    wait_for_not_falsy
 
 
 class Autopilot:

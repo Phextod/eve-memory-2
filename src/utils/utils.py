@@ -7,8 +7,6 @@ import win32api
 import win32con
 import win32gui
 
-#from interface import UITree, UITreeNode
-
 import pyscreeze
 
 from src.utils.interface import UITreeNode, UITree

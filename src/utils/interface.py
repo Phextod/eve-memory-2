@@ -95,11 +95,12 @@ class UITreeNode(object):
 
 class UITree(object):
     def __init__(self, character_name):
-        self.character_name = character_name
+        self.hwnd = win32gui.FindWindow(None, f"EVE - {character_name}")
         self.window_position_offset = (0, 0)
         self.nodes: dict[int, UITreeNode] = dict()
         self.width_ratio = 0
         self.height_ratio = 0
+
         ret = eve_memory_reader.initialize()
         if ret != 0:
             raise Exception(f"Failed to initialize: {ret}")
@@ -121,27 +122,34 @@ class UITree(object):
             real_y = y + (child["attrs"].get("_displayY", 0) or 0)
             self.ingest(child, real_x, real_y, tree["address"])
 
-    def load(self, tree):
-        self.nodes = dict()
-        self.ingest(tree)
-        try:
-            if (
-                    tree["attrs"].get("_displayWidth", 0) is None
-                    or tree["attrs"].get("_displayHeight", 0) is None
-            ):
-                raise ZeroDivisionError
-            screensize = get_screensize()
-            self.width_ratio = screensize[0] / tree["attrs"].get("_displayWidth", 0)
-            self.height_ratio = screensize[1] / tree["attrs"].get("_displayHeight", 0)
-        except ZeroDivisionError:
-            self.refresh()
+    def del_subtree_nodes(self, root_address):
+        subtree_nodes = self.get_sub_tree_nodes(root_address)
 
-    def refresh(self):
-        window_name = f"EVE - {self.character_name}"
-        hwnd = win32gui.FindWindow(None, window_name)
-        window_rect = win32gui.GetWindowRect(hwnd)
+        parent_address = self.nodes[root_address].parent
+        self.nodes[parent_address].children.remove(root_address)
+
+        for node_address in subtree_nodes:
+            del self.nodes[node_address]
+
+    def load(self, tree, root_address=None):
+        parent = None
+
+        if root_address:
+            parent = self.nodes[root_address].parent
+            self.del_subtree_nodes(root_address)
+            self.nodes[parent].children.append(root_address)
+        else:
+            self.nodes = dict()
+
+        self.ingest(tree, parent=parent)
+
+        screensize = get_screensize()
+        self.width_ratio = screensize[0] / tree["attrs"].get("_displayWidth", 0)
+        self.height_ratio = screensize[1] / tree["attrs"].get("_displayHeight", 0)
+        window_rect = win32gui.GetWindowRect(self.hwnd)
         self.window_position_offset = (window_rect[0], window_rect[1])
 
+    def refresh(self):
         eve_memory_reader.read_ui_trees()
         tree_bytes = eve_memory_reader.get_ui_json()
         eve_memory_reader.free_ui_json()
@@ -152,6 +160,24 @@ class UITree(object):
             tree_str = tree_bytes.decode("utf-8", errors="ignore")
             tree = json.loads(tree_str)
             self.load(tree)
+        except UnicodeDecodeError as e:
+            print(f"error reading ui trees: {e}")
+            return
+        except ValueError as e:
+            print(f"error reading ui trees: {e}")
+            return
+
+    def refresh_subtree(self, root_address):
+        eve_memory_reader.read_ui_trees_from_address(ctypes.c_ulonglong(root_address))
+        tree_bytes = eve_memory_reader.get_ui_json()
+        eve_memory_reader.free_ui_json()
+        if not tree_bytes:
+            print("no ui trees found")
+            return
+        try:
+            tree_str = tree_bytes.decode("utf-8", errors="ignore")
+            tree = json.loads(tree_str)
+            self.load(tree, root_address)
         except UnicodeDecodeError as e:
             print(f"error reading ui trees: {e}")
             return
@@ -173,13 +199,16 @@ class UITree(object):
             query = {}
 
         if refresh:
-            self.refresh()
+            if root:
+                self.refresh_subtree(root)
+                root = self.nodes[root.address]
+            else:
+                self.refresh()
 
         nodes = list()
 
-        candidates = self.nodes.items() \
-            if root is None \
-            else self.get_sub_tree_nodes(root).items()
+        candidates = self.get_sub_tree_nodes(root.address).items() if root \
+            else self.nodes.items()
 
         for _, node in candidates:
             if address and node.address != address:
@@ -200,13 +229,14 @@ class UITree(object):
             return nodes[0]
         return nodes
 
-    def get_sub_tree_nodes(self, root: UITreeNode, node_list: dict[int, UITreeNode] = None):
+    def get_sub_tree_nodes(self, root_address, node_list: dict[int, UITreeNode] = None):
         if node_list is None:
             node_list = dict()
 
-        for child_id in root.children:
-            child_node = self.nodes.get(child_id)
-            self.get_sub_tree_nodes(child_node, node_list)
+        root = self.nodes[root_address]
 
-        node_list.update({root.address: root})
+        for child_address in root.children:
+            self.get_sub_tree_nodes(child_address, node_list)
+
+        node_list.update({root_address: root})
         return node_list
