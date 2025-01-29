@@ -7,7 +7,7 @@ from src.utils import utils
 from src.autopilot.autopilot import Autopilot
 from src.utils.interface import UITree
 from src.utils.utils import log_console, left_click, drag_and_drop, log, start_failsafe, right_click, failsafe,\
-    wait_for_not_falsy
+    wait_for_truthy
 
 
 class Hauler:
@@ -30,7 +30,7 @@ class Hauler:
         drag_and_drop(item.get_center(), ship.get_center())
 
         left_click(ship.get_center())
-        wait_for_not_falsy(lambda: self.ui_tree.find_node(node_type="InvItemIconContainer", refresh=True), 5)
+        wait_for_truthy(lambda: self.ui_tree.find_node(node_type="InvItemIconContainer", refresh=True), 5)
 
         log_console("Moved item to ship")
 
@@ -70,7 +70,7 @@ class Hauler:
             # Add destination waypoint
             location_link_1 = self.ui_tree.find_node({'_name': 'tablecell 1-3'}, refresh=True)
             right_click(location_link_1.get_center(pos_y=0.3))
-            btn_add_waypoint = wait_for_not_falsy(
+            btn_add_waypoint = wait_for_truthy(
                 lambda: self.ui_tree.find_node({'_name': 'context_menu_Add Waypoint'}, refresh=True),
                 5
             )
@@ -81,7 +81,7 @@ class Hauler:
                 failsafe(10, "Waypoints fail to update", "waypoint_update")
                 time.sleep(1)
 
-            wait_for_not_falsy(self.autopilot.get_route, 10)
+            wait_for_truthy(self.autopilot.get_route, 10)
             route_length = self.autopilot.get_route_length()
             if route_length <= max_route_length:
                 break
@@ -151,7 +151,7 @@ class Hauler:
         if not self.inSpace:
             dialog_window = self.ui_tree.find_node(node_type="AgentDialogueWindow", refresh=True)
             btn_group = self.ui_tree.find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
-            btn_view_request = wait_for_not_falsy(
+            btn_view_request = wait_for_truthy(
                 lambda:
                 btn_group.find_image('../../images/btn_request_mission.png', confidence=0.95)
                 or btn_group.find_image('../../images/btn_view_mission.png', confidence=0.95),
@@ -292,7 +292,7 @@ if __name__ == "__main__":
             log_console("Fatal error occurred")
             log_console("Error: " + str(e))
             img = pyautogui.screenshot()
-            img.save(fr"../../data/FatalError_{utils.fatalErrorCount}.png")
+            img.save(fr"../../out/FatalError_{utils.fatalErrorCount}.png")
             # close_client(utils.CHARACTER_NAME)
         # if utils.fatalErrorCount < 4:
         #     start_game(utils.CHARACTER_NAME)

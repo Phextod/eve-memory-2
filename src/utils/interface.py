@@ -6,6 +6,9 @@ import pyautogui
 import win32gui
 
 import pyscreeze
+
+from src.utils.utils import get_pid, find_window_for_pid
+
 pyscreeze.USE_IMAGE_NOT_FOUND_EXCEPTION = False
 
 eve_memory_reader = ctypes.WinDLL(r"D:\Projects\Python\eve-memory-2\src\utils\eve-memory-reader.dll")
@@ -168,22 +171,26 @@ class UITree(object):
             return
 
     def refresh_subtree(self, root_address):
+        if not self.nodes.get(root_address):
+            return False
+
         eve_memory_reader.read_ui_trees_from_address(ctypes.c_ulonglong(root_address))
         tree_bytes = eve_memory_reader.get_ui_json()
         eve_memory_reader.free_ui_json()
         if not tree_bytes:
             print("no ui trees found")
-            return
+            return False
         try:
             tree_str = tree_bytes.decode("utf-8", errors="ignore")
             tree = json.loads(tree_str)
             self.load(tree, root_address)
         except UnicodeDecodeError as e:
             print(f"error reading ui trees: {e}")
-            return
+            return False
         except ValueError as e:
             print(f"error reading ui trees: {e}")
-            return
+            return False
+        return True
 
     def find_node(
             self,
@@ -200,8 +207,9 @@ class UITree(object):
 
         if refresh:
             if root:
-                self.refresh_subtree(root)
-                root = self.nodes[root.address]
+                if not self.refresh_subtree(root.address):
+                    self.refresh()
+                root = self.nodes.get(root.address)
             else:
                 self.refresh()
 
@@ -233,10 +241,13 @@ class UITree(object):
         if node_list is None:
             node_list = dict()
 
-        root = self.nodes[root_address]
+        root_node = self.nodes.get(root_address)
 
-        for child_address in root.children:
+        if not root_node:
+            return node_list
+
+        for child_address in root_node.children:
             self.get_sub_tree_nodes(child_address, node_list)
 
-        node_list.update({root_address: root})
+        node_list.update({root_address: root_node})
         return node_list

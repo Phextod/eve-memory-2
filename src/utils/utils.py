@@ -8,15 +8,19 @@ import win32con
 import win32gui
 
 import pyscreeze
-
-from src.utils.interface import UITreeNode, UITree
+import psutil
+import win32process
 
 pyscreeze.USE_IMAGE_NOT_FOUND_EXCEPTION = False
 
-LOG_FILENAME = "../../data/logMissions.txt"
-CHARACTER_NAME = "Ahonen Yatolila"
+LOG_FILENAME = "../../out/logMissions.txt"
+# CHARACTER_NAME = "Ahonen Yatolila"
+CHARACTER_NAME = "Phex Gagarists"
 AGENT_NAME = "vairosen"  # lvl3
 # AGENT_NAME = "naninen" # lvl4
+
+
+PROCNAME = "exefile.exe"
 
 previousCursorLocation = (0, 0)
 failsafeTimers = dict()
@@ -121,6 +125,26 @@ def start_failsafe(timer_name=""):
 #     leftClick(x + 46, y + 56)
 #     customPrint("Destination added")
 
+def get_pid():
+    for proc in psutil.process_iter():
+        if proc.name() == PROCNAME:
+            return proc.pid
+
+
+def find_window_for_pid(pid):
+    result = None
+
+    def callback(hwnd, _):
+        nonlocal result
+        _tid, c_pid = win32process.GetWindowThreadProcessId(hwnd)
+        if c_pid == pid:
+            result = hwnd
+            return False
+        return True
+
+    win32gui.EnumWindows(callback, None)
+    return result
+
 
 def close_client(player_name):
     log_console("Closing client")
@@ -162,7 +186,7 @@ def start_game(player_name):
         pyautogui.press('enter')
         time.sleep(9)
         failsafe(60)
-    ui_tree = UITree(CHARACTER_NAME)
+    ui_tree = UITree()
     while not ui_tree.find_node({'_name': 'EVEMenuIcon'}, refresh=True):
         log_console(f"Waiting for neo-com {trial_count}")
         trial_count += 1
@@ -175,7 +199,7 @@ def start_game(player_name):
     time.sleep(5)
 
 
-def wait_for_not_falsy(func, timeout, check_interval=0.5):
+def wait_for_truthy(func, timeout, check_interval=0.5):
     start = datetime.now()
     d = timedelta(seconds=timeout)
     now = datetime.now()

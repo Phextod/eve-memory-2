@@ -4,7 +4,7 @@ import pyautogui
 
 from src.utils.interface import UITree
 from src.utils.utils import log_console, start_failsafe, failsafe, CHARACTER_NAME, left_click, right_click,\
-    wait_for_not_falsy
+    wait_for_truthy
 
 
 class Autopilot:
@@ -49,7 +49,7 @@ class Autopilot:
                 right_click(route_marker)
                 time.sleep(1)
 
-                btn_next_action = wait_for_not_falsy(
+                btn_next_action = wait_for_truthy(
                     lambda:
                         self.ui_tree.find_node({'_name': 'context_menu_DockInStation'}, refresh=True)
                         or self.ui_tree.find_node({'_name': 'context_menu_Jump'}, refresh=True),
@@ -90,7 +90,7 @@ class Autopilot:
 
             right_click(route_marker)
 
-            btn_dock = wait_for_not_falsy(
+            btn_dock = wait_for_truthy(
                 lambda: self.ui_tree.find_node(
                     {'_name': 'context_menu_DockInStation'},
                     refresh=True),
