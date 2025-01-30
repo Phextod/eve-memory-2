@@ -1,24 +1,76 @@
+from dataclasses import dataclass
 from typing import List, Dict
 
 from src.utils.interface import UITree, UITreeNode
 from src.utils.utils import wait_for_truthy
 
 
+@dataclass
+class OverviewEntry:
+    icon: str
+    distance: str
+    name: str
+    type: str
+    tag: str
+    corporation: str
+    alliance: str
+    faction: str
+    militia: str
+    size: str
+    velocity: str
+    radial_velocity: str
+    transversal_velocity: str
+    angular_velocity: str
+
+    @staticmethod
+    def decode(in_data: dict):
+        decode_dict = {
+            "icon": "Icon",
+            "distance": "Distance",
+            "name": "Name",
+            "type": "Type",
+            "tag": "Tag",
+            "corporation": "Corporation",
+            "alliance": "Alliance",
+            "faction": "Faction",
+            "militia": "Militia",
+            "size": "Size",
+            "velocity": "Velocity",
+            "radial_velocity": "Radial Velocity",
+            "transversal_velocity": "Transversal Velocity",
+            "angular_velocity": "Angular Velocity",
+        }
+
+        out_data = dict()
+        for out_key in decode_dict:
+            in_key = decode_dict[out_key]
+            out_data.update({out_key: in_data.get(in_key, None)})
+
+        return out_data
+
+
 class Overview:
     def __init__(self, ui_tree: UITree):
-        self.ui_tree = ui_tree
-        self.overview_window = ui_tree.find_node(node_type="OverviewWindow", refresh=True)
-
         self.entries: List[Dict[str, str]] = []
         self.headers = []
+
+        self.ui_tree = ui_tree
+        self.overview_window = ui_tree.find_node(node_type="OverviewWindow")
+
+        if not self.overview_window:
+            print("overview window not found")
+            return
 
         self.update_headers()
         self.update()
 
+    def update_main_container(self):
+        self.overview_window = self.ui_tree.find_node(node_type="OverviewWindow")
+
     def update_headers(self):
         self.headers.clear()
 
-        headers = self.ui_tree.find_node(node_type="Header", root=self.overview_window, select_many=True)
+        headers = self.ui_tree.find_node(node_type="Header", root=self.overview_window, refresh=True, select_many=True)
         headers.sort(key=lambda a: a.x)
 
         for header in headers:

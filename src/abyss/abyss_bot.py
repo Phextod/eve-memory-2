@@ -1,18 +1,16 @@
 import json
+
 import keyboard
 
 from src.abyss.abyss_ship import AbyssShip
-from src.eve_ui.overview import Overview
-from src.utils.utils import wait_for_truthy, get_pid, CHARACTER_NAME
-from src.utils.interface import UITree
+from src.eve_ui.eve_ui import EveUI
+from src.utils.utils import get_pid, CHARACTER_NAME
 
 
 class AbyssBot:
     def __init__(self, character_name):
         self.pid = get_pid()
-        self.ui_tree = UITree(character_name)
-        self.overview = Overview(self.ui_tree)
-
+        self.ui = EveUI(character_name)
         # exported from: https://caldarijoans.streamlit.app/Abyssal_Enemies_Database
         self.ships = self.load_ships(r"../../data/abyss_ships.json")
 
@@ -27,8 +25,8 @@ class AbyssBot:
     def enemies_and_others_on_overview(self):
         enemies = []
         other_entries = []
-        for entry in self.overview.entries:
-            enemy = next((ship for ship in self.ships if ship.name == entry.get("name")), None)
+        for entry in self.ui.overview.entries:
+            enemy = next((ship for ship in self.ships if ship.name == entry.get("Name")), None)
             if enemy:
                 enemies.append(enemy)
             else:
@@ -38,15 +36,27 @@ class AbyssBot:
     def run(self):
         while True:
             if keyboard.read_key() == "enter":
-                self.overview.update()
+                self.ui.overview.update()
+                self.ui.target_bar.update()
+
+                print("Targets in target bar:")
+                for target in self.ui.target_bar.targets:
+                    print(target.name)
+
                 current_enemies, others = self.enemies_and_others_on_overview()
+
+                print("Identified enemies:")
                 for enemy in current_enemies:
                     print(enemy.name, enemy.weapon_tracking)
-                print("***********************************************************")
-                print(others)
+
+                print("Others:")
+                for other in others:
+                    print(other)
+
                 print("-----------------------------------------------------------")
 
 
 if __name__ == "__main__":
     bot = AbyssBot(CHARACTER_NAME)
+    print("ready")
     bot.run()

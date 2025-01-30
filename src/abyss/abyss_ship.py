@@ -23,28 +23,28 @@ class AbyssShip:
     @staticmethod
     def decode(in_data: dict):
         decode_dict = {
-            "type": "name",
-            "Primary EWAR": "primary_ewar",
-            "GJ Neutralized Per Second": "neut_per_second",
-            "Secondary EWAR": "secondary_ewar",
-            "Total Base HP": "total_base_hp",
-            "Total DPS": "dps",
-            "Weapon DPS": "weapon_dps",
-            "Weapon Optimal": "weapon_optimal",
-            "Weapon Falloff": "weapon_falloff",
-            "Weapon Tracking": "weapon_tracking",
-            "Missile DPS": "missile_dps",
-            "Approximate Missile Range": "approximate_missile_range",
-            "Enemy Max Velocity": "max_velocity",
-            "Enemy Orbit Velocity": "orbit_velocity",
-            "Remote Repair Per Second": "remote_repair_per_second",
-            "Local Repair Per Second": "local_repair_per_second",
+            "name": "type",
+            "primary_ewar": "Primary EWAR",
+            "neut_per_second": "GJ Neutralized Per Second",
+            "secondary_ewar": "Secondary EWAR",
+            "total_base_hp": "Total Base HP",
+            "dps": "Total DPS",
+            "weapon_dps": "Weapon DPS",
+            "weapon_optimal": "Weapon Optimal",
+            "weapon_falloff": "Weapon Falloff",
+            "weapon_tracking": "Weapon Tracking",
+            "missile_dps": "Missile DPS",
+            "approximate_missile_range": "Approximate Missile Range",
+            "max_velocity": "Enemy Max Velocity",
+            "orbit_velocity": "Enemy Orbit Velocity",
+            "remote_repair_per_second": "Remote Repair Per Second",
+            "local_repair_per_second": "Local Repair Per Second",
         }
 
         out_data = dict()
-        for in_key in in_data:
-            out_key = decode_dict.get(in_key)
-            out_data.update({out_key: in_data.get(in_key)})
+        for out_key in decode_dict:
+            in_key = decode_dict[out_key]
+            out_data.update({out_key: in_data.get(in_key, None)})
 
         return out_data
 
