@@ -36,24 +36,8 @@ class AbyssBot:
     def run(self):
         while True:
             if keyboard.read_key() == "enter":
-                self.ui.overview.update()
-                self.ui.target_bar.update()
-
-                print("Targets in target bar:")
-                for target in self.ui.target_bar.targets:
-                    print(target.name)
-
-                current_enemies, others = self.enemies_and_others_on_overview()
-
-                print("Identified enemies:")
-                for enemy in current_enemies:
-                    print(enemy.name, enemy.weapon_tracking)
-
-                print("Others:")
-                for other in others:
-                    print(other)
-
-                print("-----------------------------------------------------------")
+                self.ui.drones.update()
+                print(self.ui.drones.in_bay)
 
 
 if __name__ == "__main__":

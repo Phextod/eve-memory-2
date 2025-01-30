@@ -51,15 +51,15 @@ class OverviewEntry:
 
 class Overview:
     def __init__(self, ui_tree: UITree):
-        self.entries: List[Dict[str, str]] = []
-        self.headers = []
-
         self.ui_tree = ui_tree
         self.overview_window = ui_tree.find_node(node_type="OverviewWindow")
 
         if not self.overview_window:
             print("overview window not found")
             return
+
+        self.entries: List[Dict[str, str]] = []
+        self.headers = []
 
         self.update_headers()
         self.update()

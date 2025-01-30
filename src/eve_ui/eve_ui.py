@@ -1,4 +1,6 @@
+from src.eve_ui.drones import Drones
 from src.eve_ui.overview import Overview
+from src.eve_ui.ship_ui import ShipUI
 from src.eve_ui.target_bar import TargetBar
 from src.utils.interface import UITree
 
@@ -9,4 +11,5 @@ class EveUI:
 
         self.overview = Overview(self.ui_tree)
         self.target_bar = TargetBar(self.ui_tree)
-
+        self.ship_ui = ShipUI(self.ui_tree)
+        self.drones = Drones(self.ui_tree)
