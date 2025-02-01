@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import List, Dict
 
+from src.eve_ui.ui_component import UIComponent, NodeSelector
 from src.utils.interface import UITree, UITreeNode
 from src.utils.utils import wait_for_truthy
 
@@ -49,28 +50,30 @@ class OverviewEntry:
         return out_data
 
 
-class Overview:
+class Overview(UIComponent):
     def __init__(self, ui_tree: UITree):
-        self.ui_tree = ui_tree
-        self.overview_window = ui_tree.find_node(node_type="OverviewWindow")
-
-        if not self.overview_window:
-            print("overview window not found")
-            return
+        super().__init__(NodeSelector(node_type="OverviewWindow"), ui_tree)
 
         self.entries: List[Dict[str, str]] = []
         self.headers = []
 
+        self.header_component = UIComponent(
+            NodeSelector(node_type="Header", select_many=True),
+            parent=self
+        )
+
+        self.entry_component = UIComponent(
+            NodeSelector(node_type="OverviewScrollEntry", select_many=True),
+            parent=self
+        )
+
         self.update_headers()
         self.update()
-
-    def update_main_container(self):
-        self.overview_window = self.ui_tree.find_node(node_type="OverviewWindow")
 
     def update_headers(self):
         self.headers.clear()
 
-        headers = self.ui_tree.find_node(node_type="Header", root=self.overview_window, refresh=True, select_many=True)
+        headers = self.header_component.update_node()
         headers.sort(key=lambda a: a.x)
 
         for header in headers:
@@ -81,12 +84,7 @@ class Overview:
     def update(self):
         self.entries.clear()
 
-        entry_nodes = self.ui_tree.find_node(
-            node_type="OverviewScrollEntry",
-            root=self.overview_window,
-            refresh=True,
-            select_many=True
-        )
+        entry_nodes = self.entry_component.update_node()
 
         for entry_node in entry_nodes:
             entry_labels = [self.ui_tree.nodes[label_address] for label_address in entry_node.children]

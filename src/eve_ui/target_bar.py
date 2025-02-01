@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import List
 
+from src.eve_ui.ui_component import UIComponent, NodeSelector
 from src.utils.interface import UITree
 
 
@@ -9,25 +10,23 @@ class Target:
     name: str
 
 
-class TargetBar:
+class TargetBar(UIComponent):
     def __init__(self, ui_tree: UITree):
-        self.targets: List[Target] = []
+        super().__init__(NodeSelector({"_name": "l_target"}), ui_tree)
 
-        self.ui_tree = ui_tree
-        self.main_container = ui_tree.find_node({"_name": "l_target"})
+        self.target_components = UIComponent(
+            NodeSelector(node_type="TargetInBar", select_many=True),
+            parent=self
+        )
+
+        self.targets: List[Target] = []
 
     def update(self):
         self.targets.clear()
 
-        target_components = self.ui_tree.find_node(
-            node_type="TargetInBar",
-            root=self.main_container,
-            select_many=True,
-            refresh=True,
-        )
+        self.target_components.update_node()
 
-        for target_component in target_components:
+        for target_component in self.target_components.nodes:
             labels = self.ui_tree.find_node(node_type="EveLabelSmall", root=target_component, select_many=True)
             name = " ".join([text.attrs["_setText"] for text in labels])
             self.targets.append(Target(name))
-

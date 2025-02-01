@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from src.eve_ui.ui_component import UIComponent, NodeSelector
 from src.utils.interface import UITree, UITreeNode
 
 
@@ -40,35 +41,26 @@ class Drone:
         )
 
 
-class Drones:
+class Drones(UIComponent):
     def __init__(self, ui_tree: UITree):
-        self.ui_tree = ui_tree
+        super().__init__(NodeSelector(node_type="DronesWindow"), ui_tree)
 
-        self.drones_window = None
-        self.update_drones_window()
+        self.drone_entries = UIComponent(
+            NodeSelector({'_name': 'entry_'}, contains=True, select_many=True),
+            parent=self
+        )
 
         self.in_bay = []
         self.in_space = []
         self.update()
 
-    def update_drones_window(self):
-        self.drones_window = self.ui_tree.find_node(
-            node_type="DronesWindow",
-        )
-
     def update(self):
         self.in_bay.clear()
         self.in_space.clear()
 
-        drone_entries = self.ui_tree.find_node(
-            {'_name': 'entry_'},
-            contains=True,
-            select_many=True,
-            root=self.drones_window,
-            refresh=True
-        )
+        self.drone_entries.update_node()
 
-        for entry_node in drone_entries:
+        for entry_node in self.drone_entries.nodes:
             if entry_node.type == "DroneInSpaceEntry":
                 self.in_space.append(Drone.from_entry_node(entry_node, self.ui_tree))
             elif entry_node.type == "DroneInBayEntry":

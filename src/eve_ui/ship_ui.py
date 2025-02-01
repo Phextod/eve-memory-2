@@ -37,4 +37,8 @@ class ShipUI:
 
         sprite_alphas = [c.attrs["_color"]["aPercent"] for c in capacitor_sprites]
         count_0 = sprite_alphas.count(0)
-        self.capacitor_percent = count_0 / len(sprite_alphas)
+
+        if sprite_alphas:
+            self.capacitor_percent = count_0 / len(sprite_alphas)
+        else:
+            self.capacitor_percent = 0.0

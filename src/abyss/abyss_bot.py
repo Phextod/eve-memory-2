@@ -36,8 +36,8 @@ class AbyssBot:
     def run(self):
         while True:
             if keyboard.read_key() == "enter":
-                self.ui.drones.update()
-                print(self.ui.drones.in_bay)
+                self.ui.inventory.update()
+                print(self.ui.inventory)
 
 
 if __name__ == "__main__":

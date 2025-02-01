@@ -200,7 +200,7 @@ class UITree(object):
             select_many=False,
             contains=False,
             root: UITreeNode = None,
-            refresh=False
+            refresh=True
     ):
         if query is None:
             query = {}
