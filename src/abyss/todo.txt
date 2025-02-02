@@ -1,6 +1,6 @@
 ✔ generic context menu
-locations window
-location set target
+✔ locations window
+✔ location set target
 ship ui modules list
 ship ui activate/deactivate module
 overview navigation (approach, orbit, open inventory)
