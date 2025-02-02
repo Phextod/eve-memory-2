@@ -1,4 +1,4 @@
-generic context menu
+✔ generic context menu
 locations window
 location set target
 ship ui modules list

@@ -1,6 +1,7 @@
 import os
 import time
 from datetime import timedelta, datetime
+from enum import Enum
 from typing import Union, Tuple
 
 import pyautogui
@@ -25,6 +26,8 @@ AGENT_NAME = "vairosen"  # lvl3
 
 
 PROCNAME = "exefile.exe"
+MOUSE_LEFT = False
+MOUSE_RIGHT = True
 
 previousCursorLocation = (0, 0)
 failsafeTimers = dict()
@@ -59,19 +62,41 @@ def move_cursor(coordinates: (int, int)):
     previousCursorLocation = win32gui.GetCursorPos()
 
 
+def click(target: UITreeNode, button=MOUSE_LEFT):
+    down_event, up_event = (win32con.MOUSEEVENTF_RIGHTDOWN, win32con.MOUSEEVENTF_RIGHTUP) \
+        if button \
+        else (win32con.MOUSEEVENTF_LEFTDOWN, win32con.MOUSEEVENTF_LEFTUP)
+
+    move_cursor(target.get_center())
+    time.sleep(0.1)
+    win32api.mouse_event(down_event, 0, 0)
+    time.sleep(0.1)
+    win32api.mouse_event(up_event, 0, 0)
+    time.sleep(0.1)
+
+
 def left_click(target: Union[Tuple[int, int], 'UITreeNode']):
+    """
+    deprecated use click() instead
+    """
     if type(target) == UITreeNode:
         target = target.get_center()
-    click(target, left_button=True)
+    click_coordinate(target, left_button=True)
 
 
 def right_click(target: Union[Tuple[int, int], 'UITreeNode']):
+    """
+    deprecated use click() instead
+    """
     if type(target) == UITreeNode:
         target = target.get_center()
-    click(target, left_button=False)
+    click_coordinate(target, left_button=False)
 
 
-def click(coordinates: (int, int), left_button=True):
+def click_coordinate(coordinates: (int, int), left_button=True):
+    """
+    deprecated use click() instead
+    """
     down_evnt = win32con.MOUSEEVENTF_LEFTDOWN \
         if left_button \
         else win32con.MOUSEEVENTF_RIGHTDOWN
@@ -171,7 +196,8 @@ def start_game(player_name):
     btn_play_now = pyautogui.locateOnScreen(get_path("images/btn_play_now.png"), grayscale=True, confidence=0.7)
     while not btn_play_now:
         time.sleep(5)
-        btn_play_now = pyautogui.locateOnScreen(get_path("images/btn_complete_mission.png"), grayscale=True, confidence=0.7)
+        btn_play_now = pyautogui.locateOnScreen(get_path("images/btn_complete_mission.png"), grayscale=True,
+                                                confidence=0.7)
         failsafe(60, "Finding play button")
     left_click((btn_play_now[0] + 15, btn_play_now[1] + 15))
     trial_count = 1

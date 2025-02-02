@@ -66,7 +66,7 @@ class Inventory:
         ).result
 
         capacity_text = capacity_container.attrs["_setText"]
-        split = capacity_text.split("/")
+        split = capacity_text.split(")")[-1].split("/")
 
         fill_text = "0"
         max_text = split[0]

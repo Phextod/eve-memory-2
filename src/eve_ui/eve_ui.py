@@ -1,3 +1,4 @@
+from src.eve_ui.context_menu import ContextMenu
 from src.eve_ui.drones import Drones
 from src.eve_ui.inventory import Inventory
 from src.eve_ui.overview import Overview
@@ -15,3 +16,4 @@ class EveUI:
         self.ship_ui = ShipUI(self.ui_tree)
         self.drones = Drones(self.ui_tree)
         self.inventory = Inventory(self.ui_tree)
+        self.context_menu = ContextMenu(self.ui_tree)
