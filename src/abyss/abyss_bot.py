@@ -4,7 +4,7 @@ import keyboard
 
 from src.abyss.abyss_ship import AbyssShip
 from src.eve_ui.eve_ui import EveUI
-from src.utils.utils import get_pid, CHARACTER_NAME
+from src.utils.utils import get_pid, CHARACTER_NAME, get_path
 
 
 class AbyssBot:
@@ -12,7 +12,7 @@ class AbyssBot:
         self.pid = get_pid()
         self.ui = EveUI(character_name)
         # exported from: https://caldarijoans.streamlit.app/Abyssal_Enemies_Database
-        self.ships = self.load_ships(r"../../data/abyss_ships.json")
+        self.ships = self.load_ships(get_path("data/abyss_ships.json"))
 
     @staticmethod
     def load_ships(filepath):
@@ -35,12 +35,12 @@ class AbyssBot:
 
     def run(self):
         while True:
-            if keyboard.read_key() == "enter":
-                self.ui.inventory.update()
+            if keyboard.read_key() == "pagedown":
+                self.ui.inventory.update_items()
                 print(self.ui.inventory)
 
 
 if __name__ == "__main__":
     bot = AbyssBot(CHARACTER_NAME)
     print("ready")
-    bot.run()
+    # bot.run()

@@ -6,8 +6,8 @@ import pyautogui
 from src.utils import utils
 from src.autopilot.autopilot import Autopilot
 from src.utils.interface import UITree
-from src.utils.utils import log_console, left_click, drag_and_drop, log, start_failsafe, right_click, failsafe,\
-    wait_for_truthy
+from src.utils.utils import log_console, left_click, drag_and_drop, log, start_failsafe, right_click, failsafe, \
+    wait_for_truthy, get_path
 
 
 class Hauler:
@@ -89,7 +89,7 @@ class Hauler:
                 decline_count += 1
                 dialog_window = self.ui_tree.find_node(node_type="AgentDialogueWindow", refresh=True)
                 btn_group = self.ui_tree.find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
-                btn_decline = btn_group.find_image('../../images/btn_decline.png')
+                btn_decline = btn_group.find_image(get_path("images/btn_decline.png"))
                 left_click(btn_decline.get_center())
                 time.sleep(5)
                 log("Mission decline: jumps: " + str(route_length))
@@ -98,7 +98,7 @@ class Hauler:
                 while not self.can_accept():
                     dialog_window = self.ui_tree.find_node(node_type="AgentDialogueWindow", refresh=True)
                     btn_group = self.ui_tree.find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
-                    btn_request = btn_group.find_image('../../images/btn_request_mission.png', confidence=0.99)
+                    btn_request = btn_group.find_image(get_path('images/btn_request_mission.png'), confidence=0.99)
                     left_click(btn_request.get_center())
                     time.sleep(2)
                     failsafe(30)
@@ -113,7 +113,7 @@ class Hauler:
 
         dialog_window = self.ui_tree.find_node(node_type="AgentDialogueWindow", refresh=True)
         btn_group = self.ui_tree.find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
-        btn_accept = btn_group.find_image('../../images/btn_accept.png', confidence=0.7)
+        btn_accept = btn_group.find_image(get_path('images/btn_accept.png'), confidence=0.7)
         left_click(btn_accept)
 
         start_failsafe("waypoint_update")
@@ -127,7 +127,7 @@ class Hauler:
     def can_find_complete_button(self):
         dialog_window = self.ui_tree.find_node(node_type="AgentDialogueWindow", refresh=True)
         btn_group = self.ui_tree.find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
-        btn_complete = btn_group.find_image('../../images/btn_complete_mission.png')
+        btn_complete = btn_group.find_image(get_path('images/btn_complete_mission.png'))
 
         return btn_complete is not None
 
@@ -141,7 +141,7 @@ class Hauler:
     def can_accept(self):
         dialog_window = self.ui_tree.find_node(node_type="AgentDialogueWindow", refresh=True)
         btn_group = self.ui_tree.find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
-        btn_accept = btn_group.find_image('../../images/btn_accept.png', confidence=0.7)
+        btn_accept = btn_group.find_image(get_path('images/btn_accept.png'), confidence=0.7)
 
         return btn_accept is not None
 
@@ -153,8 +153,8 @@ class Hauler:
             btn_group = self.ui_tree.find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
             btn_view_request = wait_for_truthy(
                 lambda:
-                btn_group.find_image('../../images/btn_request_mission.png', confidence=0.95)
-                or btn_group.find_image('../../images/btn_view_mission.png', confidence=0.95),
+                btn_group.find_image(get_path('images/btn_request_mission.png'), confidence=0.95)
+                or btn_group.find_image(get_path('images/btn_view_mission.png'), confidence=0.95),
                 10
             )
             if btn_view_request:
@@ -215,7 +215,7 @@ class Hauler:
                 log_console("stage 5: completing mission")
                 dialog_window = self.ui_tree.find_node(node_type="AgentDialogueWindow", refresh=True)
                 btn_group = self.ui_tree.find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
-                btn_complete = btn_group.find_image('../../images/btn_complete_mission.png')
+                btn_complete = btn_group.find_image(get_path('images/btn_complete_mission.png'))
                 left_click(btn_complete.get_center())
                 self.missionCounter += 1
                 minute = (datetime.now() - self.missionStart).seconds // 60
@@ -292,7 +292,7 @@ if __name__ == "__main__":
             log_console("Fatal error occurred")
             log_console("Error: " + str(e))
             img = pyautogui.screenshot()
-            img.save(fr"../../out/FatalError_{utils.fatalErrorCount}.png")
+            img.save(get_path(f"out/FatalError_{utils.fatalErrorCount}.png"))
             # close_client(utils.CHARACTER_NAME)
         # if utils.fatalErrorCount < 4:
         #     start_game(utils.CHARACTER_NAME)

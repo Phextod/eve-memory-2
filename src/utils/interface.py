@@ -3,16 +3,12 @@ import json
 import time
 
 import pyautogui
-import win32gui
-
 import pyscreeze
-
-from src.utils.utils import get_pid, find_window_for_pid
+import win32gui
 
 pyscreeze.USE_IMAGE_NOT_FOUND_EXCEPTION = False
 
 eve_memory_reader = ctypes.WinDLL(r"D:\Projects\Python\eve-memory-2\src\utils\eve-memory-reader.dll")
-# eve_memory_reader = ctypes.WinDLL(r"D:\Projects\Python\eve-memory-2\eve-memory-reader(old).dll")
 
 eve_memory_reader.initialize.argtypes = []
 eve_memory_reader.initialize.restype = ctypes.c_int
@@ -136,15 +132,25 @@ class UITree(object):
 
     def load(self, tree, root_address=None):
         parent = None
+        real_x = 0
+        real_y = 0
 
         if root_address:
             parent = self.nodes[root_address].parent
             self.del_subtree_nodes(root_address)
             self.nodes[parent].children.append(root_address)
+            real_x = self.nodes[parent].x \
+                + (tree["attrs"].get("_displayX", 0) or 0) \
+                - self.window_position_offset[0] \
+                - HORIZONTAL_OFFSET
+            real_y = self.nodes[parent].y \
+                + (tree["attrs"].get("_displayY", 0) or 0) \
+                - self.window_position_offset[1] \
+                - WINDOW_HEADER_OFFSET
         else:
             self.nodes = dict()
 
-        self.ingest(tree, parent=parent)
+        self.ingest(tree, parent=parent, x=real_x, y=real_y)
 
         screensize = get_screensize()
         self.width_ratio = screensize[0] / tree["attrs"].get("_displayWidth", 0)

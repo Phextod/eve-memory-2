@@ -1,9 +1,8 @@
 from dataclasses import dataclass
 from typing import List, Dict
 
-from src.eve_ui.ui_component import UIComponent, NodeSelector
-from src.utils.interface import UITree, UITreeNode
-from src.utils.utils import wait_for_truthy
+from src.utils.bubbling_query import BubblingQuery
+from src.utils.interface import UITree
 
 
 @dataclass
@@ -50,21 +49,24 @@ class OverviewEntry:
         return out_data
 
 
-class Overview(UIComponent):
+class Overview:
     def __init__(self, ui_tree: UITree):
-        super().__init__(NodeSelector(node_type="OverviewWindow"), ui_tree)
+        self.ui_tree = ui_tree
+        self.main_window_query = BubblingQuery(node_type="OverviewWindow", ui_tree=ui_tree)
 
         self.entries: List[Dict[str, str]] = []
         self.headers = []
 
-        self.header_component = UIComponent(
-            NodeSelector(node_type="Header", select_many=True),
-            parent=self
+        self.header_component_query = BubblingQuery(
+            node_type="Header",
+            select_many=True,
+            parent_query=self.main_window_query
         )
 
-        self.entry_component = UIComponent(
-            NodeSelector(node_type="OverviewScrollEntry", select_many=True),
-            parent=self
+        self.entry_component_query = BubblingQuery(
+            node_type="OverviewScrollEntry",
+            select_many=True,
+            parent_query=self.main_window_query
         )
 
         self.update_headers()
@@ -73,7 +75,7 @@ class Overview(UIComponent):
     def update_headers(self):
         self.headers.clear()
 
-        headers = self.header_component.update_node()
+        headers = self.header_component_query.run()
         headers.sort(key=lambda a: a.x)
 
         for header in headers:
@@ -84,7 +86,7 @@ class Overview(UIComponent):
     def update(self):
         self.entries.clear()
 
-        entry_nodes = self.entry_component.update_node()
+        entry_nodes = self.entry_component_query.run()
 
         for entry_node in entry_nodes:
             entry_labels = [self.ui_tree.nodes[label_address] for label_address in entry_node.children]

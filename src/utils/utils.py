@@ -1,3 +1,4 @@
+import os
 import time
 from datetime import timedelta, datetime
 from typing import Union, Tuple
@@ -11,9 +12,12 @@ import pyscreeze
 import psutil
 import win32process
 
-pyscreeze.USE_IMAGE_NOT_FOUND_EXCEPTION = False
+from src.utils.interface import UITreeNode, UITree
 
-LOG_FILENAME = "../../out/logMissions.txt"
+pyscreeze.USE_IMAGE_NOT_FOUND_EXCEPTION = False
+UTIL_DIR = os.path.dirname(os.path.abspath(__file__))
+
+LOG_FILENAME = "out/logMissions.txt"
 # CHARACTER_NAME = "Ahonen Yatolila"
 CHARACTER_NAME = "Phex Gagarists"
 AGENT_NAME = "vairosen"  # lvl3
@@ -27,6 +31,10 @@ failsafeTimers = dict()
 fatalErrorCount = 0
 
 
+def get_path(filepath):
+    return os.path.join(UTIL_DIR, "../../" + filepath)
+
+
 def log_console(*args, **kwargs):
     t = time.localtime()
     time_string = time.strftime("%Y/%m/%d %H:%M:%S: ", t)
@@ -36,7 +44,7 @@ def log_console(*args, **kwargs):
 def log(log_message):
     t = time.localtime()
     time_string = time.strftime("%Y/%m/%d %H:%M:%S: ", t)
-    with open(LOG_FILENAME, "a") as f:
+    with open(get_path(LOG_FILENAME), "a") as f:
         f.write("\n" + time_string + log_message)
 
 
@@ -160,10 +168,10 @@ def close_client(player_name):
 def start_game(player_name):
     log_console("Starting client")
     start_failsafe()
-    btn_play_now = pyautogui.locateOnScreen("../../images/btn_play_now.png", grayscale=True, confidence=0.7)
+    btn_play_now = pyautogui.locateOnScreen(get_path("images/btn_play_now.png"), grayscale=True, confidence=0.7)
     while not btn_play_now:
         time.sleep(5)
-        btn_play_now = pyautogui.locateOnScreen("../../images/btn_complete_mission.png", grayscale=True, confidence=0.7)
+        btn_play_now = pyautogui.locateOnScreen(get_path("images/btn_complete_mission.png"), grayscale=True, confidence=0.7)
         failsafe(60, "Finding play button")
     left_click((btn_play_now[0] + 15, btn_play_now[1] + 15))
     trial_count = 1
@@ -186,7 +194,7 @@ def start_game(player_name):
         pyautogui.press('enter')
         time.sleep(9)
         failsafe(60)
-    ui_tree = UITree()
+    ui_tree = UITree(player_name)
     while not ui_tree.find_node({'_name': 'EVEMenuIcon'}, refresh=True):
         log_console(f"Waiting for neo-com {trial_count}")
         trial_count += 1
