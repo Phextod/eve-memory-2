@@ -108,3 +108,6 @@ class Inventory:
         left_click(search_field.result)
         pyautogui.hotkey('ctrl', 'a', interval=0.2)
         pyautogui.write(search_text, interval=0.25)
+
+    def loot_all(self):
+        btn_loot_all = BubblingQuery({'_name': 'invLootAllBtn'}, self.main_window_query)

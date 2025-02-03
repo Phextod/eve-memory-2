@@ -1,4 +1,5 @@
 import json
+import math
 
 import keyboard
 
@@ -33,14 +34,30 @@ class AbyssBot:
                 other_entries.append(entry)
         return enemies, other_entries
 
+    @staticmethod
+    def simulate_fight(enemies=None, player_ship=None):
+        enemy_dps_ehp_received_dps = [[50, 100, 10], [50, 100, 10], [100, 100, 10]]
+        received_dmg = 0
+        fight_time = 0
+        for enemy in enemy_dps_ehp_received_dps:
+            enemy_dps = enemy[0]
+            enemy_ehp = enemy[1]
+            enemy_received_dps = enemy[2]
+            time_to_kill = math.ceil(enemy_ehp / enemy_received_dps)
+            enemy_total_dmg = (time_to_kill + fight_time) * enemy_dps
+
+            fight_time += time_to_kill
+            received_dmg += enemy_total_dmg
+        print("done")
+
     def run(self):
         while True:
-            if keyboard.read_key() == "pagedown":
-                self.ui.inventory.update_items()
-                print(self.ui.inventory)
+            if keyboard.read_key() == "enter":
+                self.ui.ship_ui.update_modules()
+                # print(self.ui.ship_ui)
 
 
 if __name__ == "__main__":
     bot = AbyssBot(CHARACTER_NAME)
     print("ready")
-    # bot.run()
+    bot.run()
