@@ -5,13 +5,13 @@ import keyboard
 
 from src.abyss.abyss_ship import AbyssShip
 from src.eve_ui.eve_ui import EveUI
-from src.utils.utils import get_pid, CHARACTER_NAME, get_path
+from src.utils.utils import get_pid, get_path
 
 
 class AbyssBot:
-    def __init__(self, character_name):
+    def __init__(self):
         self.pid = get_pid()
-        self.ui = EveUI(character_name)
+        self.ui = EveUI()
         # exported from: https://caldarijoans.streamlit.app/Abyssal_Enemies_Database
         self.ships = self.load_ships(get_path("data/abyss_ships.json"))
 
@@ -58,6 +58,7 @@ class AbyssBot:
 
 
 if __name__ == "__main__":
-    bot = AbyssBot(CHARACTER_NAME)
-    print("ready")
-    bot.run()
+    # bot = AbyssBot(CHARACTER_NAME)
+    # print("ready")
+    # bot.run()
+    AbyssBot.simulate_fight()

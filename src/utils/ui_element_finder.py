@@ -14,7 +14,6 @@ from PyQt5.QtWidgets import QMainWindow
 from screeninfo import get_monitors
 
 from src.utils.interface import UITreeNode, UITree
-from src.utils.utils import CHARACTER_NAME
 
 
 class RectangleWindow(QMainWindow):
@@ -73,9 +72,9 @@ class RectangleWindow(QMainWindow):
 highlight_window: Optional[RectangleWindow] = None
 
 
-def dfs(parent_node: UITreeNode, ui_tree: UITree, _cursor_loc: (int, int), depth=0):
+def dfs(parent_node: UITreeNode, _cursor_loc: (int, int), depth=0):
     for children_index in parent_node.children:
-        children_node = ui_tree.nodes[children_index]
+        children_node = UITree.instance().nodes[children_index]
         width = children_node.attrs["_displayWidth"]
         height = children_node.attrs["_displayHeight"]
         if width and height:
@@ -88,7 +87,7 @@ def dfs(parent_node: UITreeNode, ui_tree: UITree, _cursor_loc: (int, int), depth
                     width,
                     height)
 
-        dfs(children_node, ui_tree, _cursor_loc, depth=depth + 1)
+        dfs(children_node, _cursor_loc, depth=depth + 1)
 
 
 def start_qt():
@@ -106,8 +105,8 @@ def start_qt_thread():
 
 
 if __name__ == "__main__":
-    tree = UITree(CHARACTER_NAME)
-    tree.refresh()  # No idea why but without this the first positions are incorrect
+    UITree.instance()
+    UITree.instance().refresh()  # No idea why but without this the first positions are incorrect
 
     qt_thread = start_qt_thread()
     time.sleep(1)
@@ -122,12 +121,12 @@ if __name__ == "__main__":
                 cursor_loc[1]
             )
 
-            root = next(iter(tree.nodes.values()))
-            dfs(root, tree, cursor_local_location)
+            root = next(iter(UITree.instance().nodes.values()))
+            dfs(root, cursor_local_location)
         elif keyboard.read_key() == "r":
             print("----------------------")
             print("refresh")
-            tree.refresh()
+            UITree.instance().refresh()
         elif keyboard.read_key() == "esc":
             highlight_window.close()
             qt_thread.join()

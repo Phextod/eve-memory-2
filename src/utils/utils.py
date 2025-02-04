@@ -1,16 +1,14 @@
 import os
 import time
 from datetime import timedelta, datetime
-from enum import Enum
 from typing import Union, Tuple
 
+import psutil
 import pyautogui
+import pyscreeze
 import win32api
 import win32con
 import win32gui
-
-import pyscreeze
-import psutil
 import win32process
 
 from src.utils.interface import UITreeNode, UITree
@@ -220,8 +218,7 @@ def start_game(player_name):
         pyautogui.press('enter')
         time.sleep(9)
         failsafe(60)
-    ui_tree = UITree(player_name)
-    while not ui_tree.find_node({'_name': 'EVEMenuIcon'}, refresh=True):
+    while not UITree.instance().find_node({'_name': 'EVEMenuIcon'}, refresh=True):
         log_console(f"Waiting for neo-com {trial_count}")
         trial_count += 1
         if trial_count > 10:

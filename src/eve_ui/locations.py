@@ -6,11 +6,9 @@ from src.utils.utils import click
 
 
 class Locations:
-    def __init__(self, ui_tree: UITree, refresh_on_init=False):
-        self.ui_tree = ui_tree
+    def __init__(self, refresh_on_init=False):
         self.main_window_query = BubblingQuery(
             node_type="LocationsWindow",
-            ui_tree=ui_tree,
             refresh_on_init=refresh_on_init,
         )
         self.main_container_query = BubblingQuery(
@@ -26,10 +24,10 @@ class Locations:
         click(btn_close)
 
     def get_group(self, node_type, name):
-        groups = self.ui_tree.find_node(node_type=node_type, select_many=True, root=self.main_container_query.result)
+        groups = UITree.instance().find_node(node_type=node_type, select_many=True, root=self.main_container_query.result)
 
         for group in groups:
-            label = self.ui_tree.find_node(node_type="EveLabelMedium", root=group, refresh=False)
+            label = UITree.instance().find_node(node_type="EveLabelMedium", root=group, refresh=False)
 
             label_text = label.attrs['_setText'].split("<")[0].strip()
             if label_text == name:
@@ -37,8 +35,9 @@ class Locations:
 
         return None
 
-    def _expand_if_not_expanded(self, root):
-        expander = self.ui_tree.find_node({'_name': 'expander'}, root=root, refresh=False)
+    @staticmethod
+    def _expand_if_not_expanded(root):
+        expander = UITree.instance().find_node({'_name': 'expander'}, root=root, refresh=False)
         if expander.attrs["texturePath"] != "res:/UI/Texture/Icons/38_16_229.png":
             click(expander)
             time.sleep(0.1)

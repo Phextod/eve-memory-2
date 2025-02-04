@@ -1,4 +1,3 @@
-import time
 from typing import List, Tuple
 
 import pyautogui
@@ -9,12 +8,9 @@ from src.utils.utils import drag_and_drop, click
 
 
 class Inventory:
-    def __init__(self, ui_tree: UITree, refresh_on_init=False):
-        self.ui_tree = ui_tree
-
+    def __init__(self, refresh_on_init=False):
         self.main_window_query = BubblingQuery(
             node_type="InventoryPrimary",
-            ui_tree=ui_tree,
             refresh_on_init=refresh_on_init,
         )
 
@@ -44,19 +40,19 @@ class Inventory:
             refresh_on_init=refresh,
         ).result
 
-        self.active_ship_hangar = self.ui_tree.find_node(
+        self.active_ship_hangar = UITree.instance().find_node(
             node_type="TextBody",
             root=active_ship_container,
             refresh=False,
         )
 
-        self.main_station_hangar = self.ui_tree.find_node(
+        self.main_station_hangar = UITree.instance().find_node(
             {'_name': 'topCont_ItemHangar'},
             root=self.main_window_query.result,
             refresh=refresh,
         )
 
-        station_containers_containers = self.ui_tree.find_node(
+        station_containers_containers = UITree.instance().find_node(
             {'_name': 'topCont_StationContainer'},
             select_many=True,
             root=self.main_window_query.result,
@@ -65,7 +61,7 @@ class Inventory:
 
         self.station_containers.clear()
         for container_container in station_containers_containers:
-            container = self.ui_tree.find_node(node_type="TextBody", root=container_container)
+            container = UITree.instance().find_node(node_type="TextBody", root=container_container)
             self.station_containers.append(container)
 
     def update_capacity(self, refresh=True):

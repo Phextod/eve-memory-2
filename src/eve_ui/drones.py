@@ -47,12 +47,9 @@ class Drone:
 
 
 class Drones:
-    def __init__(self, ui_tree: UITree, refresh_on_init=False):
-        self.ui_tree = ui_tree
-
+    def __init__(self, refresh_on_init=False):
         self.main_window_query = BubblingQuery(
             node_type="DronesWindow",
-            ui_tree=ui_tree,
             refresh_on_init=refresh_on_init
         )
 
@@ -76,19 +73,21 @@ class Drones:
 
         for entry_node in self.drone_entries_query.result:
             if entry_node.type == "DroneInSpaceEntry":
-                self.in_space.append(Drone.from_entry_node(entry_node, self.ui_tree))
+                self.in_space.append(Drone.from_entry_node(entry_node, UITree.instance()))
             elif entry_node.type == "DroneInBayEntry":
-                self.in_bay.append(Drone.from_entry_node(entry_node, self.ui_tree))
+                self.in_bay.append(Drone.from_entry_node(entry_node, UITree.instance()))
 
-    def launch_drones(self, drones: List[Drone]):
+    @staticmethod
+    def launch_drones(drones: List[Drone]):
         drones.sort(key=lambda d: d.entry_node.y, reverse=True)
         for drone in drones:
             click(drone.entry_node, MOUSE_RIGHT, pos_x=0.2)
-            ContextMenu(self.ui_tree).click_safe("Launch Drone", 5)
+            ContextMenu(UITree.instance()).click_safe("Launch Drone", 5)
 
-    def recall(self, drone: Drone):
+    @staticmethod
+    def recall(drone: Drone):
         click(drone.entry_node, MOUSE_RIGHT, pos_x=0.1)
-        ContextMenu(self.ui_tree).click_safe("Return to Drone Bay", 5)
+        ContextMenu(UITree.instance()).click_safe("Return to Drone Bay", 5)
 
     def safe_recall_all(self):
         pyautogui.hotkey('shift', 'r', interval=0.2)

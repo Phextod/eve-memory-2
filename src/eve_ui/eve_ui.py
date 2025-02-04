@@ -12,20 +12,20 @@ from src.utils.interface import UITree
 
 
 class EveUI:
-    def __init__(self, character_name):
+    def __init__(self):
         start = time.time()
         print("initializing UI tree")
-        self.ui_tree = UITree(character_name)
+        UITree.instance()
         print(f"UI tree initialized in {time.time() - start}")
 
         start = time.time()
         print("initializing UI components")
-        self.overview = Overview(self.ui_tree)
-        self.target_bar = TargetBar(self.ui_tree)
-        self.ship_ui = ShipUI(self.ui_tree)
-        self.drones = Drones(self.ui_tree)
-        self.inventory = Inventory(self.ui_tree)
-        self.context_menu = ContextMenu(self.ui_tree)
-        self.locations = Locations(self.ui_tree)
-        self.station_window = StationWindow(self.ui_tree)
+        self.overview = Overview()
+        self.target_bar = TargetBar()
+        self.ship_ui = ShipUI()
+        self.drones = Drones()
+        self.inventory = Inventory()
+        self.context_menu = ContextMenu()
+        self.locations = Locations()
+        self.station_window = StationWindow()
         print(f"UI components initialized in {time.time() - start}")

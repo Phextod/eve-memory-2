@@ -11,9 +11,8 @@ from src.utils.utils import log_console, left_click, drag_and_drop, log, start_f
 
 
 class Hauler:
-    def __init__(self, ui_tree: UITree):
-        self.ui_tree = ui_tree
-        self.autopilot = Autopilot(ui_tree)
+    def __init__(self):
+        self.autopilot = Autopilot()
 
         self.inSpace = False
         self.canComplete = False
@@ -22,22 +21,24 @@ class Hauler:
         self.connectionFailedChecker = 0
         self.missionCounter = 0
 
-    def move_item_to_ship(self):
-        left_click(self.ui_tree.find_node({'_name': 'ItemHangar'}, refresh=True).get_center())
+    @staticmethod
+    def move_item_to_ship():
+        left_click(UITree.instance().find_node({'_name': 'ItemHangar'}, refresh=True).get_center())
         time.sleep(0.5)
-        item = self.ui_tree.find_node(node_type="InvItemIconContainer", refresh=True)
-        ship = self.ui_tree.find_node({'_name': 'topCont_ShipHangar'}, refresh=True)
+        item = UITree.instance().find_node(node_type="InvItemIconContainer", refresh=True)
+        ship = UITree.instance().find_node({'_name': 'topCont_ShipHangar'}, refresh=True)
         drag_and_drop(item.get_center(), ship.get_center())
 
         left_click(ship.get_center())
-        wait_for_truthy(lambda: self.ui_tree.find_node(node_type="InvItemIconContainer", refresh=True), 5)
+        wait_for_truthy(lambda: UITree.instance().find_node(node_type="InvItemIconContainer", refresh=True), 5)
 
         log_console("Moved item to ship")
 
-    def wait_for_location_change_timer(self):
+    @staticmethod
+    def wait_for_location_change_timer():
         log_console("Waiting for location change timer")
         waiting_counter = 0
-        while not self.ui_tree.find_node({'_name': 'invulnTimer'}, refresh=True):
+        while not UITree.instance().find_node({'_name': 'invulnTimer'}, refresh=True):
             time.sleep(1)
             waiting_counter += 1
             if waiting_counter >= 60:
@@ -53,25 +54,25 @@ class Hauler:
 
             # Clear all waypoints
             if self.route_waypoint_count() != 0:
-                route_markers = self.ui_tree.find_node(
+                route_markers = UITree.instance().find_node(
                     node_type="AutopilotDestinationIcon",
                     select_many=True,
                     refresh=True
                 )
 
                 right_click(route_markers[0].get_center())
-                btn_set_destination = self.ui_tree.find_node({'_name': 'context_menu_Set Destination'}, refresh=True)
+                btn_set_destination = UITree.instance().find_node({'_name': 'context_menu_Set Destination'}, refresh=True)
                 if btn_set_destination:
                     left_click(btn_set_destination)
                     right_click(route_markers[0].get_center())
 
-                left_click(self.ui_tree.find_node({'_name': 'context_menu_Remove Waypoint'}, refresh=True))
+                left_click(UITree.instance().find_node({'_name': 'context_menu_Remove Waypoint'}, refresh=True))
 
             # Add destination waypoint
-            location_link_1 = self.ui_tree.find_node({'_name': 'tablecell 1-3'}, refresh=True)
+            location_link_1 = UITree.instance().find_node({'_name': 'tablecell 1-3'}, refresh=True)
             right_click(location_link_1.get_center(pos_y=0.3))
             btn_add_waypoint = wait_for_truthy(
-                lambda: self.ui_tree.find_node({'_name': 'context_menu_Add Waypoint'}, refresh=True),
+                lambda: UITree.instance().find_node({'_name': 'context_menu_Add Waypoint'}, refresh=True),
                 5
             )
             left_click(btn_add_waypoint)
@@ -87,8 +88,8 @@ class Hauler:
                 break
             else:
                 decline_count += 1
-                dialog_window = self.ui_tree.find_node(node_type="AgentDialogueWindow", refresh=True)
-                btn_group = self.ui_tree.find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
+                dialog_window = UITree.instance().find_node(node_type="AgentDialogueWindow", refresh=True)
+                btn_group = UITree.instance().find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
                 btn_decline = btn_group.find_image(get_path("images/btn_decline.png"))
                 left_click(btn_decline.get_center())
                 time.sleep(5)
@@ -96,8 +97,8 @@ class Hauler:
                 log_console("Mission decline: jumps: " + str(route_length))
                 start_failsafe()
                 while not self.can_accept():
-                    dialog_window = self.ui_tree.find_node(node_type="AgentDialogueWindow", refresh=True)
-                    btn_group = self.ui_tree.find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
+                    dialog_window = UITree.instance().find_node(node_type="AgentDialogueWindow", refresh=True)
+                    btn_group = UITree.instance().find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
                     btn_request = btn_group.find_image(get_path('images/btn_request_mission.png'), confidence=0.99)
                     left_click(btn_request.get_center())
                     time.sleep(2)
@@ -106,13 +107,13 @@ class Hauler:
                 raise Exception("To many declines")
 
         # Add origin station waypoint
-        location_link_center_2 = self.ui_tree.find_node({'_name': 'tablecell 0-3'}, refresh=True).get_center()
+        location_link_center_2 = UITree.instance().find_node({'_name': 'tablecell 0-3'}, refresh=True).get_center()
         right_click((location_link_center_2[0] - 20, location_link_center_2[1]))
         time.sleep(1)
-        left_click(self.ui_tree.find_node({'_name': 'context_menu_Add Waypoint'}, refresh=True))
+        left_click(UITree.instance().find_node({'_name': 'context_menu_Add Waypoint'}, refresh=True))
 
-        dialog_window = self.ui_tree.find_node(node_type="AgentDialogueWindow", refresh=True)
-        btn_group = self.ui_tree.find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
+        dialog_window = UITree.instance().find_node(node_type="AgentDialogueWindow", refresh=True)
+        btn_group = UITree.instance().find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
         btn_accept = btn_group.find_image(get_path('images/btn_accept.png'), confidence=0.7)
         left_click(btn_accept)
 
@@ -124,23 +125,26 @@ class Hauler:
     def route_waypoint_count(self):
         return self.autopilot.get_route().count(1)
 
-    def can_find_complete_button(self):
-        dialog_window = self.ui_tree.find_node(node_type="AgentDialogueWindow", refresh=True)
-        btn_group = self.ui_tree.find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
+    @staticmethod
+    def can_find_complete_button():
+        dialog_window = UITree.instance().find_node(node_type="AgentDialogueWindow", refresh=True)
+        btn_group = UITree.instance().find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
         btn_complete = btn_group.find_image(get_path('images/btn_complete_mission.png'))
 
         return btn_complete is not None
 
-    def item_is_in_ship(self):
+    @staticmethod
+    def item_is_in_ship():
         log_console("Testing if item is in ship")
-        ship = self.ui_tree.find_node({'_name': 'topCont_ShipHangar'}, refresh=True)
+        ship = UITree.instance().find_node({'_name': 'topCont_ShipHangar'}, refresh=True)
         left_click(ship.get_center())
-        item = self.ui_tree.find_node(node_type="InvItemIconContainer", refresh=True)
+        item = UITree.instance().find_node(node_type="InvItemIconContainer", refresh=True)
         return not not item
 
-    def can_accept(self):
-        dialog_window = self.ui_tree.find_node(node_type="AgentDialogueWindow", refresh=True)
-        btn_group = self.ui_tree.find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
+    @staticmethod
+    def can_accept():
+        dialog_window = UITree.instance().find_node(node_type="AgentDialogueWindow", refresh=True)
+        btn_group = UITree.instance().find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
         btn_accept = btn_group.find_image(get_path('images/btn_accept.png'), confidence=0.7)
 
         return btn_accept is not None
@@ -149,8 +153,8 @@ class Hauler:
         self.inSpace = self.autopilot.is_in_space()
 
         if not self.inSpace:
-            dialog_window = self.ui_tree.find_node(node_type="AgentDialogueWindow", refresh=True)
-            btn_group = self.ui_tree.find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
+            dialog_window = UITree.instance().find_node(node_type="AgentDialogueWindow", refresh=True)
+            btn_group = UITree.instance().find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
             btn_view_request = wait_for_truthy(
                 lambda:
                 btn_group.find_image(get_path('images/btn_request_mission.png'), confidence=0.95)
@@ -195,7 +199,7 @@ class Hauler:
             self.print_state(2)
             while not self.inSpace and self.waypointCount == 2 and self.item_is_in_ship():
                 log_console("stage 3: undocking from origin")
-                btn_undock = self.ui_tree.find_node(node_type="UndockButton", refresh=True)
+                btn_undock = UITree.instance().find_node(node_type="UndockButton", refresh=True)
                 left_click(btn_undock.get_center())
                 self.wait_for_location_change_timer()
                 self.test_stage_criteria()
@@ -213,8 +217,8 @@ class Hauler:
             self.print_state(4)
             while not self.inSpace and self.canComplete and self.waypointCount == 1:
                 log_console("stage 5: completing mission")
-                dialog_window = self.ui_tree.find_node(node_type="AgentDialogueWindow", refresh=True)
-                btn_group = self.ui_tree.find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
+                dialog_window = UITree.instance().find_node(node_type="AgentDialogueWindow", refresh=True)
+                btn_group = UITree.instance().find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
                 btn_complete = btn_group.find_image(get_path('images/btn_complete_mission.png'))
                 left_click(btn_complete.get_center())
                 self.missionCounter += 1
@@ -227,7 +231,7 @@ class Hauler:
             self.print_state(5)
             while not self.inSpace and not self.canComplete and self.waypointCount == 1:
                 log_console("stage 6: undocking from drop-off")
-                btn_undock = self.ui_tree.find_node(node_type="UndockButton", refresh=True)
+                btn_undock = UITree.instance().find_node(node_type="UndockButton", refresh=True)
                 left_click(btn_undock.get_center())
                 self.wait_for_location_change_timer()
                 self.test_stage_criteria()
@@ -250,25 +254,26 @@ class Hauler:
             if self.connectionFailedChecker > 3:
                 raise Exception("Main loop can't do anything")
 
-    def open_agent_window(self, agent_name):
+    @staticmethod
+    def open_agent_window(agent_name):
         log_console("Opening agent window")
 
-        btn_character_sheet = self.ui_tree.find_node({'_name': 'charSheetBtn'}, refresh=True)
-        window_character_sheet = self.ui_tree.find_node(node_type="CharacterSheetWindow", refresh=True)
+        btn_character_sheet = UITree.instance().find_node({'_name': 'charSheetBtn'}, refresh=True)
+        window_character_sheet = UITree.instance().find_node(node_type="CharacterSheetWindow", refresh=True)
         if not window_character_sheet:
             left_click(btn_character_sheet.get_center())
 
-        btn_interactions = self.ui_tree.find_node({'_name': 'interactions'}, node_type="Tab", refresh=True)
+        btn_interactions = UITree.instance().find_node({'_name': 'interactions'}, node_type="Tab", refresh=True)
         left_click(btn_interactions.get_center())
 
-        search_bar = self.ui_tree.find_node({'_name': 'searchBar'}, refresh=True)
+        search_bar = UITree.instance().find_node({'_name': 'searchBar'}, refresh=True)
         left_click(search_bar.get_center())
         pyautogui.hotkey('ctrl', 'a', interval=0.2)
         pyautogui.write(agent_name, interval=0.25)
 
         time.sleep(1)
-        window_character_sheet = self.ui_tree.find_node(node_type="CharacterSheetWindow", refresh=True)
-        btn_conversation = self.ui_tree.find_node(
+        window_character_sheet = UITree.instance().find_node(node_type="CharacterSheetWindow", refresh=True)
+        btn_conversation = UITree.instance().find_node(
             node_type="AgentConversationIcon",
             root=window_character_sheet,
             refresh=True
@@ -280,8 +285,8 @@ class Hauler:
 
 
 if __name__ == "__main__":
-    _ui_tree = UITree(utils.CHARACTER_NAME)
-    hauler = Hauler(_ui_tree)
+    UITree.instance()
+    hauler = Hauler()
     time.sleep(1)
     log("")
     while utils.fatalErrorCount < 2:

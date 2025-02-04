@@ -11,10 +11,8 @@ class Target:
 
 
 class TargetBar:
-    def __init__(self, ui_tree: UITree, refresh_on_init=False):
-        self.ui_tree = ui_tree
-
-        self.main_window_query = BubblingQuery({"_name": "l_target"}, ui_tree=ui_tree, refresh_on_init=refresh_on_init)
+    def __init__(self, refresh_on_init=False):
+        self.main_window_query = BubblingQuery({"_name": "l_target"}, refresh_on_init=refresh_on_init)
 
         self.target_components_query = BubblingQuery(
             node_type="TargetInBar",
@@ -31,6 +29,6 @@ class TargetBar:
         self.target_components_query.run()
 
         for target_component in self.target_components_query.result:
-            labels = self.ui_tree.find_node(node_type="EveLabelSmall", root=target_component, select_many=True)
+            labels = UITree.instance().find_node(node_type="EveLabelSmall", root=target_component, select_many=True)
             name = " ".join([text.attrs["_setText"] for text in labels])
             self.targets.append(Target(name))

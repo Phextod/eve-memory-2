@@ -21,18 +21,18 @@ class ShipModule:
         overloaded = 2
         turning_off = 3
 
-    def __init__(self, slot_node: UITreeNode, ui_tree: UITree):
+    def __init__(self, slot_node: UITreeNode):
         self.slot_node = slot_node
 
-        icon = ui_tree.find_node(node_type="Icon", root=slot_node, refresh=False)
+        icon = UITree.instance().find_node(node_type="Icon", root=slot_node, refresh=False)
         self.module_type = icon.attrs["_texturePath"].split("/")[-1].split(".")[0]
 
         # Cloaks and some other modules are active but not overloadable. If you care about those improve this part
-        overload_button = ui_tree.find_node({'_name': 'overloadBtn'}, root=slot_node, refresh=False)
+        overload_button = UITree.instance().find_node({'_name': 'overloadBtn'}, root=slot_node, refresh=False)
         if "Disabled" not in overload_button.attrs["_texturePath"]:
-            module_button = ui_tree.find_node(node_type="ModuleButton", root=slot_node, refresh=False)
+            module_button = UITree.instance().find_node(node_type="ModuleButton", root=slot_node, refresh=False)
             if module_button.attrs.get("ramp_active", None):
-                glow = ui_tree.find_node({"_texturePath": "Glow"}, contains=True, root=slot_node, refresh=False)
+                glow = UITree.instance().find_node({"_texturePath": "Glow"}, contains=True, root=slot_node, refresh=False)
                 if glow.attrs["_color"]["rPercent"] >= 100:
                     self.active_status = ShipModule.ActiveStatus.turning_off
                 else:
@@ -65,10 +65,8 @@ class ShipModule:
 
 
 class ShipUI:
-    def __init__(self, ui_tree: UITree, refresh_on_init=False):
-        self.ui_tree = ui_tree
-
-        self.main_container_query = BubblingQuery(node_type="ShipUI", ui_tree=ui_tree, refresh_on_init=refresh_on_init)
+    def __init__(self, refresh_on_init=False):
+        self.main_container_query = BubblingQuery(node_type="ShipUI", refresh_on_init=refresh_on_init)
 
         self.high_modules: Dict[int, ShipModule] = dict()
         self.medium_modules: Dict[int, ShipModule] = dict()
@@ -107,7 +105,7 @@ class ShipUI:
         modules_nodes.sort(key=lambda a: a.x)
         for module_index, slot in enumerate(modules_nodes):
             # module_index = int(slot.attrs["_name"].replace("inFlightMediumSlot", ""))
-            ship_module = ShipModule(slot, self.ui_tree)
+            ship_module = ShipModule(slot)
             self.high_modules.update({module_index: ship_module})
 
     def update_medium_slots(self, refresh=True):
@@ -122,7 +120,7 @@ class ShipUI:
         modules_nodes.sort(key=lambda a: a.x)
         for module_index, slot in enumerate(modules_nodes):
             # module_index = int(slot.attrs["_name"].replace("inFlightMediumSlot", ""))
-            ship_module = ShipModule(slot, self.ui_tree)
+            ship_module = ShipModule(slot)
             self.medium_modules.update({module_index: ship_module})
 
     def update_low_slots(self, refresh=True):
@@ -137,7 +135,7 @@ class ShipUI:
         modules_nodes.sort(key=lambda a: a.x)
         for module_index, slot in enumerate(modules_nodes):
             # module_index = int(slot.attrs["_name"].replace("inFlightMediumSlot", ""))
-            ship_module = ShipModule(slot, self.ui_tree)
+            ship_module = ShipModule(slot)
             self.low_modules.update({module_index: ship_module})
 
     def update_modules(self, refresh=True):

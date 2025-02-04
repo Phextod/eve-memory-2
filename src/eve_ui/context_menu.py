@@ -1,7 +1,4 @@
-from enum import Enum
-
 from src.utils.bubbling_query import BubblingQuery
-from src.utils.interface import UITree
 from src.utils.utils import click, wait_for_truthy, move_cursor
 
 
@@ -44,15 +41,13 @@ class DistancePresets:
 class ContextMenu:
     instance = None
 
-    def __new__(cls, ui_tree: UITree, refresh_on_init=False):
+    def __new__(cls, refresh_on_init=False):
         if not cls.instance:
             cls.instance = super(ContextMenu, cls).__new__(cls)
         return cls.instance
 
-    def __init__(self, ui_tree: UITree, refresh_on_init=False):
-        self.ui_tree = ui_tree
-
-        self.menu_container_query = BubblingQuery({'_name': 'l_menu'}, ui_tree=ui_tree, refresh_on_init=refresh_on_init)
+    def __init__(self, refresh_on_init=False):
+        self.menu_container_query = BubblingQuery({'_name': 'l_menu'}, refresh_on_init=refresh_on_init)
 
     def click(self, entry_text, contains=False):
         target = BubblingQuery(

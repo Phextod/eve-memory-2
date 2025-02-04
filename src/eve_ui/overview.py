@@ -32,7 +32,6 @@ class OverviewEntry:
     is_being_targeted = False
 
     node: UITreeNode = None
-    ui_tree: UITree = None
 
     class Action(Enum):
         unlock_target = "Unlock Target"
@@ -41,7 +40,7 @@ class OverviewEntry:
         activate_gate = "Activate Gate"
 
     @staticmethod
-    def from_entry_node(entry_node: UITreeNode, ui_tree: UITree, headers: list):
+    def from_entry_node(entry_node: UITreeNode, headers: list):
         decode_dict = {
             "icon": "Icon",
             "distance": "Distance",
@@ -59,13 +58,13 @@ class OverviewEntry:
             "angular_velocity": "Angular Velocity (deg/s)",
         }
 
-        entry_labels = ui_tree.find_node(
+        entry_labels = UITree.instance().find_node(
             node_type="OverviewLabel",
             root=entry_node,
             select_many=True,
             refresh=False,
         )
-        icon = ui_tree.find_node({'_name': 'iconSprite'}, root=entry_node, refresh=False)
+        icon = UITree.instance().find_node({'_name': 'iconSprite'}, root=entry_node, refresh=False)
         entry_labels.append(icon)
         entry_labels.sort(key=lambda a: a.x)
 
@@ -81,23 +80,23 @@ class OverviewEntry:
 
         entry = OverviewEntry(**decoded_data)
 
-        active_target_node = ui_tree.find_node({'_name': 'myActiveTargetIndicator'}, root=entry_node, refresh=False)
+        active_target_node = UITree.instance().find_node({'_name': 'myActiveTargetIndicator'}, root=entry_node, refresh=False)
         entry.is_active_target = active_target_node is not None
 
-        targeted_by_me_node = ui_tree.find_node({'_name': 'targetedByMeIndicator'}, root=entry_node, refresh=False)
+        targeted_by_me_node = UITree.instance().find_node({'_name': 'targetedByMeIndicator'}, root=entry_node, refresh=False)
         entry.is_targeted_by_me = targeted_by_me_node is not None
 
-        targeting_node = ui_tree.find_node({'_name': 'targeting'}, root=entry_node, refresh=False)
+        targeting_node = UITree.instance().find_node({'_name': 'targeting'}, root=entry_node, refresh=False)
         entry.is_being_targeted = targeting_node is not None
 
         entry.node = entry_node
-        entry.ui_tree = ui_tree
+        entry.ui_tree = UITree.instance()
 
         return entry
 
     def generic_action(self, action: Action):
         click(self.node, MOUSE_RIGHT)
-        return ContextMenu(self.ui_tree).click_safe(action.value, 5)
+        return ContextMenu(UITree.instance()).click_safe(action.value, 5)
 
     def target(self):
         pyautogui.keyDown("ctrl")
@@ -108,17 +107,15 @@ class OverviewEntry:
         click(self.node, MOUSE_RIGHT)
         distance_text = "Orbit"
         if distance_preset:
-            ContextMenu(self.ui_tree).open_submenu(distance_text, contains=True)
+            ContextMenu(UITree.instance()).open_submenu(distance_text, contains=True)
             distance_text = distance_preset
-        return ContextMenu(self.ui_tree).click_safe(distance_text, 5)
+        return ContextMenu(UITree.instance()).click_safe(distance_text, 5)
 
 
 class Overview:
-    def __init__(self, ui_tree: UITree, refresh_on_init=False):
-        self.ui_tree = ui_tree
+    def __init__(self, refresh_on_init=False):
         self.main_window_query = BubblingQuery(
             node_type="OverviewWindow",
-            ui_tree=ui_tree,
             refresh_on_init=refresh_on_init,
         )
 
@@ -149,7 +146,7 @@ class Overview:
         headers.sort(key=lambda a: a.x)
 
         for header in headers:
-            label = self.ui_tree.find_node(node_type="EveLabelSmall", root=header, refresh=refresh)
+            label = UITree.instance().find_node(node_type="EveLabelSmall", root=header, refresh=refresh)
             text = label.attrs["_setText"] if label else "Icon"
             self.headers.append(text)
 
@@ -162,4 +159,4 @@ class Overview:
         entry_nodes = self.entry_component_query.run(refresh)
 
         for entry_node in entry_nodes:
-            self.entries.append(OverviewEntry.from_entry_node(entry_node, self.ui_tree, self.headers))
+            self.entries.append(OverviewEntry.from_entry_node(entry_node, self.headers))
