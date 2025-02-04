@@ -6,27 +6,10 @@ import pyautogui
 import pyscreeze
 import win32gui
 
+from src import config
 from src.utils.singleton import Singleton
 
-CHARACTER_NAME = "Phex Gagarists"
-
 pyscreeze.USE_IMAGE_NOT_FOUND_EXCEPTION = False
-
-eve_memory_reader = ctypes.WinDLL(r"D:\Projects\Python\eve-memory-2\src\utils\eve-memory-reader.dll")
-
-eve_memory_reader.initialize.argtypes = []
-eve_memory_reader.initialize.restype = ctypes.c_int
-eve_memory_reader.read_ui_trees.argtypes = []
-eve_memory_reader.read_ui_trees.restype = None
-eve_memory_reader.get_ui_json.argtypes = []
-eve_memory_reader.get_ui_json.restype = ctypes.c_char_p
-eve_memory_reader.free_ui_json.argtypes = []
-eve_memory_reader.free_ui_json.restype = None
-eve_memory_reader.cleanup.argtypes = []
-eve_memory_reader.cleanup.restype = None
-
-WINDOW_HEADER_OFFSET = 32
-HORIZONTAL_OFFSET = 8  # don't know where it comes from
 
 
 def get_screensize():
@@ -100,25 +83,36 @@ class UITreeNode(object):
 class UITree(object):
 
     def __init__(self):
-        self.hwnd = win32gui.FindWindow(None, f"EVE - {CHARACTER_NAME}")
+        self.hwnd = win32gui.FindWindow(None, f"EVE - {config.CHARACTER_NAME}")
         self.window_position_offset = (0, 0)
         self.nodes: dict[int, UITreeNode] = dict()
         self.width_ratio = 0
         self.height_ratio = 0
 
-        ret = eve_memory_reader.initialize()
+        self.eve_memory_reader = ctypes.WinDLL(config.MEMORY_READER_DLL_PATH)
+        self.eve_memory_reader.initialize.argtypes = []
+        self.eve_memory_reader.initialize.restype = ctypes.c_int
+        self.eve_memory_reader.read_ui_trees.argtypes = []
+        self.eve_memory_reader.read_ui_trees.restype = None
+        self.eve_memory_reader.get_ui_json.argtypes = []
+        self.eve_memory_reader.get_ui_json.restype = ctypes.c_char_p
+        self.eve_memory_reader.free_ui_json.argtypes = []
+        self.eve_memory_reader.free_ui_json.restype = None
+        self.eve_memory_reader.cleanup.argtypes = []
+        self.eve_memory_reader.cleanup.restype = None
+
+        ret = self.eve_memory_reader.initialize()
         if ret != 0:
             raise Exception(f"Failed to initialize: {ret}")
         self.refresh()
 
-    @staticmethod
-    def cleanup():
-        eve_memory_reader.cleanup()
+    def cleanup(self):
+        self.eve_memory_reader.cleanup()
 
     def ingest(self, tree, x=0, y=0, parent=None):
         node = UITreeNode(**{**tree, **dict(
-            x=x + self.window_position_offset[0] + HORIZONTAL_OFFSET,
-            y=y + self.window_position_offset[1] + WINDOW_HEADER_OFFSET,
+            x=x + self.window_position_offset[0] + config.HORIZONTAL_OFFSET,
+            y=y + self.window_position_offset[1] + config.WINDOW_HEADER_OFFSET,
             parent=parent
         )})
         self.nodes[node.address] = node
@@ -148,11 +142,11 @@ class UITree(object):
             real_x = self.nodes[parent].x \
                 + (tree["attrs"].get("_displayX", 0) or 0) \
                 - self.window_position_offset[0] \
-                - HORIZONTAL_OFFSET
+                - config.HORIZONTAL_OFFSET
             real_y = self.nodes[parent].y \
                 + (tree["attrs"].get("_displayY", 0) or 0) \
                 - self.window_position_offset[1] \
-                - WINDOW_HEADER_OFFSET
+                - config.WINDOW_HEADER_OFFSET
         else:
             self.nodes = dict()
 
@@ -164,10 +158,16 @@ class UITree(object):
         window_rect = win32gui.GetWindowRect(self.hwnd)
         self.window_position_offset = (window_rect[0], window_rect[1])
 
-    def refresh(self):
-        eve_memory_reader.read_ui_trees()
-        tree_bytes = eve_memory_reader.get_ui_json()
-        eve_memory_reader.free_ui_json()
+    def refresh(self, root_address=None):
+        if root_address:
+            if not self.nodes.get(root_address):
+                return False
+            else:
+                self.eve_memory_reader.read_ui_trees_from_address(ctypes.c_ulonglong(root_address))
+        else:
+            self.eve_memory_reader.read_ui_trees()
+        tree_bytes = self.eve_memory_reader.get_ui_json()
+        self.eve_memory_reader.free_ui_json()
         if not tree_bytes:
             print("no ui trees found")
             return
@@ -178,35 +178,13 @@ class UITree(object):
             #     f.write(tree_str)
 
             tree = json.loads(tree_str)
-            self.load(tree)
-        except UnicodeDecodeError as e:
-            print(f"error reading ui trees: {e}")
-            return
-        except ValueError as e:
-            print(f"error reading ui trees: {e}")
-            return
-
-    def refresh_subtree(self, root_address):
-        if not self.nodes.get(root_address):
-            return False
-
-        eve_memory_reader.read_ui_trees_from_address(ctypes.c_ulonglong(root_address))
-        tree_bytes = eve_memory_reader.get_ui_json()
-        eve_memory_reader.free_ui_json()
-        if not tree_bytes:
-            print("no ui trees found")
-            return False
-        try:
-            tree_str = tree_bytes.decode("utf-8", errors="ignore")
-            tree = json.loads(tree_str)
             self.load(tree, root_address)
         except UnicodeDecodeError as e:
             print(f"error reading ui trees: {e}")
-            return False
+            return
         except ValueError as e:
             print(f"error reading ui trees: {e}")
-            return False
-        return True
+            return
 
     def find_node(
             self,
@@ -223,8 +201,8 @@ class UITree(object):
 
         if refresh:
             if root:
-                if not self.refresh_subtree(root.address):
-                    self.refresh()
+                if not self.refresh(root.address):
+                    return None
                 root = self.nodes.get(root.address)
             else:
                 self.refresh()

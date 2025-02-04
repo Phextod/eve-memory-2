@@ -11,17 +11,11 @@ import win32con
 import win32gui
 import win32process
 
+from src import config
 from src.utils.interface import UITreeNode, UITree
 
 pyscreeze.USE_IMAGE_NOT_FOUND_EXCEPTION = False
 UTIL_DIR = os.path.dirname(os.path.abspath(__file__))
-
-LOG_FILENAME = "out/logMissions.txt"
-# CHARACTER_NAME = "Ahonen Yatolila"
-CHARACTER_NAME = "Phex Gagarists"
-AGENT_NAME = "vairosen"  # lvl3
-# AGENT_NAME = "naninen" # lvl4
-
 
 PROCNAME = "exefile.exe"
 MOUSE_LEFT = False
@@ -45,7 +39,7 @@ def log_console(*args, **kwargs):
 def log(log_message):
     t = time.localtime()
     time_string = time.strftime("%Y/%m/%d %H:%M:%S: ", t)
-    with open(get_path(LOG_FILENAME), "a") as f:
+    with open(get_path(config.LOG_FILENAME), "a") as f:
         f.write("\n" + time_string + log_message)
 
 
@@ -60,7 +54,7 @@ def move_cursor(coordinates: (int, int)):
     previousCursorLocation = win32gui.GetCursorPos()
 
 
-def click(target: UITreeNode, button=MOUSE_LEFT, pos_x=0.5, pos_y=0.5):
+def click(target: "UITreeNode", button=MOUSE_LEFT, pos_x=0.5, pos_y=0.5):
     down_event, up_event = (win32con.MOUSEEVENTF_RIGHTDOWN, win32con.MOUSEEVENTF_RIGHTUP) \
         if button \
         else (win32con.MOUSEEVENTF_LEFTDOWN, win32con.MOUSEEVENTF_LEFTUP)
@@ -143,19 +137,6 @@ def start_failsafe(timer_name=""):
     failsafeTimers.update({timer_name: datetime.now()})
 
 
-# def add_waypoint(location_link_coordinates):
-#     right_click(location_link_coordinates)
-#     time.sleep(0.5)
-#     left_click(ui_tree.find_node({'_name': 'context_menu_Set Destination'}))
-#     customPrint("Waypoint added")
-#
-#
-# def setDestination(x, y):
-#     rightClick(x, y)
-#     time.sleep(0.5)
-#     leftClick(x + 46, y + 56)
-#     customPrint("Destination added")
-
 def get_pid():
     for proc in psutil.process_iter():
         if proc.name() == PROCNAME:
@@ -177,9 +158,9 @@ def find_window_for_pid(pid):
     return result
 
 
-def close_client(player_name):
+def close_client():
     log_console("Closing client")
-    eve = win32gui.FindWindow(None, fr"EVE - {player_name}")
+    eve = win32gui.FindWindow(None, fr"EVE - {config.CHARACTER_NAME}")
     if eve != 0:
         win32gui.PostMessage(eve, win32con.WM_CLOSE, 0, 0)
     else:
@@ -188,7 +169,7 @@ def close_client(player_name):
             win32gui.PostMessage(eve, win32con.WM_CLOSE, 0, 0)
 
 
-def start_game(player_name):
+def start_game():
     log_console("Starting client")
     start_failsafe()
     btn_play_now = pyautogui.locateOnScreen(get_path("images/btn_play_now.png"), grayscale=True, confidence=0.7)
@@ -212,7 +193,7 @@ def start_game(player_name):
     win32gui.MoveWindow(eve, -7, 0, 1727, 1407, True)
     time.sleep(1)
     start_failsafe()
-    while win32gui.FindWindow(None, fr"EVE - {player_name}") == 0:
+    while win32gui.FindWindow(None, fr"EVE - {config.CHARACTER_NAME}") == 0:
         win32gui.SetForegroundWindow(eve)
         time.sleep(1)
         pyautogui.press('enter')

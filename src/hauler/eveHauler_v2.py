@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 
 import pyautogui
 
+from src import config
 from src.utils import utils
 from src.autopilot.autopilot import Autopilot
 from src.utils.interface import UITree
@@ -258,7 +259,7 @@ class Hauler:
                 raise Exception("Main loop can't do anything")
 
     @staticmethod
-    def open_agent_window(agent_name):
+    def open_agent_window():
         log_console("Opening agent window")
 
         btn_character_sheet = UITree.instance().find_node({'_name': 'charSheetBtn'}, refresh=True)
@@ -272,7 +273,7 @@ class Hauler:
         search_bar = UITree.instance().find_node({'_name': 'searchBar'}, refresh=True)
         left_click(search_bar.get_center())
         pyautogui.hotkey('ctrl', 'a', interval=0.2)
-        pyautogui.write(agent_name, interval=0.25)
+        pyautogui.write(config.AGENT_NAME, interval=0.25)
 
         time.sleep(1)
         window_character_sheet = UITree.instance().find_node(node_type="CharacterSheetWindow", refresh=True)
@@ -301,9 +302,9 @@ if __name__ == "__main__":
             log_console("Error: " + str(e))
             img = pyautogui.screenshot()
             img.save(get_path(f"out/FatalError_{utils.fatalErrorCount}.png"))
-            # close_client(utils.CHARACTER_NAME)
+            # close_client(config.CHARACTER_NAME)
         # if utils.fatalErrorCount < 4:
-        #     start_game(utils.CHARACTER_NAME)
-        #     hauler.open_agent_window(utils.AGENT_NAME)
+        #     start_game(config.CHARACTER_NAME)
+        #     hauler.open_agent_window(config.AGENT_NAME)
 
     # os.system("shutdown /s /t 1")

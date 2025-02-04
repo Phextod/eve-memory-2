@@ -39,6 +39,8 @@ class Inventory:
             parent_query=self.main_window_query,
             refresh_on_init=refresh,
         ).result
+        if not active_ship_container:
+            return
 
         self.active_ship_hangar = UITree.instance().find_node(
             node_type="TextBody",
