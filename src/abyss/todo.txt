@@ -6,11 +6,11 @@
 overview navigation (approach, orbit, open inventory)
 overview targeting
 target bar set active target
-dones attack target
-drone return to bay
+✔ dones attack target
+✔ drone return to bay
 ship ui overheating info
-ship ui activate/deactivate overheat
-inventory loot all
+✔ ship ui activate/deactivate overheat
+✔ inventory loot all
 get own ship info from config file (because ship fitting kills the memory reader)
 (get own ship info from simulated fit window)
 status effects (top left and middle bottom)

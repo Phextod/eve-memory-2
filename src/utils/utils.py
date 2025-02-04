@@ -62,12 +62,12 @@ def move_cursor(coordinates: (int, int)):
     previousCursorLocation = win32gui.GetCursorPos()
 
 
-def click(target: UITreeNode, button=MOUSE_LEFT):
+def click(target: UITreeNode, button=MOUSE_LEFT, pos_x=0.5, pos_y=0.5):
     down_event, up_event = (win32con.MOUSEEVENTF_RIGHTDOWN, win32con.MOUSEEVENTF_RIGHTUP) \
         if button \
         else (win32con.MOUSEEVENTF_LEFTDOWN, win32con.MOUSEEVENTF_LEFTUP)
 
-    move_cursor(target.get_center())
+    move_cursor(target.get_center(pos_x, pos_y))
     time.sleep(0.1)
     win32api.mouse_event(down_event, 0, 0)
     time.sleep(0.1)
@@ -234,13 +234,11 @@ def start_game(player_name):
 
 
 def wait_for_truthy(func, timeout, check_interval=0.5):
-    start = datetime.now()
-    d = timedelta(seconds=timeout)
-    now = datetime.now()
-    while now - start < d:
+    start = time.time()
+    while time.time() - start < timeout:
+        func_start = time.time()
         return_value = func()
         if return_value:
             return return_value
-        time.sleep(check_interval)
-        now = datetime.now()
+        time.sleep(check_interval - (time.time() - func_start))
     return None

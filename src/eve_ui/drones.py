@@ -1,7 +1,12 @@
 from dataclasses import dataclass
+from typing import List
 
+import pyautogui
+
+from src.eve_ui.context_menu import ContextMenu
 from src.utils.bubbling_query import BubblingQuery
 from src.utils.interface import UITree, UITreeNode
+from src.utils.utils import click, MOUSE_RIGHT, wait_for_truthy
 
 
 @dataclass
@@ -74,3 +79,21 @@ class Drones:
                 self.in_space.append(Drone.from_entry_node(entry_node, self.ui_tree))
             elif entry_node.type == "DroneInBayEntry":
                 self.in_bay.append(Drone.from_entry_node(entry_node, self.ui_tree))
+
+    def launch_drones(self, drones: List[Drone]):
+        drones.sort(key=lambda d: d.entry_node.y, reverse=True)
+        for drone in drones:
+            click(drone.entry_node, MOUSE_RIGHT, pos_x=0.2)
+            wait_for_truthy(lambda: ContextMenu(self.ui_tree).click("Launch Drone"), 5)
+
+    def recall(self, drone: Drone):
+        click(drone.entry_node, MOUSE_RIGHT, pos_x=0.1)
+        wait_for_truthy(lambda: ContextMenu(self.ui_tree).click("Return to Drone Bay"), 5)
+
+    def safe_recall_all(self):
+        pyautogui.hotkey('shift', 'r', interval=0.2)
+        wait_for_truthy(lambda: self.update and not self.in_space, 10)
+
+    @staticmethod
+    def attack_target():
+        pyautogui.press('f')

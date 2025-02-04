@@ -4,6 +4,14 @@ from src.utils.utils import click
 
 
 class ContextMenu:
+
+    instance = None
+
+    def __new__(cls, ui_tree: UITree, refresh_on_init=False):
+        if not cls.instance:
+            cls.instance = super(ContextMenu, cls).__new__(cls)
+        return cls.instance
+
     def __init__(self, ui_tree: UITree, refresh_on_init=False):
         self.ui_tree = ui_tree
 
