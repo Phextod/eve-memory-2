@@ -243,8 +243,10 @@ class UITree(object):
                 if not select_many:
                     break
 
-        if nodes and not select_many:
-            return nodes[0]
+        if not select_many:
+            if nodes:
+                return nodes[0]
+            return None
         return nodes
 
     def get_sub_tree_nodes(self, root_address, node_list: dict[int, UITreeNode] = None):

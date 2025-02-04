@@ -84,11 +84,11 @@ class Drones:
         drones.sort(key=lambda d: d.entry_node.y, reverse=True)
         for drone in drones:
             click(drone.entry_node, MOUSE_RIGHT, pos_x=0.2)
-            wait_for_truthy(lambda: ContextMenu(self.ui_tree).click("Launch Drone"), 5)
+            ContextMenu(self.ui_tree).click_safe("Launch Drone", 5)
 
     def recall(self, drone: Drone):
         click(drone.entry_node, MOUSE_RIGHT, pos_x=0.1)
-        wait_for_truthy(lambda: ContextMenu(self.ui_tree).click("Return to Drone Bay"), 5)
+        ContextMenu(self.ui_tree).click_safe("Return to Drone Bay", 5)
 
     def safe_recall_all(self):
         pyautogui.hotkey('shift', 'r', interval=0.2)

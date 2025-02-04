@@ -1,4 +1,6 @@
-from src.utils.interface import UITree
+from typing import List, Union, Optional
+
+from src.utils.interface import UITree, UITreeNode
 
 
 class BubblingQuery:
@@ -23,7 +25,7 @@ class BubblingQuery:
         if parent_query:
             self.ui_tree = parent_query.ui_tree
 
-        self.result = None
+        self.result: Union[Optional[UITreeNode], List[UITreeNode]] = None
 
         self.run(refresh_on_init)
 

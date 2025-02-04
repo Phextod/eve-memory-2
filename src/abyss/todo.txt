@@ -3,9 +3,8 @@
 ✔ location set target
 ✔ ship ui modules list
 ✔ ship ui activate/deactivate module
-overview navigation (approach, orbit, open inventory)
-overview targeting
-target bar set active target
+✔ overview navigation (approach, orbit, open inventory)
+✔ overview targeting
 ✔ dones attack target
 ✔ drone return to bay
 ship ui overheating info

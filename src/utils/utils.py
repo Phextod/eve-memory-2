@@ -240,5 +240,5 @@ def wait_for_truthy(func, timeout, check_interval=0.5):
         return_value = func()
         if return_value:
             return return_value
-        time.sleep(check_interval - (time.time() - func_start))
+        time.sleep(max(0.0, check_interval - (time.time() - func_start)))
     return None

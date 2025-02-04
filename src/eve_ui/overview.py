@@ -1,29 +1,47 @@
 from dataclasses import dataclass
-from typing import List, Dict
+from enum import Enum
+from typing import List
 
+import pyautogui
+
+from src.eve_ui.context_menu import ContextMenu
 from src.utils.bubbling_query import BubblingQuery
-from src.utils.interface import UITree
+from src.utils.interface import UITree, UITreeNode
+from src.utils.utils import click, MOUSE_RIGHT
 
 
 @dataclass
 class OverviewEntry:
-    icon: str
-    distance: str
-    name: str
-    type: str
-    tag: str
-    corporation: str
-    alliance: str
-    faction: str
-    militia: str
-    size: str
-    velocity: str
-    radial_velocity: str
-    transversal_velocity: str
-    angular_velocity: str
+    icon: str = None
+    distance: str = None
+    name: str = None
+    type: str = None
+    tag: str = None
+    corporation: str = None
+    alliance: str = None
+    faction: str = None
+    militia: str = None
+    size: str = None
+    velocity: str = None
+    radial_velocity: str = None
+    transversal_velocity: str = None
+    angular_velocity: str = None
+
+    is_targeted_by_me = False
+    is_active_target = False
+    is_being_targeted = False
+
+    node: UITreeNode = None
+    ui_tree: UITree = None
+
+    class Action(Enum):
+        unlock_target = "Unlock Target"
+        approach = "Approach"
+        open_cargo = "Open Cargo"
+        activate_gate = "Activate Gate"
 
     @staticmethod
-    def decode(in_data: dict):
+    def from_entry_node(entry_node: UITreeNode, ui_tree: UITree, headers: list):
         decode_dict = {
             "icon": "Icon",
             "distance": "Distance",
@@ -36,17 +54,63 @@ class OverviewEntry:
             "militia": "Militia",
             "size": "Size",
             "velocity": "Velocity",
-            "radial_velocity": "Radial Velocity",
-            "transversal_velocity": "Transversal Velocity",
-            "angular_velocity": "Angular Velocity",
+            "radial_velocity": "Radial Velocity (m/s)",
+            "transversal_velocity": "Transversal Velocity (m/s)",
+            "angular_velocity": "Angular Velocity (deg/s)",
         }
 
-        out_data = dict()
+        entry_labels = ui_tree.find_node(
+            node_type="OverviewLabel",
+            root=entry_node,
+            select_many=True,
+            refresh=False,
+        )
+        icon = ui_tree.find_node({'_name': 'iconSprite'}, root=entry_node, refresh=False)
+        entry_labels.append(icon)
+        entry_labels.sort(key=lambda a: a.x)
+
+        entry_dict = dict()
+        for header, entry_label in zip(headers, entry_labels):
+            value = entry_label.attrs.get("_text") or entry_label.attrs.get("_texturePath")
+            entry_dict.update({header: value})
+
+        decoded_data = dict()
         for out_key in decode_dict:
             in_key = decode_dict[out_key]
-            out_data.update({out_key: in_data.get(in_key, None)})
+            decoded_data.update({out_key: entry_dict.get(in_key, None)})
 
-        return out_data
+        entry = OverviewEntry(**decoded_data)
+
+        active_target_node = ui_tree.find_node({'_name': 'myActiveTargetIndicator'}, root=entry_node, refresh=False)
+        entry.is_active_target = active_target_node is not None
+
+        targeted_by_me_node = ui_tree.find_node({'_name': 'targetedByMeIndicator'}, root=entry_node, refresh=False)
+        entry.is_targeted_by_me = targeted_by_me_node is not None
+
+        targeting_node = ui_tree.find_node({'_name': 'targeting'}, root=entry_node, refresh=False)
+        entry.is_being_targeted = targeting_node is not None
+
+        entry.node = entry_node
+        entry.ui_tree = ui_tree
+
+        return entry
+
+    def generic_action(self, action: Action):
+        click(self.node, MOUSE_RIGHT)
+        return ContextMenu(self.ui_tree).click_safe(action.value, 5)
+
+    def target(self):
+        pyautogui.keyDown("ctrl")
+        click(self.node)
+        pyautogui.keyUp("ctrl")
+
+    def orbit(self, distance_preset=None):
+        click(self.node, MOUSE_RIGHT)
+        distance_text = "Orbit"
+        if distance_preset:
+            ContextMenu(self.ui_tree).open_submenu(distance_text, contains=True)
+            distance_text = distance_preset
+        return ContextMenu(self.ui_tree).click_safe(distance_text, 5)
 
 
 class Overview:
@@ -58,7 +122,7 @@ class Overview:
             refresh_on_init=refresh_on_init,
         )
 
-        self.entries: List[Dict[str, str]] = []
+        self.entries: List[OverviewEntry] = []
         self.headers = []
 
         self.header_component_query = BubblingQuery(
@@ -98,12 +162,4 @@ class Overview:
         entry_nodes = self.entry_component_query.run(refresh)
 
         for entry_node in entry_nodes:
-            entry_labels = [self.ui_tree.nodes[label_address] for label_address in entry_node.children]
-            entry_labels.sort(key=lambda a: a.x)
-
-            entry = dict()
-            for header, entry_label in zip(self.headers, entry_labels):
-                value = entry_label.attrs.get("_text") or entry_label.attrs.get("_bgTexturePath")
-                entry.update({header: value})
-
-            self.entries.append(entry)
+            self.entries.append(OverviewEntry.from_entry_node(entry_node, self.ui_tree, self.headers))
