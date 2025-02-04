@@ -8,7 +8,7 @@ from src.eve_ui.overview import Overview
 from src.eve_ui.ship_ui import ShipUI
 from src.eve_ui.station_window import StationWindow
 from src.eve_ui.target_bar import TargetBar
-from src.utils.interface import UITree
+from src.utils.ui_tree import UITree
 
 
 class EveUI:

@@ -5,8 +5,8 @@ import pyautogui
 
 from src import config
 from src.utils import utils
-from src.autopilot.autopilot import Autopilot
-from src.utils.interface import UITree
+from src.bots.autopilot.autopilot import Autopilot
+from src.utils.ui_tree import UITree
 from src.utils.utils import log_console, left_click, drag_and_drop, log, start_failsafe, right_click, failsafe, \
     wait_for_truthy, get_path
 

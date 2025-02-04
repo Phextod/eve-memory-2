@@ -1,0 +1,34 @@
+✔ generic context menu
+✔ locations window
+✔ location set target
+✔ ship ui modules list
+✔ ship ui activate/deactivate module
+✔ overview navigation (approach, orbit, open inventory)
+✔ overview targeting
+✔ dones attack target
+✔ drone return to bay
+✔ ship ui activate/deactivate overheat
+✔ inventory loot all
+
+ship ui overheating info
+status effects (top left and middle bottom)
+
+get own ship info from config file (because ship fitting kills the memory reader)
+(get own ship info from simulated fit window)
+
+
+abyss clear:
+get dps calculations for room
+determine clear order
+
+
+
+
+abyss stages:
+    in abyss: (on continuous stage)
+        clear room -> loot -> reload/recall/repair (if not 3rd room) -> next room
+    out of abyss: (can be separated into multiple stages)
+        after x runs or supplies are low or inventory is full (80% ?) (or ship/drones damaged):
+            dock home base -> drop off loot -> pick up supplies -> undock -> warp to safe spot -> use filament
+        else:
+            move a bit and use filament

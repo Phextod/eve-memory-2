@@ -4,7 +4,7 @@ from typing import Dict
 import pyautogui
 
 from src.utils.bubbling_query import BubblingQuery
-from src.utils.interface import UITree, UITreeNode
+from src.utils.ui_tree import UITree, UITreeNode
 from src.utils.utils import click
 
 

@@ -1,7 +1,7 @@
 import time
 
 from src.utils.bubbling_query import BubblingQuery
-from src.utils.interface import UITree
+from src.utils.ui_tree import UITree
 from src.utils.utils import click
 
 

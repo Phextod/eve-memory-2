@@ -12,7 +12,7 @@ import win32gui
 import win32process
 
 from src import config
-from src.utils.interface import UITreeNode, UITree
+from src.utils.ui_tree import UITreeNode, UITree
 
 pyscreeze.USE_IMAGE_NOT_FOUND_EXCEPTION = False
 UTIL_DIR = os.path.dirname(os.path.abspath(__file__))

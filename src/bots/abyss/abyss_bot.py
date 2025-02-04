@@ -3,7 +3,7 @@ import math
 
 import keyboard
 
-from src.abyss.abyss_ship import AbyssShip
+from src.bots.abyss.abyss_ship import AbyssShip
 from src.eve_ui.eve_ui import EveUI
 from src.utils.utils import get_pid, get_path
 

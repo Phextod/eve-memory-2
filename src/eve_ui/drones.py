@@ -5,7 +5,7 @@ import pyautogui
 
 from src.eve_ui.context_menu import ContextMenu
 from src.utils.bubbling_query import BubblingQuery
-from src.utils.interface import UITree, UITreeNode
+from src.utils.ui_tree import UITree, UITreeNode
 from src.utils.utils import click, MOUSE_RIGHT, wait_for_truthy
 
 

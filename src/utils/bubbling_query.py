@@ -1,6 +1,6 @@
 from typing import List, Union, Optional
 
-from src.utils.interface import UITree, UITreeNode
+from src.utils.ui_tree import UITree, UITreeNode
 
 
 class BubblingQuery:

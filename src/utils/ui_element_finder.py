@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import QApplication
 from PyQt5.QtWidgets import QMainWindow
 from screeninfo import get_monitors
 
-from src.utils.interface import UITreeNode, UITree
+from src.utils.ui_tree import UITreeNode, UITree
 
 
 class RectangleWindow(QMainWindow):
