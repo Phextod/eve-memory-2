@@ -80,10 +80,18 @@ class OverviewEntry:
 
         entry = OverviewEntry(**decoded_data)
 
-        active_target_node = UITree.instance().find_node({'_name': 'myActiveTargetIndicator'}, root=entry_node, refresh=False)
+        active_target_node = UITree.instance().find_node(
+            {'_name': 'myActiveTargetIndicator'},
+            root=entry_node,
+            refresh=False,
+        )
         entry.is_active_target = active_target_node is not None
 
-        targeted_by_me_node = UITree.instance().find_node({'_name': 'targetedByMeIndicator'}, root=entry_node, refresh=False)
+        targeted_by_me_node = UITree.instance().find_node(
+            {'_name': 'targetedByMeIndicator'},
+            root=entry_node,
+            refresh=False,
+        )
         entry.is_targeted_by_me = targeted_by_me_node is not None
 
         targeting_node = UITree.instance().find_node({'_name': 'targeting'}, root=entry_node, refresh=False)

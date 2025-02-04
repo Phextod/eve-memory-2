@@ -24,7 +24,11 @@ class Locations:
         click(btn_close)
 
     def get_group(self, node_type, name):
-        groups = UITree.instance().find_node(node_type=node_type, select_many=True, root=self.main_container_query.result)
+        groups = UITree.instance().find_node(
+            node_type=node_type,
+            select_many=True,
+            root=self.main_container_query.result,
+        )
 
         for group in groups:
             label = UITree.instance().find_node(node_type="EveLabelMedium", root=group, refresh=False)

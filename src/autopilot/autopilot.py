@@ -105,7 +105,11 @@ class Autopilot:
 
     @staticmethod
     def get_route():
-        route_markers = UITree.instance().find_node(node_type="AutopilotDestinationIcon", select_many=True, refresh=True)
+        route_markers = UITree.instance().find_node(
+            node_type="AutopilotDestinationIcon",
+            select_many=True,
+            refresh=True,
+        )
         try:
             icon_textures = []
             for m in route_markers:

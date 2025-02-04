@@ -61,7 +61,10 @@ class Hauler:
                 )
 
                 right_click(route_markers[0].get_center())
-                btn_set_destination = UITree.instance().find_node({'_name': 'context_menu_Set Destination'}, refresh=True)
+                btn_set_destination = UITree.instance().find_node(
+                    {'_name': 'context_menu_Set Destination'},
+                    refresh=True,
+                )
                 if btn_set_destination:
                     left_click(btn_set_destination)
                     right_click(route_markers[0].get_center())

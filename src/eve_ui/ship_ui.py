@@ -32,7 +32,12 @@ class ShipModule:
         if "Disabled" not in overload_button.attrs["_texturePath"]:
             module_button = UITree.instance().find_node(node_type="ModuleButton", root=slot_node, refresh=False)
             if module_button.attrs.get("ramp_active", None):
-                glow = UITree.instance().find_node({"_texturePath": "Glow"}, contains=True, root=slot_node, refresh=False)
+                glow = UITree.instance().find_node(
+                    {"_texturePath": "Glow"},
+                    contains=True,
+                    root=slot_node,
+                    refresh=False,
+                )
                 if glow.attrs["_color"]["rPercent"] >= 100:
                     self.active_status = ShipModule.ActiveStatus.turning_off
                 else:

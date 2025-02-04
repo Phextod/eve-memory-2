@@ -6,6 +6,8 @@ import pyautogui
 import pyscreeze
 import win32gui
 
+from src.utils.singleton import Singleton
+
 CHARACTER_NAME = "Phex Gagarists"
 
 pyscreeze.USE_IMAGE_NOT_FOUND_EXCEPTION = False
@@ -94,22 +96,10 @@ class UITreeNode(object):
         return new_node
 
 
+@Singleton
 class UITree(object):
 
-    _instance = None
-
     def __init__(self):
-        raise RuntimeError('Call instance() instead')
-
-    @classmethod
-    def instance(cls):
-        if cls._instance is None:
-            print('Creating new instance')
-            cls._instance = cls.__new__(cls)
-            cls._init(cls._instance)
-        return cls._instance
-
-    def _init(self):
         self.hwnd = win32gui.FindWindow(None, f"EVE - {CHARACTER_NAME}")
         self.window_position_offset = (0, 0)
         self.nodes: dict[int, UITreeNode] = dict()
