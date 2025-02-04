@@ -50,9 +50,13 @@ class OverviewEntry:
 
 
 class Overview:
-    def __init__(self, ui_tree: UITree):
+    def __init__(self, ui_tree: UITree, refresh_on_init=False):
         self.ui_tree = ui_tree
-        self.main_window_query = BubblingQuery(node_type="OverviewWindow", ui_tree=ui_tree)
+        self.main_window_query = BubblingQuery(
+            node_type="OverviewWindow",
+            ui_tree=ui_tree,
+            refresh_on_init=refresh_on_init,
+        )
 
         self.entries: List[Dict[str, str]] = []
         self.headers = []
@@ -60,33 +64,38 @@ class Overview:
         self.header_component_query = BubblingQuery(
             node_type="Header",
             select_many=True,
-            parent_query=self.main_window_query
+            parent_query=self.main_window_query,
+            refresh_on_init=refresh_on_init,
         )
 
         self.entry_component_query = BubblingQuery(
             node_type="OverviewScrollEntry",
             select_many=True,
-            parent_query=self.main_window_query
+            parent_query=self.main_window_query,
+            refresh_on_init=refresh_on_init,
         )
 
-        self.update_headers()
-        self.update()
+        self.update_headers(refresh_on_init)
+        self.update_entries(refresh_on_init)
 
-    def update_headers(self):
+    def update_headers(self, refresh=True):
         self.headers.clear()
 
         headers = self.header_component_query.run()
         headers.sort(key=lambda a: a.x)
 
         for header in headers:
-            label = self.ui_tree.find_node(node_type="EveLabelSmall", root=header)
+            label = self.ui_tree.find_node(node_type="EveLabelSmall", root=header, refresh=refresh)
             text = label.attrs["_setText"] if label else "Icon"
             self.headers.append(text)
 
-    def update(self):
+    def update_entries(self, refresh=True):
         self.entries.clear()
 
-        entry_nodes = self.entry_component_query.run()
+        if not self.headers:
+            self.update_headers(refresh)
+
+        entry_nodes = self.entry_component_query.run(refresh)
 
         for entry_node in entry_nodes:
             entry_labels = [self.ui_tree.nodes[label_address] for label_address in entry_node.children]

@@ -5,19 +5,24 @@ import pyautogui
 
 from src.utils.bubbling_query import BubblingQuery
 from src.utils.interface import UITree, UITreeNode
-from src.utils.utils import left_click
+from src.utils.utils import drag_and_drop, click
 
 
 class Inventory:
-    def __init__(self, ui_tree: UITree):
+    def __init__(self, ui_tree: UITree, refresh_on_init=False):
         self.ui_tree = ui_tree
 
-        self.main_window_query = BubblingQuery(node_type="InventoryPrimary", ui_tree=ui_tree)
+        self.main_window_query = BubblingQuery(
+            node_type="InventoryPrimary",
+            ui_tree=ui_tree,
+            refresh_on_init=refresh_on_init,
+        )
 
         self.item_components_query = BubblingQuery(
             node_type="InvItem",
             select_many=True,
             parent_query=self.main_window_query,
+            refresh_on_init=refresh_on_init,
         )
 
         # {item_id: item_node}
@@ -28,30 +33,34 @@ class Inventory:
         self.main_station_hangar = None
         self.station_containers = []
 
-        self.update_hangars()
-        self.update_capacity()
-        self.update_items()
+        self.update_hangars(refresh_on_init)
+        self.update_capacity(refresh_on_init)
+        self.update_items(refresh_on_init)
 
-    def update_hangars(self):
+    def update_hangars(self, refresh=True):
         active_ship_container = BubblingQuery(
             node_type="TreeViewEntryInventoryCargo",
-            parent_query=self.main_window_query
+            parent_query=self.main_window_query,
+            refresh_on_init=refresh,
         ).result
 
         self.active_ship_hangar = self.ui_tree.find_node(
             node_type="TextBody",
-            root=active_ship_container
+            root=active_ship_container,
+            refresh=False,
         )
 
         self.main_station_hangar = self.ui_tree.find_node(
             {'_name': 'topCont_ItemHangar'},
-            root=self.main_window_query.result
+            root=self.main_window_query.result,
+            refresh=refresh,
         )
 
         station_containers_containers = self.ui_tree.find_node(
             {'_name': 'topCont_StationContainer'},
             select_many=True,
             root=self.main_window_query.result,
+            refresh=False
         )
 
         self.station_containers.clear()
@@ -59,10 +68,11 @@ class Inventory:
             container = self.ui_tree.find_node(node_type="TextBody", root=container_container)
             self.station_containers.append(container)
 
-    def update_capacity(self):
+    def update_capacity(self, refresh=True):
         capacity_container = BubblingQuery(
             {'_name': 'capacityText'},
-            parent_query=self.main_window_query
+            parent_query=self.main_window_query,
+            refresh_on_init=refresh
         ).result
 
         capacity_text = capacity_container.attrs["_setText"]
@@ -77,9 +87,9 @@ class Inventory:
         self.capacity_filled = float(fill_text.replace(" ", "").strip().replace(",", "."))
         self.capacity_max = float(max_text.replace(" ", "")[:-1].replace(",", "."))
 
-    def update_items(self):
+    def update_items(self, refresh=True):
         self.items.clear()
-        self.item_components_query.run()
+        self.item_components_query.run(refresh)
 
         for item_node in self.item_components_query.result:
             # Additional info about items: https://www.fuzzwork.co.uk/dump/latest/invItems.csv
@@ -89,25 +99,36 @@ class Inventory:
 
     @staticmethod
     def move_item(item_node, target_node):
-        left_click(item_node)
-        time.sleep(1)
-        left_click(target_node)
+        drag_and_drop(item_node, target_node)
 
     def stack_all(self):
         btn_stack_all = BubblingQuery(
             {'_name': 'unique_UI_inventoryStackAll'},
             parent_query=self.main_window_query
-        )
-        left_click(btn_stack_all.result)
+        ).result
+
+        if not btn_stack_all:
+            return False
+
+        click(btn_stack_all)
+        return True
 
     def search_for(self, search_text):
         search_field = BubblingQuery(
             {'_name': 'quickFilterInputBox'},
             parent_query=self.main_window_query
-        )
-        left_click(search_field.result)
+        ).result
+        if not search_field:
+            return False
+
+        click(search_field)
         pyautogui.hotkey('ctrl', 'a', interval=0.2)
         pyautogui.write(search_text, interval=0.25)
+        return True
 
     def loot_all(self):
-        btn_loot_all = BubblingQuery({'_name': 'invLootAllBtn'}, self.main_window_query)
+        btn_loot_all = BubblingQuery({'_name': 'invLootAllBtn'}, self.main_window_query).result
+        if not btn_loot_all:
+            return False
+        click(btn_loot_all)
+        return True

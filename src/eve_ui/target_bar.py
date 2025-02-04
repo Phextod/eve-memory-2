@@ -11,15 +11,16 @@ class Target:
 
 
 class TargetBar:
-    def __init__(self, ui_tree: UITree):
+    def __init__(self, ui_tree: UITree, refresh_on_init=False):
         self.ui_tree = ui_tree
 
-        self.main_window_query = BubblingQuery({"_name": "l_target"}, ui_tree=ui_tree)
+        self.main_window_query = BubblingQuery({"_name": "l_target"}, ui_tree=ui_tree, refresh_on_init=refresh_on_init)
 
         self.target_components_query = BubblingQuery(
             node_type="TargetInBar",
             select_many=True,
-            parent_query=self.main_window_query
+            parent_query=self.main_window_query,
+            refresh_on_init=refresh_on_init,
         )
 
         self.targets: List[Target] = []

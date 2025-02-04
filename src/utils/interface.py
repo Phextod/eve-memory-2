@@ -22,7 +22,7 @@ eve_memory_reader.cleanup.argtypes = []
 eve_memory_reader.cleanup.restype = None
 
 WINDOW_HEADER_OFFSET = 32
-HORIZONTAL_OFFSET = 10  # don't know where it comes from
+HORIZONTAL_OFFSET = 8  # don't know where it comes from
 
 
 def get_screensize():
@@ -167,6 +167,10 @@ class UITree(object):
             return
         try:
             tree_str = tree_bytes.decode("utf-8", errors="ignore")
+
+            # with open("ui_tree.json", "w") as f:
+            #     f.write(tree_str)
+
             tree = json.loads(tree_str)
             self.load(tree)
         except UnicodeDecodeError as e:

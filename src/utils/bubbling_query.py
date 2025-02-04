@@ -11,6 +11,7 @@ class BubblingQuery:
             select_many: bool = False,
             contains: bool = False,
             ui_tree: UITree = None,
+            refresh_on_init=True,
     ):
         self.query: dict = query
         self.node_type: str = node_type
@@ -24,7 +25,7 @@ class BubblingQuery:
 
         self.result = None
 
-        self.run()
+        self.run(refresh_on_init)
 
     def run(self, refresh=True):
         self.result = None

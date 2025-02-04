@@ -6,15 +6,23 @@ from src.utils.utils import click
 
 
 class Locations:
-    def __init__(self, ui_tree: UITree):
+    def __init__(self, ui_tree: UITree, refresh_on_init=False):
         self.ui_tree = ui_tree
-        self.main_window_query = BubblingQuery(node_type="LocationsWindow", ui_tree=ui_tree)
-        self.main_container_query = BubblingQuery({'_name': 'maincontainer'}, self.main_window_query)
+        self.main_window_query = BubblingQuery(
+            node_type="LocationsWindow",
+            ui_tree=ui_tree,
+            refresh_on_init=refresh_on_init,
+        )
+        self.main_container_query = BubblingQuery(
+            {'_name': 'maincontainer'},
+            self.main_window_query,
+            refresh_on_init=refresh_on_init,
+        )
 
-        self.close_groups()
+        self.close_groups(refresh_on_init)
 
-    def close_groups(self):
-        btn_close = BubblingQuery({'_name': 'collapseCont'}, self.main_window_query).result
+    def close_groups(self, refresh=True):
+        btn_close = BubblingQuery({'_name': 'collapseCont'}, self.main_window_query, refresh_on_init=refresh).result
         click(btn_close)
 
     def get_group(self, node_type, name):

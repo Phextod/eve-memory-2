@@ -65,25 +65,26 @@ class ShipModule:
 
 
 class ShipUI:
-    def __init__(self, ui_tree: UITree):
+    def __init__(self, ui_tree: UITree, refresh_on_init=False):
         self.ui_tree = ui_tree
 
-        self.main_container_query = BubblingQuery(node_type="ShipUI", ui_tree=ui_tree)
+        self.main_container_query = BubblingQuery(node_type="ShipUI", ui_tree=ui_tree, refresh_on_init=refresh_on_init)
 
         self.high_modules: Dict[int, ShipModule] = dict()
         self.medium_modules: Dict[int, ShipModule] = dict()
         self.low_modules: Dict[int, ShipModule] = dict()
-        self.update_modules()
+        self.update_modules(refresh_on_init)
 
         self.capacitor_percent = 0.0
-        self.update_capacitor_percent()
+        self.update_capacitor_percent(refresh_on_init)
 
-    def update_capacitor_percent(self):
+    def update_capacitor_percent(self, refresh=True):
         capacitor_sprites = BubblingQuery(
             {"_texturePath": "capacitorCell_2"},
             self.main_container_query,
             contains=True,
             select_many=True,
+            refresh_on_init=refresh,
         ).result
 
         sprite_alphas = [c.attrs["_color"]["aPercent"] for c in capacitor_sprites]
@@ -101,6 +102,7 @@ class ShipUI:
             self.main_container_query,
             select_many=True,
             contains=True,
+            refresh_on_init=refresh,
         ).result
         modules_nodes.sort(key=lambda a: a.x)
         for module_index, slot in enumerate(modules_nodes):
@@ -115,6 +117,7 @@ class ShipUI:
             self.main_container_query,
             select_many=True,
             contains=True,
+            refresh_on_init=refresh,
         ).result
         modules_nodes.sort(key=lambda a: a.x)
         for module_index, slot in enumerate(modules_nodes):
@@ -129,6 +132,7 @@ class ShipUI:
             self.main_container_query,
             select_many=True,
             contains=True,
+            refresh_on_init=refresh,
         ).result
         modules_nodes.sort(key=lambda a: a.x)
         for module_index, slot in enumerate(modules_nodes):
@@ -136,7 +140,7 @@ class ShipUI:
             ship_module = ShipModule(slot, self.ui_tree)
             self.low_modules.update({module_index: ship_module})
 
-    def update_modules(self):
-        self.update_high_slots(refresh=True)
+    def update_modules(self, refresh=True):
+        self.update_high_slots(refresh=refresh)
         self.update_medium_slots(refresh=False)
         self.update_low_slots(refresh=False)

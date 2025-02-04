@@ -42,27 +42,32 @@ class Drone:
 
 
 class Drones:
-    def __init__(self, ui_tree: UITree):
+    def __init__(self, ui_tree: UITree, refresh_on_init=False):
         self.ui_tree = ui_tree
 
-        self.main_window_query = BubblingQuery(node_type="DronesWindow", ui_tree=ui_tree)
+        self.main_window_query = BubblingQuery(
+            node_type="DronesWindow",
+            ui_tree=ui_tree,
+            refresh_on_init=refresh_on_init
+        )
 
         self.drone_entries_query = BubblingQuery(
             {'_name': 'entry_'},
             contains=True,
             select_many=True,
-            parent_query=self.main_window_query
+            parent_query=self.main_window_query,
+            refresh_on_init=refresh_on_init,
         )
 
         self.in_bay = []
         self.in_space = []
-        self.update()
+        self.update(refresh=refresh_on_init)
 
-    def update(self):
+    def update(self, refresh=True):
         self.in_bay.clear()
         self.in_space.clear()
 
-        self.drone_entries_query.run()
+        self.drone_entries_query.run(refresh)
 
         for entry_node in self.drone_entries_query.result:
             if entry_node.type == "DroneInSpaceEntry":
