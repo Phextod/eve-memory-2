@@ -21,21 +21,21 @@ class ShipModule:
         overloaded = 2
         turning_off = 3
 
-    def __init__(self, slot_node: UITreeNode):
-        self.slot_node = slot_node
+    def __init__(self, node: UITreeNode):
+        self.node = node
 
-        icon = UITree.instance().find_node(node_type="Icon", root=slot_node, refresh=False)
+        icon = UITree.instance().find_node(node_type="Icon", root=node, refresh=False)
         self.module_type = icon.attrs["_texturePath"].split("/")[-1].split(".")[0]
 
         # Cloaks and some other modules are active but not overloadable. If you care about those improve this part
-        overload_button = UITree.instance().find_node({'_name': 'overloadBtn'}, root=slot_node, refresh=False)
+        overload_button = UITree.instance().find_node({'_name': 'overloadBtn'}, root=node, refresh=False)
         if "Disabled" not in overload_button.attrs["_texturePath"]:
-            module_button = UITree.instance().find_node(node_type="ModuleButton", root=slot_node, refresh=False)
+            module_button = UITree.instance().find_node(node_type="ModuleButton", root=node, refresh=False)
             if module_button.attrs.get("ramp_active", None):
                 glow = UITree.instance().find_node(
                     {"_texturePath": "Glow"},
                     contains=True,
-                    root=slot_node,
+                    root=node,
                     refresh=False,
                 )
                 if glow.attrs["_color"]["rPercent"] >= 100:
@@ -59,13 +59,13 @@ class ShipModule:
     def set_active(self, activate: bool):
         if (activate and self.active_status == ShipModule.ActiveStatus.not_active) or \
                 (not activate and self.active_status == ShipModule.ActiveStatus.active):
-            click(self.slot_node)
+            click(self.node)
 
     def set_overload(self, overload: bool):
         if (overload and self.overload_status == ShipModule.OverloadStatus.not_overloaded) or \
                 (not overload and self.overload_status == ShipModule.OverloadStatus.overloaded):
             pyautogui.keyDown("shift")
-            click(self.slot_node)
+            click(self.node)
             pyautogui.keyUp("shift")
 
 
@@ -76,10 +76,12 @@ class ShipUI:
         self.high_modules: Dict[int, ShipModule] = dict()
         self.medium_modules: Dict[int, ShipModule] = dict()
         self.low_modules: Dict[int, ShipModule] = dict()
-        self.update_modules(refresh_on_init)
 
         self.capacitor_percent = 0.0
-        self.update_capacitor_percent(refresh_on_init)
+
+        self.is_warping = False
+
+        self.update(refresh_on_init)
 
     def update_capacitor_percent(self, refresh=True):
         capacitor_sprites = BubblingQuery(
@@ -147,3 +149,15 @@ class ShipUI:
         self.update_high_slots(refresh=refresh)
         self.update_medium_slots(refresh=False)
         self.update_low_slots(refresh=False)
+
+    def update(self, refresh=True):
+        self.update_modules(refresh)
+        self.update_capacitor_percent(refresh)
+
+        self.is_warping = BubblingQuery(
+            {'_setText': '(Warping)'},
+            parent_query=self.main_container_query,
+            refresh_on_init=refresh
+        ).result is not None
+
+        return self

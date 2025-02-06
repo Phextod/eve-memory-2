@@ -5,9 +5,11 @@ from src.eve_ui.drones import Drones
 from src.eve_ui.inventory import Inventory
 from src.eve_ui.locations import Locations
 from src.eve_ui.overview import Overview
+from src.eve_ui.route import Route
 from src.eve_ui.ship_ui import ShipUI
 from src.eve_ui.station_window import StationWindow
 from src.eve_ui.target_bar import TargetBar
+from src.eve_ui.timers import Timers
 from src.utils.ui_tree import UITree
 
 
@@ -25,7 +27,9 @@ class EveUI:
         self.ship_ui = ShipUI()
         self.drones = Drones()
         self.inventory = Inventory()
-        self.context_menu = ContextMenu()
+        self.context_menu = ContextMenu.instance()
         self.locations = Locations()
         self.station_window = StationWindow()
+        self.timers = Timers()
+        self.route = Route()
         print(f"UI components initialized in {time.time() - start}")

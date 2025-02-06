@@ -22,6 +22,7 @@ class Drone:
         type_node = ui_tree.find_node(
             {'_name': 'entryLabel'},
             root=entry_node,
+            # refresh=False,
         )
         name = type_node.attrs.get("_setText").split("<")[0]
 
@@ -82,16 +83,16 @@ class Drones:
         drones.sort(key=lambda d: d.entry_node.y, reverse=True)
         for drone in drones:
             click(drone.entry_node, MOUSE_RIGHT, pos_x=0.2)
-            ContextMenu(UITree.instance()).click_safe("Launch Drone", 5)
+            ContextMenu.instance().click_safe("Launch Drone", 5)
 
     @staticmethod
     def recall(drone: Drone):
         click(drone.entry_node, MOUSE_RIGHT, pos_x=0.1)
-        ContextMenu(UITree.instance()).click_safe("Return to Drone Bay", 5)
+        ContextMenu.instance().click_safe("Return to Drone Bay", 5)
 
     def safe_recall_all(self):
         pyautogui.hotkey('shift', 'r', interval=0.2)
-        wait_for_truthy(lambda: self.update and not self.in_space, 10)
+        wait_for_truthy(lambda: self.update and not self.in_space, 20)
 
     @staticmethod
     def attack_target():

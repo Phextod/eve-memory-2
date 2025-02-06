@@ -104,7 +104,7 @@ class OverviewEntry:
 
     def generic_action(self, action: Action):
         click(self.node, MOUSE_RIGHT)
-        return ContextMenu(UITree.instance()).click_safe(action.value, 5)
+        return ContextMenu.instance().click_safe(action.value, 5)
 
     def target(self):
         pyautogui.keyDown("ctrl")
@@ -115,9 +115,9 @@ class OverviewEntry:
         click(self.node, MOUSE_RIGHT)
         distance_text = "Orbit"
         if distance_preset:
-            ContextMenu(UITree.instance()).open_submenu(distance_text, contains=True)
+            ContextMenu.instance().open_submenu(distance_text, contains=True)
             distance_text = distance_preset
-        return ContextMenu(UITree.instance()).click_safe(distance_text, 5)
+        return ContextMenu.instance().click_safe(distance_text, 5)
 
 
 class Overview:

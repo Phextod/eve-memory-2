@@ -1,4 +1,5 @@
 from src.utils.bubbling_query import BubblingQuery
+from src.utils.singleton import Singleton
 from src.utils.utils import click, wait_for_truthy, move_cursor
 
 
@@ -38,14 +39,8 @@ class DistancePresets:
         return closest["text"]
 
 
+@Singleton
 class ContextMenu:
-    instance = None
-
-    def __new__(cls, refresh_on_init=False):
-        if not cls.instance:
-            cls.instance = super(ContextMenu, cls).__new__(cls)
-        return cls.instance
-
     def __init__(self, refresh_on_init=False):
         self.menu_container_query = BubblingQuery({'_name': 'l_menu'}, refresh_on_init=refresh_on_init)
 
@@ -73,5 +68,5 @@ class ContextMenu:
             return True
         return False
 
-    def click_safe(self, entry_text, timeout):
-        return wait_for_truthy(lambda: self.click(entry_text), timeout) is not None
+    def click_safe(self, entry_text, timeout, contains=False):
+        return wait_for_truthy(lambda: self.click(entry_text, contains=contains), timeout) is not None

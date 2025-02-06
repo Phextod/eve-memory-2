@@ -12,8 +12,10 @@
 
 ship ui overheating info
 status effects (top left and middle bottom)
+repair in station
+handle packaged drones (ex: "Hobgoblin I (2)")
 
-get own ship info from config file (because ship fitting kills the memory reader)
+get own ship info from config file
 (get own ship info from simulated fit window)
 
 
@@ -28,7 +30,7 @@ abyss stages:
     in abyss: (on continuous stage)
         clear room -> loot -> reload/recall/repair (if not 3rd room) -> next room
     out of abyss: (can be separated into multiple stages)
-        after x runs or supplies are low or inventory is full (80% ?) (or ship/drones damaged):
-            dock home base -> drop off loot -> pick up supplies -> undock -> warp to safe spot -> use filament
+        after x runs or supplies are low or inventory is full (80% ?) or ship/drones damaged:
+            dock home base -> drop off loot -> pick up supplies -> repair -> undock -> warp to safe spot -> use filament
         else:
             move a bit and use filament

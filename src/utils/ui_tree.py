@@ -170,7 +170,7 @@ class UITree(object):
         self.eve_memory_reader.free_ui_json()
         if not tree_bytes:
             print("no ui trees found")
-            return
+            return False
         try:
             tree_str = tree_bytes.decode("utf-8", errors="ignore")
 
@@ -181,10 +181,11 @@ class UITree(object):
             self.load(tree, root_address)
         except UnicodeDecodeError as e:
             print(f"error reading ui trees: {e}")
-            return
+            return False
         except ValueError as e:
             print(f"error reading ui trees: {e}")
-            return
+            return False
+        return True
 
     def find_node(
             self,
