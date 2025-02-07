@@ -7,3 +7,5 @@
 gen
 out/*
 !out/.gitkeep
+/data/dogma_attributes.json
+/data/types.json
