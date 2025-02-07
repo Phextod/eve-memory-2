@@ -34,7 +34,7 @@ class Route:
 
         return self
 
-    def warp_until_first_destination(self, ship_ui: ShipUI, timers: Timers):
+    def autopilot(self, ship_ui: ShipUI, timers: Timers):
         context_menu: ContextMenu = ContextMenu.instance()
 
         self.update()

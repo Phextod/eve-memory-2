@@ -7,4 +7,5 @@ from src.utils.utils import *
 # self = AbyssBot(ui)
 # print("Ready")
 
-AbyssFighter.load_enemy_ships(get_path("data/ships_data.json"))
+ships = AbyssFighter.load_enemy_ships(get_path(config.ABYSSAL_SHIP_DATA_PATH), get_path(config.ABYSSAL_ITEM_DATA_PATH))
+print(ships)

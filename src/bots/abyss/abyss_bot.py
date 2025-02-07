@@ -1,17 +1,12 @@
-import json
-import math
-
-import keyboard
 import pyautogui
 
 from src import config
-from src.bots.abyss.abyss_ship import AbyssShip
 from src.eve_ui.context_menu import ContextMenu
 from src.eve_ui.eve_ui import EveUI
 from src.eve_ui.overview import OverviewEntry
 from src.eve_ui.timers import TimerNames
 from src.utils.ui_tree import UITree
-from src.utils.utils import get_path, wait_for_truthy, click, MOUSE_RIGHT
+from src.utils.utils import wait_for_truthy, click, MOUSE_RIGHT
 
 
 class AbyssBot:
@@ -19,44 +14,6 @@ class AbyssBot:
         self.ui = ui
         self.context_menu: ContextMenu = ContextMenu.instance()
         self.ui_tree: UITree = UITree.instance()
-
-        # exported from: https://caldarijoans.streamlit.app/Abyssal_Enemies_Database
-        self.ships = self.load_enemy_ships(get_path("data/abyss_ships.json"))
-
-    @staticmethod
-    def load_enemy_ships(filepath):
-        ships = []
-        with open(filepath) as file:
-            for ship_data in (json.load(file, object_hook=AbyssShip.decode)):
-                ships.append(AbyssShip(**ship_data))
-        return ships
-
-    def enemies_and_others_on_overview(self):
-        enemies = []
-        other_entries = []
-        for entry in self.ui.overview.entries:
-            enemy = next((ship for ship in self.ships if ship.name == entry.get("Name")), None)
-            if enemy:
-                enemies.append(enemy)
-            else:
-                other_entries.append(entry)
-        return enemies, other_entries
-
-    @staticmethod
-    def simulate_fight(enemies=None, player_ship=None):
-        enemy_dps_ehp_received_dps = [[50, 100, 10], [50, 100, 10], [100, 100, 10]]
-        received_dmg = 0
-        fight_time = 0
-        for enemy in enemy_dps_ehp_received_dps:
-            enemy_dps = enemy[0]
-            enemy_ehp = enemy[1]
-            enemy_received_dps = enemy[2]
-            time_to_kill = math.ceil(enemy_ehp / enemy_received_dps)
-            enemy_total_dmg = (time_to_kill + fight_time) * enemy_dps
-
-            fight_time += time_to_kill
-            received_dmg += enemy_total_dmg
-        print("done")
 
     def clear_room(self):
         # TODO: FML
@@ -122,7 +79,7 @@ class AbyssBot:
         safe_spot_entry = self.ui.locations.get_entry(config.ABYSSAL_SAFE_SPOT_LOCATION)
         click(safe_spot_entry, MOUSE_RIGHT)
         if self.context_menu.click_safe("Set Destination", 5):
-            self.ui.route.warp_until_first_destination(self.ui.ship_ui, self.ui.timers)
+            self.ui.route.autopilot(self.ui.ship_ui, self.ui.timers)
             click(safe_spot_entry, MOUSE_RIGHT)
         self.context_menu.click_safe("Warp to Within", 5, contains=True)
 
@@ -132,7 +89,7 @@ class AbyssBot:
         base_entry = self.ui.locations.get_entry(config.ABYSSAL_BASE_LOCATION)
         click(base_entry, MOUSE_RIGHT)
         if self.context_menu.click_safe("Set Destination", 5):
-            self.ui.route.warp_until_first_destination(self.ui.ship_ui, self.ui.timers)
+            self.ui.route.autopilot(self.ui.ship_ui, self.ui.timers)
 
     def drop_off_loot(self):
         click(self.ui.inventory.active_ship_hangar)

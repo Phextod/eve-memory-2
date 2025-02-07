@@ -1,6 +1,6 @@
 import json
 
-from src.bots.abyss.ship import Ship
+from src.bots.abyss.abyss_ship import AbyssShip
 from src.eve_ui.eve_ui import EveUI
 from src.utils.utils import get_path
 
@@ -23,10 +23,12 @@ class AbyssFighter:
         return enemies, other_entries
 
     @staticmethod
-    def load_enemy_ships(filepath):
+    def load_enemy_ships(ship_filepath, item_filepath):
         ships = []
-        with open(filepath) as file:
+        with open(ship_filepath) as file:
             ships_data = json.load(file)
+        with open(item_filepath) as file:
+            item_data = json.load(file)
         for key, ship_data in ships_data.items():
-            ships.append(Ship.from_json(ship_data))
+            ships.append(AbyssShip.from_json(ship_data, item_data))
         return ships

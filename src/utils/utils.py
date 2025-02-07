@@ -27,7 +27,9 @@ fatalErrorCount = 0
 
 
 def get_path(filepath):
-    return os.path.join(UTIL_DIR, "../../" + filepath)
+    util_dir_split = UTIL_DIR.split(os.sep)
+    filepath_split = filepath.split("/")
+    return os.path.join(util_dir_split[0], os.sep, *(util_dir_split[1:-2] + filepath_split))
 
 
 def log_console(*args, **kwargs):

@@ -12,7 +12,7 @@
 
 ship ui overheating info
 status effects (top left and middle bottom)
-repair in station
+✔ repair in station
 handle packaged drones (ex: "Hobgoblin I (2)")
 
 get own ship info from config file
