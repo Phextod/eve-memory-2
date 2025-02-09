@@ -1,12 +1,15 @@
+import time
+
 import pyautogui
 
 from src import config
+from src.bots.abyss.abyss_fighter import AbyssFighter
 from src.eve_ui.context_menu import ContextMenu
 from src.eve_ui.eve_ui import EveUI
 from src.eve_ui.overview import OverviewEntry
 from src.eve_ui.timers import TimerNames
 from src.utils.ui_tree import UITree
-from src.utils.utils import wait_for_truthy, click, MOUSE_RIGHT
+from src.utils.utils import wait_for_truthy, click, MOUSE_RIGHT, move_cursor
 
 
 class AbyssBot:
@@ -14,23 +17,25 @@ class AbyssBot:
         self.ui = ui
         self.context_menu: ContextMenu = ContextMenu.instance()
         self.ui_tree: UITree = UITree.instance()
+        self.abyss_fighter = AbyssFighter(ui)
 
     def clear_room(self):
-        # TODO: FML
-        pass
+        self.abyss_fighter.clear_room()
 
     def loot(self):
-        bio_cache_entry = next(e for e in self.ui.overview.entries if e.type == "Triglavian Bioadaptive Cache")
+        bio_cache_entry = next(e for e in self.ui.overview.entries if "Cache" in e.type)
+        if "Looted" in bio_cache_entry.icon:
+            return
         bio_cache_entry.generic_action(OverviewEntry.Action.open_cargo)
-        wait_for_truthy(lambda: self.ui.inventory.loot_all(), 30)
+        wait_for_truthy(lambda: self.ui.inventory.loot_all(), 60)
 
     def prepare_for_next_room(self, room_count):
         # approach gate
-        jump_gate_entry = next(e for e in self.ui.overview.entries if "Conduit (Triglavian)" in e.type)
+        jump_gate_entry = next(e for e in self.ui.overview.entries if "Conduit" in e.type)
         jump_gate_entry.generic_action(OverviewEntry.Action.approach)
 
         # reload weapons
-        for high_module in self.ui.ship_ui.high_modules:
+        for _, high_module in self.ui.ship_ui.high_modules.items():
             click(high_module.node, MOUSE_RIGHT)
             self.context_menu.click_safe("Reload all", 5)
 
@@ -46,17 +51,22 @@ class AbyssBot:
         # todo later
 
     def jump_to_next_room(self):
-        jump_gate_entry = next(e for e in self.ui.overview.entries if "Conduit (Triglavian)" in e.type)
+        jump_gate_entry = next(e for e in self.ui.overview.entries if "Conduit" in e.type)
         jump_gate_entry.generic_action(OverviewEntry.Action.activate_gate)
 
     def do_abyss(self):
-        room_count = 1
-        while room_count <= 3:
-            self.clear_room()
-            self.loot()
-            self.prepare_for_next_room(room_count)
-            self.jump_to_next_room()
-            room_count += 1
+        self.clear_room()
+        self.loot()
+        self.prepare_for_next_room(0)
+        self.jump_to_next_room()
+
+        # room_count = 1
+        # while room_count <= 3:
+        #     self.clear_room()
+        #     self.loot()
+        #     self.prepare_for_next_room(room_count)
+        #     self.jump_to_next_room()
+        #     room_count += 1
 
     def undock(self):
         self.ui.station_window.undock()
@@ -74,6 +84,7 @@ class AbyssBot:
         click(activate_btn)
 
         wait_for_truthy(lambda: TimerNames.abyssal.value in self.ui.timers.update().timers, 30)
+        time.sleep(5)
 
     def warp_to_safe_spot(self):
         safe_spot_entry = self.ui.locations.get_entry(config.ABYSSAL_SAFE_SPOT_LOCATION)
@@ -83,7 +94,7 @@ class AbyssBot:
             click(safe_spot_entry, MOUSE_RIGHT)
         self.context_menu.click_safe("Warp to Within", 5, contains=True)
 
-        wait_for_truthy(lambda: not self.ui.ship_ui.update().is_warping, 60)
+        wait_for_truthy(lambda: not self.ui.ship_ui.update().is_warping and self.ui.ship_ui.speed == 0, 60)
 
     def dock_home_base(self):
         base_entry = self.ui.locations.get_entry(config.ABYSSAL_BASE_LOCATION)
@@ -185,19 +196,34 @@ class AbyssBot:
     def repair(self):
         self.ui.inventory.repair_active_ship()
 
-    def run(self):
-        self.undock()
-        self.warp_to_safe_spot()
-        self.use_filament()
+    def is_reset_needed(self):
+        # todo
+        return True
 
-        # do abyss
+    def move_a_bit(self):
+        # todo
+        pass
+
+    def run(self):
+        # self.use_filament()
         self.do_abyss()
 
-        self.dock_home_base()
-        self.drop_off_loot()
-        self.pick_up_supplies()
-        self.pick_up_drones()
-        self.repair()
+        # self.undock()
+        # self.warp_to_safe_spot()
+        # while True:
+        #     self.use_filament()
+        #     self.do_abyss()
+        #     if self.is_reset_needed():
+        #         self.dock_home_base()
+        #         self.drop_off_loot()
+        #         self.pick_up_supplies()
+        #         self.pick_up_drones()
+        #         self.repair()
+        #         self.undock()
+        #         self.warp_to_safe_spot()
+        #     else:
+        #         self.move_a_bit()
+
 
 
 if __name__ == "__main__":

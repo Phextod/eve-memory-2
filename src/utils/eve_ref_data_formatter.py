@@ -13,6 +13,7 @@ SHIP_OUTPUT_PATH = "data/ships_data.json"
 ITEM_OUTPUT_PATH = "data/item_data.json"
 SHIP_RELEVANT_GROUP_IDS = [
     1982,  # Abyssal Spaceship Entities
+    1997,  # Abyssal Drone Entities
 ]
 ITEM_RELEVANT_GROUP_IDS = [
     384,  # Light Missile

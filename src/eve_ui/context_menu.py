@@ -3,6 +3,7 @@ from src.utils.singleton import Singleton
 from src.utils.utils import click, wait_for_truthy, move_cursor
 
 
+# This is so garbage. It should be an enum
 class DistancePresets:
     presets = [
         {"value": 500, "text": "500 m"},
@@ -20,7 +21,7 @@ class DistancePresets:
     @staticmethod
     def closest(value):
         closest = min(DistancePresets.presets, key=lambda p: abs(p["value"] - value))
-        return closest["text"]
+        return closest
 
     @staticmethod
     def closest_smaller(value):

@@ -4,7 +4,7 @@ from typing import List
 
 import pyautogui
 
-from src.eve_ui.context_menu import ContextMenu
+from src.eve_ui.context_menu import ContextMenu, DistancePresets
 from src.utils.bubbling_query import BubblingQuery
 from src.utils.ui_tree import UITree, UITreeNode
 from src.utils.utils import click, MOUSE_RIGHT
@@ -111,12 +111,12 @@ class OverviewEntry:
         click(self.node)
         pyautogui.keyUp("ctrl")
 
-    def orbit(self, distance_preset=None):
+    def orbit(self, distance=0):
         click(self.node, MOUSE_RIGHT)
         distance_text = "Orbit"
-        if distance_preset:
+        if distance > 0:
             ContextMenu.instance().open_submenu(distance_text, contains=True)
-            distance_text = distance_preset
+            distance_text = DistancePresets.closest(distance)["text"]
         return ContextMenu.instance().click_safe(distance_text, 5)
 
 
@@ -168,3 +168,5 @@ class Overview:
 
         for entry_node in entry_nodes:
             self.entries.append(OverviewEntry.from_entry_node(entry_node, self.headers))
+
+        return self

@@ -208,7 +208,7 @@ class UITree(object):
             else:
                 self.refresh()
 
-        nodes = list()
+        nodes = []
 
         candidates = self.get_sub_tree_nodes(root.address).items() if root \
             else self.nodes.items()

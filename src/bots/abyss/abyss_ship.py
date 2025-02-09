@@ -2,32 +2,15 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Dict
 
+from src.bots.abyss.ship import Ship
 from src.bots.abyss.ship_attributes import Tank, DamageType
 
 
 @dataclass
-class AbyssShip:
+class AbyssShip(Ship):
     name: str
-    shield: Tank
-    armor: Tank
-    structure: Tank
     signature_radius: float
     max_velocity: float
-
-    # Weapon
-    # Turret
-    turret_damage_profile: Dict[DamageType, float]
-    turret_falloff: int
-    turret_optimal_range: int
-    turret_rate_of_fire: float
-    turret_tracking: int
-
-    # Missile
-    missile_damage_profile: Dict[DamageType, float]
-    missile_explosion_radius: float
-    missile_explosion_velocity: float
-    missile_damage_reduction_factor: float
-    missile_rate_of_fire: float
 
     # Additional info
     # primary_ewar: str
@@ -121,49 +104,6 @@ class AbyssShip:
 
         return AbyssShip(**ship_data)
 
-    def get_missile_dps(self, target_signature_radius, target_velocity):
-        # https://wiki.eveuniversity.org/Missile_mechanics
-        term1 = target_signature_radius / self.missile_explosion_radius
-        term2 = ((target_signature_radius * self.missile_explosion_velocity)
-                 / (self.missile_explosion_radius * target_velocity)) ** self.missile_damage_reduction_factor
-        dmg_multiplier = min(1, term1, term2)
 
-        dps = dict()
-        for dmg_type, dmg in self.missile_damage_profile.items():
-            rate_of_fire_multiplier = 1 / self.missile_rate_of_fire
-            dps.update({dmg_type: dmg * rate_of_fire_multiplier * dmg_multiplier})
-        return dps
-
-    def get_turret_dps(self, target_signature_radius, target_distance, target_angular=0.0):
-        # https://wiki.eveuniversity.org/Turret_mechanics
-        tracking_terms = ((target_angular * 40_000) / (self.turret_tracking * target_signature_radius)) ** 2
-        range_terms = (max(0, target_distance - self.turret_optimal_range) / self.turret_falloff) ** 2
-        hit_chance = 0.5 ** (tracking_terms + range_terms)
-        normalised_dmg_multiplier = 0.5 * min(hit_chance ** 2 + 0.98 * hit_chance + 0.0501, 6 * hit_chance)
-
-        dps = dict()
-        for dmg_type, dmg in self.turret_damage_profile.items():
-            rate_of_fire_multiplier = 1 / self.turret_rate_of_fire
-            dps.update({dmg_type: dmg * rate_of_fire_multiplier * normalised_dmg_multiplier})
-        return dps
-
-    def get_time_to_kill(self, incoming_dps: Dict[DamageType, float]):
-        time_to_kill = 0.0
-        real_dps_to_shield = 0.0
-        for dmg_type, dmg_value in incoming_dps.items():
-            real_dps_to_shield += dmg_value * self.shield.resist_profile[dmg_type]
-        time_to_kill += self.shield.hp / real_dps_to_shield
-
-        real_dps_to_armor = 0.0
-        for dmg_type, dmg_value in incoming_dps.items():
-            real_dps_to_armor += dmg_value * self.armor.resist_profile[dmg_type]
-        time_to_kill += self.armor.hp / real_dps_to_armor
-
-        real_dps_to_structure = 0.0
-        for dmg_type, dmg_value in incoming_dps.items():
-            real_dps_to_structure += dmg_value * self.structure.resist_profile[dmg_type]
-        time_to_kill += self.structure.hp / real_dps_to_structure
-
-        return time_to_kill
 
 

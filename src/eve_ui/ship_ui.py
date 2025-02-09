@@ -71,15 +71,17 @@ class ShipModule:
 
 class ShipUI:
     def __init__(self, refresh_on_init=False):
+        self.ui_tree: UITree = UITree.instance()
         self.main_container_query = BubblingQuery(node_type="ShipUI", refresh_on_init=refresh_on_init)
 
         self.high_modules: Dict[int, ShipModule] = dict()
         self.medium_modules: Dict[int, ShipModule] = dict()
         self.low_modules: Dict[int, ShipModule] = dict()
-
         self.capacitor_percent = 0.0
+        self.buff_buttons = []
 
         self.is_warping = False
+        self.speed: float = 0.0
 
         self.update(refresh_on_init)
 
@@ -150,14 +152,34 @@ class ShipUI:
         self.update_medium_slots(refresh=False)
         self.update_low_slots(refresh=False)
 
+    def update_buffs(self, refresh=True):
+        self.buff_buttons = BubblingQuery(
+            node_type="BuffButton",
+            parent_query=self.main_container_query,
+            select_many=True,
+            refresh_on_init=refresh
+        ).result
+
     def update(self, refresh=True):
         self.update_modules(refresh)
         self.update_capacitor_percent(refresh)
+        self.update_buffs(refresh)
 
-        self.is_warping = BubblingQuery(
-            {'_setText': '(Warping)'},
+        speed_label_node = BubblingQuery(
+            {'_name': 'speedLabel'},
             parent_query=self.main_container_query,
             refresh_on_init=refresh
-        ).result is not None
+        ).result
+
+        if "Warping" in speed_label_node.attrs["_setText"]:
+            self.is_warping = True
+            self.speed = 0.0
+        else:
+            self.is_warping = False
+            self.speed = float(speed_label_node.attrs["_setText"].split(" ")[0])
 
         return self
+
+    def full_speed(self):
+        btn_full_speed = BubblingQuery(node_type="MaxSpeedButton", parent_query=self.main_container_query).result
+        click(btn_full_speed)
