@@ -7,6 +7,8 @@ from src.utils.utils import click
 
 class Locations:
     def __init__(self, refresh_on_init=False):
+        self.ui_tree: UITree = UITree.instance()
+
         self.main_window_query = BubblingQuery(
             node_type="LocationsWindow",
             refresh_on_init=refresh_on_init,
@@ -14,10 +16,16 @@ class Locations:
         self.main_container_query = BubblingQuery(
             {'_name': 'maincontainer'},
             self.main_window_query,
-            refresh_on_init=refresh_on_init,
+            refresh_on_init=False,
         )
 
-        self.close_groups(refresh_on_init)
+        should_close_groups = self.ui_tree.find_node(
+            {'texturePath': 'res:/UI/Texture/Icons/38_16_229.png'},
+            root=self.main_container_query.result,
+            refresh=False,
+        ) is not None
+        if should_close_groups:
+            self.close_groups(refresh_on_init)
 
     def close_groups(self, refresh=True):
         btn_close = BubblingQuery({'_name': 'collapseCont'}, self.main_window_query, refresh_on_init=refresh).result

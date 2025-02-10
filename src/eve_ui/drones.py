@@ -30,7 +30,7 @@ class Drone:
         type_node = ui_tree.find_node(
             {'_name': 'entryLabel'},
             root=entry_node,
-            # refresh=False,
+            refresh=False,
         )
         name = type_node.attrs.get("_setText").split(" <")[0]
 

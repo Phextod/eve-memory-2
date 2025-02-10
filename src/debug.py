@@ -14,8 +14,6 @@ self = AbyssBot(ui)
 # self.run()
 # abyss_fighter = AbyssFighter(ui)
 
-# self.use_filament()
-# self.do_abyss()
+self.use_filament()
+self.do_abyss()
 # self.repair()
-
-print(self.ui.ship_ui.high_modules[0].ammo_count)

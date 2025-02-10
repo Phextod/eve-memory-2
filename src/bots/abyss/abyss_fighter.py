@@ -37,14 +37,12 @@ class AbyssFighter:
         return penalty_multiplier, bonus_multiplier
 
     def enemies_on_overview(self):
-        enemies = []
         enemy_entries = []
         for entry in self.ui.overview.entries:
             enemy = next((ship for ship in self.enemy_ship_data if ship.name == entry.type), None)
             if enemy:
-                enemies.append(enemy)
                 enemy_entries.append(entry)
-        return enemies, enemy_entries
+        return enemy_entries
 
     def load_enemy_ships(self, ship_filepath, item_filepath):
         self.enemy_ship_data.clear()
@@ -113,24 +111,23 @@ class AbyssFighter:
     def manage_targeting(self):
         self.ui.overview.update_entries()
         self.ui.target_bar.update()
-        _, enemy_entries = self.enemies_on_overview()
+        enemy_entries = self.enemies_on_overview()
         while len(self.ui.target_bar.targets) < 2 and len(self.ui.target_bar.targets) < len(enemy_entries):
             for enemy_entry in enemy_entries[:2]:
+                if enemy_entry.is_being_targeted:
+                    continue
                 enemy_entry.target()
             self.ui.overview.update_entries()
             self.ui.target_bar.update()
-            _, enemy_entries = self.enemies_on_overview()
+            enemy_entries = self.enemies_on_overview()
 
         if self.ui.target_bar.targets and not self.ui.target_bar.targets[0].is_active_target:
             click(self.ui.target_bar.targets[0].node, pos_y=0.3)
 
         if not enemy_entries:
-            bio_cache_entry = next(
-                (e for e in self.ui.overview.entries if "Cache" in e.type and "largeCollidableStructure" in e.icon),
-                None
-            )
-            if bio_cache_entry:
-                bio_cache_entry.target()
+            potential_caches = [e for e in self.ui.overview.entries if "Cache" in e.type]
+            if len(potential_caches) == 1 and "largeCollidableStructure" in potential_caches[0].icon:
+                potential_caches[0].target()
 
     def manage_modules(self):
         self.ui.ship_ui.update()
@@ -157,7 +154,7 @@ class AbyssFighter:
             self.ui.drones.launch_drones(drones_with_shield[:drones_to_launch])
 
         for drone in self.ui.drones.in_space:
-            if drone.shield_percent > 0.4:
+            if drone.shield_percent > 0.8:
                 continue
             self.ui.drones.recall(drone)
 
@@ -176,14 +173,14 @@ class AbyssFighter:
 
     def clear_room(self):
         self.ui.overview.update_entries()
-        bio_cache_entry = next(e for e in self.ui.overview.entries if "Cache" in e.type)
-        while "largeCollidableStructure" in bio_cache_entry.icon:
+        potential_caches = [e for e in self.ui.overview.entries if "Cache" in e.type]
+        while len(potential_caches) == 1 and "largeCollidableStructure" in potential_caches[0].icon:
             self.manage_navigation()
             self.manage_targeting()
             self.manage_modules()
             self.manage_drones()
 
             self.ui.overview.update_entries()
-            bio_cache_entry = next(e for e in self.ui.overview.entries if "Cache" in e.type)
+            potential_caches = [e for e in self.ui.overview.entries if "Cache" in e.type]
 
         self.deactivate_modules()

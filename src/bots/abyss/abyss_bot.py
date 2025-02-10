@@ -23,12 +23,19 @@ class AbyssBot:
         self.abyss_fighter.clear_room()
 
     def loot(self):
-        bio_cache_entry = next(e for e in self.ui.overview.entries if "Cache" in e.type)
-        if "Looted" in bio_cache_entry.icon:
+        """
+        :return: True if there is loot to be taken, False if looting is done
+        """
+        self.ui.overview.update_entries()
+        potential_caches = [e for e in self.ui.overview.entries if "Cache" in e.type]
+        if len(potential_caches) != 1:
+            return True
+
+        if "Looted" in potential_caches[0].icon:
             return False
 
-        bio_cache_entry.generic_action(OverviewEntry.Action.open_cargo)
-        return self.ui.inventory.loot_all()
+        potential_caches[0].generic_action(OverviewEntry.Action.open_cargo)
+        return not self.ui.inventory.loot_all()
 
     def approach_jump_gate(self):
         jump_gate_entry = next(e for e in self.ui.overview.entries if "Conduit" in e.type)
@@ -75,21 +82,30 @@ class AbyssBot:
         for i in config.ABYSSAL_SPEED_MODULE_INDICES:
             self.ui.ship_ui.medium_modules[i].set_active(should_speed)
 
-    def do_abyss(self):
-        self.clear_room()
-        while self.loot():
-            self.prepare_for_next_room(0)
-        self.approach_jump_gate()
-        wait_for_truthy(lambda: self.prepare_for_next_room(0), 30)
-        self.jump_to_next_room()
+        wait_for_truthy(
+            lambda: (self.ui.overview.update_entries() and self.abyss_fighter.enemies_on_overview())
+            or TimerNames.invulnerable.value not in self.ui.timers.update().timers,
+            60
+        )
 
-        # current_room = 1
-        # while current_room <= 3:
-        #     self.clear_room()
-        #     self.loot()
-        #     self.prepare_for_next_room(current_room)
-        #     self.jump_to_next_room()
-        #     room_count += 1
+    def do_abyss(self):
+        # self.clear_room()
+        # while self.loot():
+        #     self.prepare_for_next_room(0)
+        # self.approach_jump_gate()
+        # wait_for_truthy(lambda: self.prepare_for_next_room(0), 30)
+        # self.jump_to_next_room()
+
+        current_room = 1
+        while current_room <= 3:
+            self.clear_room()
+            while self.loot():
+                self.prepare_for_next_room(current_room)
+            self.approach_jump_gate()
+            wait_for_truthy(lambda: self.prepare_for_next_room(0), 30)
+            self.jump_to_next_room()
+            current_room += 1
+            time.sleep(5)
 
     def undock(self):
         self.ui.station_window.undock()

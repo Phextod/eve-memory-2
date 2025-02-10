@@ -105,7 +105,45 @@ class ShipUI:
 
         self.indication_text = ""
 
+        self.shield_percent: float = 0.0
+        self.armor_percent: float = 0.0
+        self.structure_percent: float = 0.0
+
+        self.hud_readout_query = BubblingQuery(
+            node_type="HudReadout",
+            parent_query=self.main_container_query,
+            refresh_on_init=False
+        )
+        if not self.hud_readout_query.result:
+            self.display_readouts()
+            self.hud_readout_query.run()
+
         self.update(refresh_on_init)
+
+    def display_readouts(self):
+        util_menu = self.ui_tree.find_node(node_type="UtilMenu", root=self.main_container_query.result, refresh=False)
+        click(util_menu)
+        readout_btn = self.ui_tree.find_node({'_setText': 'Display Readout'})
+        click(readout_btn)
+        click(util_menu)
+
+    def update_hp(self, refresh=True):
+        containers = BubblingQuery(
+            node_type="ContainerAutoSize",
+            parent_query=self.hud_readout_query,
+            select_many=True,
+            refresh_on_init=refresh
+        ).result
+        for container in containers:
+            label = self.ui_tree.find_node(node_type="EveLabelSmall", root=container, refresh=False)
+            percent = int(label.attrs.get("_setText", "0").split("%")[0]) / 100
+            name = container.attrs["_name"]
+            if name == "shield":
+                self.shield_percent = percent
+            elif name == "armor":
+                self.armor_percent = percent
+            elif name == "structure":
+                self.structure_percent = percent
 
     def update_capacitor_percent(self, refresh=True):
         capacitor_sprites = BubblingQuery(
@@ -223,6 +261,7 @@ class ShipUI:
         self.update_buffs(refresh)
         self.update_alert(refresh)
         self.update_speed(refresh)
+        self.update_hp(refresh)
 
         return self
 
