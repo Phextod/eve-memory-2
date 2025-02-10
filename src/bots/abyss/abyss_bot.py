@@ -84,7 +84,7 @@ class AbyssBot:
 
         wait_for_truthy(
             lambda: (self.ui.overview.update_entries() and self.abyss_fighter.enemies_on_overview())
-            or TimerNames.invulnerable.value not in self.ui.timers.update().timers,
+                    or TimerNames.invulnerable.value not in self.ui.timers.update().timers,
             60
         )
 
@@ -236,33 +236,69 @@ class AbyssBot:
         self.ui.inventory.repair_active_ship()
 
     def is_reset_needed(self):
-        # todo
-        return True
+        # Drones
+        self.ui.drones.update()
+        for drone_name, drone_amount in config.ABYSSAL_DRONES:
+            drone_amount_in_bay = sum(1 for d in self.ui.drones.in_bay if d.name == drone_name)
+            if drone_amount_in_bay < drone_amount:
+                return True
+        for drone in self.ui.drones.in_bay:
+            if drone.armor_percent < 0.9 or drone.structure_percent < 1:
+                return True
+
+        # Ship
+        self.ui.ship_ui.update()
+        shield = self.ui.ship_ui.shield_percent
+        armor = self.ui.ship_ui.armor_percent
+        structure = self.ui.ship_ui.structure_percent
+        if (
+                (config.ABYSSAL_IS_SHIELD_TANK and (shield < 0.5 or armor < 0.9))
+                or (config.ABYSSAL_IS_ARMOR_TANK and (armor < 0.5 or structure < 0.9))
+                or (config.ABYSSAL_IS_STRUCTURE_TANK and structure < 0.5)
+        ):
+            return True
+
+        # Inventory
+        self.ui.inventory.stack_all()
+        self.ui.inventory.update()
+        if self.ui.inventory.capacity_max / self.ui.inventory.capacity_filled > 0.8:
+            return True
+
+        for supply_name, supply_amounts in config.ABYSSAL_SUPPLIES:
+            self.ui.inventory.search_for(supply_name)
+            self.ui.inventory.update_items()
+            if not self.ui.inventory.items:
+                return True
+            if self.ui.inventory.items[0].quantity < supply_amounts[0]:
+                return True
+
+        return False
 
     def move_a_bit(self):
         # todo
-        pass
+        self.ui.ship_ui.full_speed()
+        time.sleep(40)
 
     def run(self):
-        # self.use_filament()
-        self.do_abyss()
-
-        # self.undock()
-        # self.warp_to_safe_spot()
-        # while True:
-        #     self.use_filament()
-        #     self.do_abyss()
-        #     if self.is_reset_needed():
-        #         self.dock_home_base()
-        #         self.drop_off_loot()
-        #         self.pick_up_supplies()
-        #         self.pick_up_drones()
-        #         self.repair()
-        #         self.undock()
-        #         self.warp_to_safe_spot()
-        #     else:
-        #         self.move_a_bit()
-
+        self.drop_off_loot()
+        self.pick_up_supplies()
+        self.pick_up_drones()
+        self.repair()
+        self.undock()
+        self.warp_to_safe_spot()
+        while True:
+            self.use_filament()
+            self.do_abyss()
+            if self.is_reset_needed():
+                self.dock_home_base()
+                self.drop_off_loot()
+                self.pick_up_supplies()
+                self.pick_up_drones()
+                self.repair()
+                self.undock()
+                self.warp_to_safe_spot()
+            else:
+                self.move_a_bit()
 
 
 if __name__ == "__main__":
