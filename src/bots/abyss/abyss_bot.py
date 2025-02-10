@@ -252,9 +252,9 @@ class AbyssBot:
         armor = self.ui.ship_ui.armor_percent
         structure = self.ui.ship_ui.structure_percent
         if (
-                (config.ABYSSAL_IS_SHIELD_TANK and (shield < 0.5 or armor < 0.9))
-                or (config.ABYSSAL_IS_ARMOR_TANK and (armor < 0.5 or structure < 0.9))
-                or (config.ABYSSAL_IS_STRUCTURE_TANK and structure < 0.5)
+            (config.ABYSSAL_IS_SHIELD_TANK and (shield < 0.5 or armor < 0.9))
+            or (config.ABYSSAL_IS_ARMOR_TANK and (armor < 0.5 or structure < 0.9))
+            or (config.ABYSSAL_IS_STRUCTURE_TANK and structure < 0.5)
         ):
             return True
 
