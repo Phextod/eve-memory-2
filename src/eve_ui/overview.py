@@ -166,7 +166,9 @@ class Overview:
 
         entry_nodes = self.entry_component_query.run(refresh)
 
-        for entry_node in entry_nodes:
+        for entry_node in entry_nodes[::-1]:
             self.entries.append(OverviewEntry.from_entry_node(entry_node, self.headers))
+
+        self.entries.sort(key=lambda e: e.node.y)
 
         return self

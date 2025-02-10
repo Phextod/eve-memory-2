@@ -194,6 +194,7 @@ class Inventory:
             btn_group = self.ui_tree.find_node(node_type="ButtonGroup", root=repair_window, refresh=False)
             repair_all_btn = btn_group.find_image(get_path("images/repair_all.png"))
             click(repair_all_btn)
+            pyautogui.press("enter")
 
         close_btn = self.ui_tree.find_node({'_name': 'CloseButtonIcon'}, root=repair_window, refresh=False)
         click(close_btn)

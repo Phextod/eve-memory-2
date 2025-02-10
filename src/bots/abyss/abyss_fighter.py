@@ -1,15 +1,15 @@
 import json
-import time
 from typing import Dict
 
 from src import config
 from src.bots.abyss.abyss_ship import AbyssShip
 from src.bots.abyss.ship import Ship
 from src.bots.abyss.ship_attributes import DamageType
+from src.eve_ui.drones import DroneStatus
 from src.eve_ui.eve_ui import EveUI
 from src.eve_ui.ship_ui import ShipModule
 from src.utils.ui_tree import UITree
-from src.utils.utils import get_path, wait_for_truthy, move_cursor
+from src.utils.utils import get_path, wait_for_truthy, move_cursor, click
 
 
 class AbyssFighter:
@@ -103,54 +103,87 @@ class AbyssFighter:
 
         return time_to_kill
 
+    def manage_navigation(self):
+        self.ui.ship_ui.update()
+        if "Orbiting" not in self.ui.ship_ui.indication_text or "Bioadaptive" not in self.ui.ship_ui.indication_text:
+            self.ui.overview.update_entries()
+            bio_cache_entry = next(e for e in self.ui.overview.entries if "Cache" in e.type)
+            bio_cache_entry.orbit(5000)
+
+    def manage_targeting(self):
+        self.ui.overview.update_entries()
+        self.ui.target_bar.update()
+        _, enemy_entries = self.enemies_on_overview()
+        while len(self.ui.target_bar.targets) < 2 and len(self.ui.target_bar.targets) < len(enemy_entries):
+            for enemy_entry in enemy_entries[:2]:
+                enemy_entry.target()
+            self.ui.overview.update_entries()
+            self.ui.target_bar.update()
+            _, enemy_entries = self.enemies_on_overview()
+
+        if self.ui.target_bar.targets and not self.ui.target_bar.targets[0].is_active_target:
+            click(self.ui.target_bar.targets[0].node, pos_y=0.3)
+
+        if not enemy_entries:
+            bio_cache_entry = next(
+                (e for e in self.ui.overview.entries if "Cache" in e.type and "largeCollidableStructure" in e.icon),
+                None
+            )
+            if bio_cache_entry:
+                bio_cache_entry.target()
+
+    def manage_modules(self):
+        self.ui.ship_ui.update()
+        weapon_modules = [self.ui.ship_ui.high_modules[i] for i in config.ABYSSAL_WEAPON_MODULE_INDICES]
+        for weapon_module in weapon_modules:
+            if weapon_module.active_status != ShipModule.ActiveStatus.not_active:
+                continue
+            weapon_module.set_active(True)
+
+        for i in config.ABYSSAL_HARDENER_MODULE_INDICES:
+            self.ui.ship_ui.medium_modules[i].set_active(self.ui.ship_ui.capacitor_percent > 0.4)
+
+        for i in config.ABYSSAL_SPEED_MODULE_INDICES:
+            self.ui.ship_ui.medium_modules[i].set_active(self.ui.ship_ui.capacitor_percent > 0.6)
+
+    def manage_drones(self):
+        self.ui.drones.update()
+        drones_to_launch = min(
+            len(self.ui.drones.in_bay),
+            config.ABYSSAL_MAX_DRONES_IN_SPACE - len(self.ui.drones.in_space)
+        )
+        if drones_to_launch:
+            drones_with_shield = [d for d in self.ui.drones.in_bay if d.shield_percent > 0.9]
+            self.ui.drones.launch_drones(drones_with_shield[:drones_to_launch])
+
+        for drone in self.ui.drones.in_space:
+            if drone.shield_percent > 0.4:
+                continue
+            self.ui.drones.recall(drone)
+
+        if any(d.status == DroneStatus.idle for d in self.ui.drones.in_space) \
+                and not any(d.status == DroneStatus.returning for d in self.ui.drones.in_space):
+            self.ui.drones.attack_target()
+
+    def deactivate_modules(self):
+        self.ui.ship_ui.update_modules()
+        for _, m in self.ui.ship_ui.high_modules.items():
+            m.set_active(False)
+        for _, m in self.ui.ship_ui.medium_modules.items():
+            m.set_active(False)
+        for _, m in self.ui.ship_ui.low_modules.items():
+            m.set_active(False)
+
     def clear_room(self):
         self.ui.overview.update_entries()
         bio_cache_entry = next(e for e in self.ui.overview.entries if "Cache" in e.type)
-        bio_cache_entry.orbit(5000)
-        _, enemy_entries = self.enemies_on_overview()
-        enemy_count = len(enemy_entries)
-        while enemy_count > 0:
-            while not sum(1 for e in self.ui.overview.entries if e.is_targeted_by_me):
-                enemy_entries[0].target()
-                self.ui.overview.update_entries()
-                _, enemy_entries = self.enemies_on_overview()
-                time.sleep(1)
-
-            print("enemy targeted")
-
-            if self.ui.ship_ui.update().high_modules[0].active_status != ShipModule.ActiveStatus.active:
-                self.ui.ship_ui.high_modules[0].set_active(True)
-
-            print("weapons active")
-
-            time.sleep(2)
-
-            self.ui.overview.update_entries()
-            _, enemy_entries = self.enemies_on_overview()
-            enemy_count = len(enemy_entries)
-
-        bio_cache_entry = next(e for e in self.ui.overview.entries if "Cache" in e.type)
         while "largeCollidableStructure" in bio_cache_entry.icon:
-            while not bio_cache_entry.is_targeted_by_me:
-                bio_cache_entry.target()
-                self.ui.overview.update_entries()
-                bio_cache_entry = next(e for e in self.ui.overview.entries if "Cache" in e.type)
-                time.sleep(1)
-
-            print("cache targeted")
-
-            if self.ui.ship_ui.update().high_modules[0].active_status != ShipModule.ActiveStatus.active:
-                self.ui.ship_ui.high_modules[0].set_active(True)
-
-            print("weapons active")
-
-            time.sleep(2)
+            self.manage_navigation()
+            self.manage_targeting()
+            self.manage_modules()
+            self.manage_drones()
 
             self.ui.overview.update_entries()
-            bio_cache_entry = next(
-                (e for e in self.ui.overview.entries if "Cache" in e.type),
-                None
-            )
+            bio_cache_entry = next(e for e in self.ui.overview.entries if "Cache" in e.type)
 
-
-
+        self.deactivate_modules()

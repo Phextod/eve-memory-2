@@ -1,3 +1,4 @@
+import math
 from enum import Enum
 from typing import Dict
 
@@ -14,6 +15,7 @@ class ShipModule:
         not_active = 1
         active = 2
         turning_off = 3
+        reloading = 4
 
     class OverloadStatus(Enum):
         not_overloadable = 0
@@ -22,17 +24,24 @@ class ShipModule:
         turning_off = 3
 
     def __init__(self, node: UITreeNode):
+        ui_tree: UITree = UITree.instance()
         self.node = node
 
-        icon = UITree.instance().find_node(node_type="Icon", root=node, refresh=False)
+        icon = ui_tree.find_node(node_type="Icon", root=node, refresh=False)
         self.module_type = icon.attrs["_texturePath"].split("/")[-1].split(".")[0]
+        self.ammo_count = 0
+        ammo_parent = ui_tree.find_node({'_name': 'quantityParent'}, root=node, refresh=False)
+        if ammo_parent:
+            number_containers = ui_tree.find_node(node_type="Label", root=ammo_parent, refresh=False, select_many=True)
+            number_containers.sort(key=lambda n: n.x, reverse=True)
+            self.ammo_count = int(number_containers[0].attrs.get('_setText', ""))
 
         # Cloaks and some other modules are active but not overloadable. If you care about those improve this part
-        overload_button = UITree.instance().find_node({'_name': 'overloadBtn'}, root=node, refresh=False)
+        overload_button = ui_tree.find_node({'_name': 'overloadBtn'}, root=node, refresh=False)
         if "Disabled" not in overload_button.attrs["_texturePath"]:
-            module_button = UITree.instance().find_node(node_type="ModuleButton", root=node, refresh=False)
+            module_button = ui_tree.find_node(node_type="ModuleButton", root=node, refresh=False)
             if module_button.attrs.get("ramp_active", None):
-                glow = UITree.instance().find_node(
+                glow = ui_tree.find_node(
                     {"_texturePath": "Glow"},
                     contains=True,
                     root=node,
@@ -45,7 +54,18 @@ class ShipModule:
             else:
                 self.active_status = ShipModule.ActiveStatus.not_active
         else:
-            self.active_status = ShipModule.ActiveStatus.not_activatable
+            left_ramp = ui_tree.find_node({'_name': 'leftRamp'}, root=node, refresh=False)
+            right_ramp = ui_tree.find_node({'_name': 'rightRamp'}, root=node, refresh=False)
+            ramp_displayed = False
+            if left_ramp and right_ramp:
+                left_rotation = float(left_ramp.attrs.get("_rotation", 0.0))
+                right_rotation = float(right_ramp.attrs.get("_rotation", 0.0))
+                ramp_displayed = math.isclose(left_rotation, math.pi, abs_tol=1e-06) \
+                                 or math.isclose(right_rotation, math.pi, abs_tol=1e-06)
+            if ramp_displayed:
+                self.active_status = ShipModule.ActiveStatus.reloading
+            else:
+                self.active_status = ShipModule.ActiveStatus.not_activatable
 
         if "Disabled" in overload_button.attrs["_texturePath"]:
             self.overload_status = ShipModule.OverloadStatus.not_overloadable
@@ -82,6 +102,8 @@ class ShipUI:
 
         self.is_warping = False
         self.speed: float = 0.0
+
+        self.indication_text = ""
 
         self.update(refresh_on_init)
 
@@ -151,6 +173,7 @@ class ShipUI:
         self.update_high_slots(refresh=refresh)
         self.update_medium_slots(refresh=False)
         self.update_low_slots(refresh=False)
+        return self
 
     def update_buffs(self, refresh=True):
         self.buff_buttons = BubblingQuery(
@@ -160,23 +183,46 @@ class ShipUI:
             refresh_on_init=refresh
         ).result
 
-    def update(self, refresh=True):
-        self.update_modules(refresh)
-        self.update_capacitor_percent(refresh)
-        self.update_buffs(refresh)
+    def update_alert(self, refresh=True):
+        indication_container = BubblingQuery(
+            {'_name': 'indicationContainer'},
+            parent_query=self.main_container_query,
+            refresh_on_init=refresh
+        ).result
 
+        caption = self.ui_tree.find_node(node_type="CaptionLabel", root=indication_container, refresh=False)
+        line2 = self.ui_tree.find_node({'_name': 'indicationtext2'}, root=indication_container, refresh=False)
+        if caption and line2:
+            self.indication_text = f"{caption.attrs['_setText']} - {line2.attrs['_setText'].split('>')[-1]}"
+        else:
+            self.indication_text = ""
+
+    def update_speed(self, refresh=True):
         speed_label_node = BubblingQuery(
             {'_name': 'speedLabel'},
             parent_query=self.main_container_query,
             refresh_on_init=refresh
         ).result
 
+        self.is_warping = False
+        self.speed = 0.0
+
+        if not speed_label_node:
+            return
+
         if "Warping" in speed_label_node.attrs["_setText"]:
             self.is_warping = True
-            self.speed = 0.0
         else:
-            self.is_warping = False
             self.speed = float(speed_label_node.attrs["_setText"].split(" ")[0])
+
+        return self
+
+    def update(self, refresh=True):
+        self.update_modules(refresh)
+        self.update_capacitor_percent(refresh)
+        self.update_buffs(refresh)
+        self.update_alert(refresh)
+        self.update_speed(refresh)
 
         return self
 

@@ -25,19 +25,30 @@ class AbyssBot:
     def loot(self):
         bio_cache_entry = next(e for e in self.ui.overview.entries if "Cache" in e.type)
         if "Looted" in bio_cache_entry.icon:
-            return
-        bio_cache_entry.generic_action(OverviewEntry.Action.open_cargo)
-        wait_for_truthy(lambda: self.ui.inventory.loot_all(), 60)
+            return False
 
-    def prepare_for_next_room(self, room_count):
-        # approach gate
+        bio_cache_entry.generic_action(OverviewEntry.Action.open_cargo)
+        return self.ui.inventory.loot_all()
+
+    def approach_jump_gate(self):
         jump_gate_entry = next(e for e in self.ui.overview.entries if "Conduit" in e.type)
         jump_gate_entry.generic_action(OverviewEntry.Action.approach)
 
+        self.ui.ship_ui.update()
+        should_speed = self.ui.ship_ui.capacitor_percent > 0.8
+        for i in config.ABYSSAL_SPEED_MODULE_INDICES:
+            self.ui.ship_ui.medium_modules[i].set_active(should_speed)
+
+    def prepare_for_next_room(self, current_room):
+        is_prepared = True
+
         # reload weapons
-        for _, high_module in self.ui.ship_ui.high_modules.items():
+        for i, high_module in self.ui.ship_ui.high_modules.items():
+            if high_module.ammo_count == config.ABYSSAL_AMMO_PER_WEAPON[i]:
+                continue
             click(high_module.node, MOUSE_RIGHT)
             self.context_menu.click_safe("Reload all", 5)
+            is_prepared = False
 
         # repair
         # todo later
@@ -45,26 +56,38 @@ class AbyssBot:
         # recall drones
         self.ui.drones.update()
         if self.ui.drones.in_space:
-            self.ui.drones.safe_recall_all()
+            is_prepared = False
+            self.ui.drones.recall_all()
 
-        # wait for cap (based on time)
-        # todo later
+        # wait for cap
+        self.ui.ship_ui.update()
+        if self.ui.ship_ui.capacitor_percent < 0.8 and current_room < 3:
+            is_prepared = False
+
+        return is_prepared
 
     def jump_to_next_room(self):
         jump_gate_entry = next(e for e in self.ui.overview.entries if "Conduit" in e.type)
         jump_gate_entry.generic_action(OverviewEntry.Action.activate_gate)
 
+        self.ui.ship_ui.update()
+        should_speed = self.ui.ship_ui.capacitor_percent > 0.8
+        for i in config.ABYSSAL_SPEED_MODULE_INDICES:
+            self.ui.ship_ui.medium_modules[i].set_active(should_speed)
+
     def do_abyss(self):
         self.clear_room()
-        self.loot()
-        self.prepare_for_next_room(0)
+        while self.loot():
+            self.prepare_for_next_room(0)
+        self.approach_jump_gate()
+        wait_for_truthy(lambda: self.prepare_for_next_room(0), 30)
         self.jump_to_next_room()
 
-        # room_count = 1
-        # while room_count <= 3:
+        # current_room = 1
+        # while current_room <= 3:
         #     self.clear_room()
         #     self.loot()
-        #     self.prepare_for_next_room(room_count)
+        #     self.prepare_for_next_room(current_room)
         #     self.jump_to_next_room()
         #     room_count += 1
 

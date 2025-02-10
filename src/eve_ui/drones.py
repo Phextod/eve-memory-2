@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from enum import Enum
 from typing import List
 
 import pyautogui
@@ -9,6 +10,12 @@ from src.utils.ui_tree import UITree, UITreeNode
 from src.utils.utils import click, MOUSE_RIGHT, wait_for_truthy
 
 
+class DroneStatus(Enum):
+    idle = 0
+    fighting = 1
+    returning = 2
+
+
 @dataclass
 class Drone:
     entry_node: UITreeNode
@@ -16,6 +23,7 @@ class Drone:
     shield_percent: float
     armor_percent: float
     structure_percent: float
+    status: DroneStatus
 
     @staticmethod
     def from_entry_node(entry_node, ui_tree):
@@ -24,7 +32,7 @@ class Drone:
             root=entry_node,
             # refresh=False,
         )
-        name = type_node.attrs.get("_setText").split("<")[0]
+        name = type_node.attrs.get("_setText").split(" <")[0]
 
         struct_gauge = ui_tree.find_node({'_name': 'structGauge'}, root=entry_node, refresh=False)
         struct_fill = ui_tree.find_node(node_type="Fill", root=struct_gauge, refresh=False)
@@ -38,12 +46,22 @@ class Drone:
         shield_fill = ui_tree.find_node(node_type="Fill", root=shield_gauge, refresh=False)
         shield_percent = shield_fill.attrs["_displayWidth"] / shield_gauge.attrs["_displayWidth"]
 
+        status = DroneStatus.idle
+        status_split = type_node.attrs.get("_setText").split(">")
+        if len(status_split) > 1:
+            status_text = status_split[1].split("<")[0]
+            if status_text == "Fighting":
+                status = DroneStatus.fighting
+            elif status_text == "Returning":
+                status = DroneStatus.returning
+
         return Drone(
             entry_node=entry_node,
             name=name,
             shield_percent=shield_percent,
             armor_percent=armor_percent,
             structure_percent=structure_percent,
+            status=status
         )
 
 
@@ -62,8 +80,8 @@ class Drones:
             refresh_on_init=refresh_on_init,
         )
 
-        self.in_bay = []
-        self.in_space = []
+        self.in_bay: List[Drone] = []
+        self.in_space: List[Drone] = []
         self.update(refresh=refresh_on_init)
 
     def update(self, refresh=True):
@@ -90,9 +108,13 @@ class Drones:
         click(drone.entry_node, MOUSE_RIGHT, pos_x=0.1)
         ContextMenu.instance().click_safe("Return to Drone Bay", 5)
 
-    def safe_recall_all(self):
+    @staticmethod
+    def recall_all():
         pyautogui.hotkey('shift', 'r', interval=0.2)
-        wait_for_truthy(lambda: self.update and not self.in_space, 20)
+
+    def safe_recall_all(self):
+        self.recall_all()
+        wait_for_truthy(lambda: self.update and not self.in_space, 30)
 
     @staticmethod
     def attack_target():
