@@ -238,6 +238,7 @@ class ShipUI:
             select_many=True,
             refresh_on_init=False
         ).result
+        return self
 
     def update_alert(self, refresh=True):
         indication_container = BubblingQuery(

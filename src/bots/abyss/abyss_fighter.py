@@ -7,6 +7,7 @@ from src.bots.abyss.ship import Ship
 from src.bots.abyss.ship_attributes import DamageType
 from src.eve_ui.drones import DroneStatus
 from src.eve_ui.eve_ui import EveUI
+from src.eve_ui.overview import OverviewEntry
 from src.eve_ui.ship_ui import ShipModule
 from src.utils.ui_tree import UITree
 from src.utils.utils import get_path, wait_for_truthy, move_cursor, click
@@ -104,12 +105,12 @@ class AbyssFighter:
     def manage_navigation(self):
         self.ui.ship_ui.update()
         if "Orbiting" not in self.ui.ship_ui.indication_text or "Bioadaptive" not in self.ui.ship_ui.indication_text:
-            self.ui.overview.update_entries()
+            self.ui.overview.update()
             bio_cache_entry = next(e for e in self.ui.overview.entries if "Cache" in e.type)
             bio_cache_entry.orbit(5000)
 
     def manage_targeting(self, clear_order):
-        self.ui.overview.update_entries()
+        self.ui.overview.update()
         self.ui.target_bar.update()
         active_targets = 0
         for target_type in clear_order:
@@ -122,30 +123,26 @@ class AbyssFighter:
                     continue
                 target.target()
 
-        for target_type in clear_order:
-            active_target_to_set = next((t for t in self.ui.target_bar.targets if target_type in t.label_texts), None)
-            if active_target_to_set:
-                click(active_target_to_set.node, pos_y=0.3)
-                break
+        self.ui.target_bar.update()
+        if not self.ui.target_bar.targets:
+            return
 
-        # while len(self.ui.target_bar.targets) < 2 and len(self.ui.target_bar.targets) < len(enemy_entries):
-        #     for enemy_entry in enemy_entries[:2]:
-        #         if enemy_entry.is_being_targeted:
-        #             continue
-        #         enemy_entry.target()
-        #     self.ui.overview.update_entries()
-        #     self.ui.target_bar.update()
-        #     enemy_entries = self.enemies_on_overview()
-        #
-        # if self.ui.target_bar.targets and not self.ui.target_bar.targets[0].is_active_target:
-        #     click(self.ui.target_bar.targets[0].node, pos_y=0.3)
-        #
-        # if not enemy_entries:
-        #     potential_caches = [e for e in self.ui.overview.entries if "Cache" in e.type]
-        #     if len(potential_caches) == 1 and "largeCollidableStructure" in potential_caches[0].icon:
-        #         potential_caches[0].target()
+        for target_type in clear_order:
+            target_to_set_active = next((t for t in self.ui.target_bar.targets if target_type in t.name), None)
+            if not target_to_set_active:
+                continue
+            click(target_to_set_active.node, pos_y=0.3)
+            break
 
     def manage_modules(self):
+        # Deactivate weapons on non-primary targets
+        self.ui.target_bar.update()
+        non_active_targets = [t for t in self.ui.target_bar.targets if not t.is_active_target]
+        for non_active_target in non_active_targets:
+            for weapon_icon in non_active_target.active_weapon_icons:
+                click(weapon_icon)
+
+        # Activate weapons on primary target
         self.ui.ship_ui.update()
         weapon_modules = [self.ui.ship_ui.high_modules[i] for i in config.ABYSSAL_WEAPON_MODULE_INDICES]
         for weapon_module in weapon_modules:
@@ -153,11 +150,13 @@ class AbyssFighter:
                 continue
             weapon_module.set_active(True)
 
+        # Activate hardeners
         for i in config.ABYSSAL_HARDENER_MODULE_INDICES:
-            self.ui.ship_ui.medium_modules[i].set_active(self.ui.ship_ui.capacitor_percent > 0.4)
+            self.ui.ship_ui.medium_modules[i].set_active(self.ui.ship_ui.capacitor_percent > 0.3)
 
+        # Activate speed modules
         for i in config.ABYSSAL_SPEED_MODULE_INDICES:
-            self.ui.ship_ui.medium_modules[i].set_active(self.ui.ship_ui.capacitor_percent > 0.6)
+            self.ui.ship_ui.medium_modules[i].set_active(self.ui.ship_ui.capacitor_percent > 0.5)
 
     def manage_drones(self):
         self.ui.drones.update()
@@ -194,21 +193,37 @@ class AbyssFighter:
             if e.type in clear_order:
                 continue
             clear_order.append(e.type)
-        bio_cache_entry = next(e for e in self.ui.overview.entries if "Cache" in e.type)
-        clear_order.append(bio_cache_entry.type)
         return clear_order
 
-    def clear_room(self):
-        self.ui.overview.update_entries()
-        clear_order = self.calculate_clear_order()
+    def open_bio_cache(self):
         potential_caches = [e for e in self.ui.overview.entries if "Cache" in e.type]
+        if len(potential_caches) > 1 or "largeCollidableStructure" not in potential_caches[0].icon:
+            return
+
+        bio_cache = potential_caches[0]
+
+        bio_cache.generic_action(OverviewEntry.Action.approach)
+
+        bio_cache.target()
+        wait_for_truthy(lambda: self.ui.target_bar.update().targets, 20)
+
         while len(potential_caches) == 1 and "largeCollidableStructure" in potential_caches[0].icon:
+            self.manage_modules()
+            self.manage_drones()
+
+            self.ui.overview.update()
+            potential_caches = [e for e in self.ui.overview.entries if "Cache" in e.type]
+
+    def clear_room(self):
+        self.ui.overview.update()
+        clear_order = self.calculate_clear_order()
+        while self.enemies_on_overview():
             self.manage_navigation()
             self.manage_targeting(clear_order)
             self.manage_modules()
             self.manage_drones()
 
-            self.ui.overview.update_entries()
-            potential_caches = [e for e in self.ui.overview.entries if "Cache" in e.type]
+            self.ui.overview.update()
 
+        self.open_bio_cache()
         self.deactivate_modules()

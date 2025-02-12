@@ -19,14 +19,11 @@ class AbyssBot:
         self.ui_tree: UITree = UITree.instance()
         self.abyss_fighter = AbyssFighter(ui)
 
-    def clear_room(self):
-        self.abyss_fighter.clear_room()
-
     def loot(self):
         """
         :return: True if there is loot to be taken, False if looting is done
         """
-        self.ui.overview.update_entries()
+        self.ui.overview.update()
         potential_caches = [e for e in self.ui.overview.entries if "Cache" in e.type]
         if len(potential_caches) != 1:
             return True
@@ -84,30 +81,22 @@ class AbyssBot:
 
         wait_for_truthy(
             lambda: (
-                (self.ui.overview.update_entries() and self.abyss_fighter.enemies_on_overview())
+                (self.ui.overview.update() and self.abyss_fighter.enemies_on_overview())
                 or TimerNames.abyssal.value not in self.ui.timers.update().timers
             ),
             60
         )
 
     def do_abyss(self):
-        # self.clear_room()
-        # while self.loot():
-        #     self.prepare_for_next_room(0)
-        # self.approach_jump_gate()
-        # wait_for_truthy(lambda: self.prepare_for_next_room(0), 30)
-        # self.jump_to_next_room()
-
         current_room = 1
         while current_room <= 3:
-            self.clear_room()
+            self.abyss_fighter.clear_room()
             while self.loot():
                 self.prepare_for_next_room(current_room)
             self.approach_jump_gate()
             wait_for_truthy(lambda: self.prepare_for_next_room(current_room), 30)
             self.jump_to_next_room()
             current_room += 1
-            time.sleep(5)
 
     def undock(self):
         self.ui.station_window.undock()
@@ -125,7 +114,7 @@ class AbyssBot:
         click(activate_btn)
 
         wait_for_truthy(lambda: TimerNames.abyssal.value in self.ui.timers.update().timers, 30)
-        wait_for_truthy(lambda: self.ui.overview.update_entries() and self.abyss_fighter.enemies_on_overview(), 30)
+        wait_for_truthy(lambda: (self.ui.overview.update() and self.abyss_fighter.enemies_on_overview()), 30)
 
     def warp_to_safe_spot(self):
         safe_spot_entry = self.ui.locations.get_entry(config.ABYSSAL_SAFE_SPOT_LOCATION)
@@ -227,7 +216,6 @@ class AbyssBot:
 
         click(self.ui.inventory.main_station_hangar)
         self.ui.inventory.stack_all()
-        self.ui.inventory.update_items()
 
         for drone_type, pick_up_quantity in drones_to_pick_up.items():
             if pick_up_quantity <= 0:
@@ -248,7 +236,7 @@ class AbyssBot:
     def is_reset_needed(self):
         # Drones
         self.ui.drones.update()
-        for drone_name, drone_amount in config.ABYSSAL_DRONES:
+        for drone_name, drone_amount in config.ABYSSAL_DRONES.items():
             drone_amount_in_bay = sum(1 for d in self.ui.drones.in_bay if d.name == drone_name)
             if drone_amount_in_bay < drone_amount:
                 return True
@@ -285,9 +273,16 @@ class AbyssBot:
         return False
 
     def move_a_bit(self):
-        # todo
         self.ui.ship_ui.full_speed()
-        time.sleep(40)
+        wait_for_truthy(
+            lambda: not next(
+                (b for b in self.ui.ship_ui.update_buffs().buff_buttons
+                    if b.attrs.get("_name", None) == "notTethered"),
+                None
+            ),
+            60
+        )
+        time.sleep(3)
 
     def run(self):
         self.drop_off_loot()

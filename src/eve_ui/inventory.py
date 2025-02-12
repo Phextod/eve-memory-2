@@ -119,7 +119,9 @@ class Inventory:
         for item_node in self.item_components_query.result:
             # Additional info about items: data/itemTypes.csv or https://www.fuzzwork.co.uk/dump/latest/invTypes.csv
             # File is too big, so identify relevant items from their ids
-            type_id = int(item_node.attrs["_name"].split("_")[1])
+            type_id = int(item_node.attrs.get("_name", "_").split("_")[1])
+            if not type_id:
+                continue
 
             name_node = self.ui_tree.find_node({'_name': 'itemNameLabel'}, root=item_node, refresh=False)
             name = name_node.attrs["_setText"].split(">")[-1]
@@ -132,7 +134,15 @@ class Inventory:
                     root=quantity_node_container,
                     refresh=False
                 )
-                quantity = int(quantity_node.attrs["_setText"].replace(" ", ""))
+                quantity_multiplier = 1
+                quantity_text = quantity_node.attrs["_setText"].replace(" ", "")
+                if "K" in quantity_text:
+                    quantity_multiplier = 1_000
+                    quantity_text = quantity_text.replace(",", ".").replace("K", "")
+                elif "M" in quantity_text:
+                    quantity_multiplier = 1_000_000
+                    quantity_text = quantity_text.replace(",", ".").replace("M", "")
+                quantity = int(float(quantity_text) * quantity_multiplier)
 
             self.items.append(InventoryItem(type_id, name, quantity, item_node))
 

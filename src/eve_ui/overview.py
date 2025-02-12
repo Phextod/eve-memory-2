@@ -144,13 +144,15 @@ class Overview:
             refresh_on_init=refresh_on_init,
         )
 
-        self.update_headers(refresh_on_init)
-        self.update_entries(refresh_on_init)
+        self.update(refresh_on_init)
 
     def update_headers(self, refresh=True):
         self.headers.clear()
 
         headers = self.header_component_query.run()
+        if not headers:
+            return
+
         headers.sort(key=lambda a: a.x)
 
         for header in headers:
@@ -158,11 +160,13 @@ class Overview:
             text = label.attrs["_setText"] if label else "Icon"
             self.headers.append(text)
 
-    def update_entries(self, refresh=True):
+        return self
+
+    def update(self, refresh=True):
         self.entries.clear()
 
-        if not self.headers:
-            self.update_headers(refresh)
+        if not self.update_headers(refresh):
+            return self
 
         entry_nodes = self.entry_component_query.run(refresh)
 
