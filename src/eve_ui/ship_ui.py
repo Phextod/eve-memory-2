@@ -114,9 +114,11 @@ class ShipUI:
             parent_query=self.main_container_query,
             refresh_on_init=False
         )
-        if not self.hud_readout_query.result:
+
+        self.is_readout_open = False
+        if not self.hud_readout_query.result and self.main_container_query.result:
             self.display_readouts()
-            self.hud_readout_query.run()
+            self.is_readout_open = True
 
         self.update(refresh_on_init)
 
@@ -128,6 +130,15 @@ class ShipUI:
         click(util_menu)
 
     def update_hp(self, refresh=True):
+        if not self.is_readout_open:
+            if self.hud_readout_query.run():
+                self.is_readout_open = True
+            elif self.main_container_query.result:
+                self.display_readouts()
+                self.is_readout_open = True
+            else:
+                return
+
         containers = BubblingQuery(
             node_type="ContainerAutoSize",
             parent_query=self.hud_readout_query,
@@ -219,6 +230,13 @@ class ShipUI:
             parent_query=self.main_container_query,
             select_many=True,
             refresh_on_init=refresh
+        ).result
+
+        self.buff_buttons += BubblingQuery(
+            node_type="OffensiveBuffButton",
+            parent_query=self.main_container_query,
+            select_many=True,
+            refresh_on_init=False
         ).result
 
     def update_alert(self, refresh=True):

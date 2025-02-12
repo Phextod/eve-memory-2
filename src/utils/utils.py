@@ -119,12 +119,13 @@ def drag_and_drop(
         else win32con.MOUSEEVENTF_RIGHTUP
 
     move_cursor(start_coordinates)
-    time.sleep(0.5)
+    time.sleep(0.2)
     win32api.mouse_event(down_evnt, 0, 0)
-    time.sleep(0.5)
+    time.sleep(0.2)
     move_cursor(end_coordinates)
-    time.sleep(0.5)
+    time.sleep(0.2)
     win32api.mouse_event(up_evnt, 0, 0)
+    time.sleep(0.2)
 
 
 def failsafe(delta, msg="", timer_name=""):

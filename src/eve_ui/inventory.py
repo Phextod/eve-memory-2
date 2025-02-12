@@ -1,6 +1,8 @@
+import time
 from dataclasses import dataclass
 from typing import List, Tuple
 
+import keyboard
 import pyautogui
 
 from src.eve_ui.context_menu import ContextMenu
@@ -142,12 +144,13 @@ class Inventory:
     @staticmethod
     def move_item(item_node: UITreeNode, target_node: UITreeNode, amount=None):
         if amount:
-            pyautogui.keyDown("shift")
+            pyautogui.keyDown("shiftleft")
+            time.sleep(0.1)
 
         drag_and_drop(item_node.get_center(), target_node.get_center())
 
         if amount:
-            pyautogui.keyUp("shift")
+            pyautogui.keyUp("shiftleft")
             pyautogui.write(str(amount), interval=0.1)
             pyautogui.press("enter")
 
@@ -186,6 +189,7 @@ class Inventory:
     def repair_active_ship(self):
         click(self.active_ship_hangar, MOUSE_RIGHT)
         self.context_menu.click_safe("Get Repair Quote", 5)
+        time.sleep(0.5)
 
         repair_window = self.ui_tree.find_node(node_type="RepairShopWindow")
 

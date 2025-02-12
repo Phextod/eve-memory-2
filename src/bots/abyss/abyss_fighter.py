@@ -108,26 +108,42 @@ class AbyssFighter:
             bio_cache_entry = next(e for e in self.ui.overview.entries if "Cache" in e.type)
             bio_cache_entry.orbit(5000)
 
-    def manage_targeting(self):
+    def manage_targeting(self, clear_order):
         self.ui.overview.update_entries()
         self.ui.target_bar.update()
-        enemy_entries = self.enemies_on_overview()
-        while len(self.ui.target_bar.targets) < 2 and len(self.ui.target_bar.targets) < len(enemy_entries):
-            for enemy_entry in enemy_entries[:2]:
-                if enemy_entry.is_being_targeted:
+        active_targets = 0
+        for target_type in clear_order:
+            targets = [e for e in self.ui.overview.entries if e.type == target_type]
+            for target in targets:
+                if active_targets >= config.ABYSSAL_MAX_TARGET_COUNT:
+                    return
+                active_targets += 1
+                if target.is_being_targeted or target.is_targeted_by_me:
                     continue
-                enemy_entry.target()
-            self.ui.overview.update_entries()
-            self.ui.target_bar.update()
-            enemy_entries = self.enemies_on_overview()
+                target.target()
 
-        if self.ui.target_bar.targets and not self.ui.target_bar.targets[0].is_active_target:
-            click(self.ui.target_bar.targets[0].node, pos_y=0.3)
+        for target_type in clear_order:
+            active_target_to_set = next((t for t in self.ui.target_bar.targets if target_type in t.label_texts), None)
+            if active_target_to_set:
+                click(active_target_to_set.node, pos_y=0.3)
+                break
 
-        if not enemy_entries:
-            potential_caches = [e for e in self.ui.overview.entries if "Cache" in e.type]
-            if len(potential_caches) == 1 and "largeCollidableStructure" in potential_caches[0].icon:
-                potential_caches[0].target()
+        # while len(self.ui.target_bar.targets) < 2 and len(self.ui.target_bar.targets) < len(enemy_entries):
+        #     for enemy_entry in enemy_entries[:2]:
+        #         if enemy_entry.is_being_targeted:
+        #             continue
+        #         enemy_entry.target()
+        #     self.ui.overview.update_entries()
+        #     self.ui.target_bar.update()
+        #     enemy_entries = self.enemies_on_overview()
+        #
+        # if self.ui.target_bar.targets and not self.ui.target_bar.targets[0].is_active_target:
+        #     click(self.ui.target_bar.targets[0].node, pos_y=0.3)
+        #
+        # if not enemy_entries:
+        #     potential_caches = [e for e in self.ui.overview.entries if "Cache" in e.type]
+        #     if len(potential_caches) == 1 and "largeCollidableStructure" in potential_caches[0].icon:
+        #         potential_caches[0].target()
 
     def manage_modules(self):
         self.ui.ship_ui.update()
@@ -171,12 +187,24 @@ class AbyssFighter:
         for _, m in self.ui.ship_ui.low_modules.items():
             m.set_active(False)
 
+    def calculate_clear_order(self):
+        enemy_entries = self.enemies_on_overview()
+        clear_order = []
+        for e in enemy_entries:
+            if e.type in clear_order:
+                continue
+            clear_order.append(e.type)
+        bio_cache_entry = next(e for e in self.ui.overview.entries if "Cache" in e.type)
+        clear_order.append(bio_cache_entry.type)
+        return clear_order
+
     def clear_room(self):
         self.ui.overview.update_entries()
+        clear_order = self.calculate_clear_order()
         potential_caches = [e for e in self.ui.overview.entries if "Cache" in e.type]
         while len(potential_caches) == 1 and "largeCollidableStructure" in potential_caches[0].icon:
             self.manage_navigation()
-            self.manage_targeting()
+            self.manage_targeting(clear_order)
             self.manage_modules()
             self.manage_drones()
 

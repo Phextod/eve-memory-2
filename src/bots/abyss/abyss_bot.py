@@ -83,8 +83,10 @@ class AbyssBot:
             self.ui.ship_ui.medium_modules[i].set_active(should_speed)
 
         wait_for_truthy(
-            lambda: (self.ui.overview.update_entries() and self.abyss_fighter.enemies_on_overview())
-                    or TimerNames.invulnerable.value not in self.ui.timers.update().timers,
+            lambda: (
+                (self.ui.overview.update_entries() and self.abyss_fighter.enemies_on_overview())
+                or TimerNames.abyssal.value not in self.ui.timers.update().timers
+            ),
             60
         )
 
@@ -102,7 +104,7 @@ class AbyssBot:
             while self.loot():
                 self.prepare_for_next_room(current_room)
             self.approach_jump_gate()
-            wait_for_truthy(lambda: self.prepare_for_next_room(0), 30)
+            wait_for_truthy(lambda: self.prepare_for_next_room(current_room), 30)
             self.jump_to_next_room()
             current_room += 1
             time.sleep(5)
@@ -123,17 +125,24 @@ class AbyssBot:
         click(activate_btn)
 
         wait_for_truthy(lambda: TimerNames.abyssal.value in self.ui.timers.update().timers, 30)
-        time.sleep(5)
+        wait_for_truthy(lambda: self.ui.overview.update_entries() and self.abyss_fighter.enemies_on_overview(), 30)
 
     def warp_to_safe_spot(self):
         safe_spot_entry = self.ui.locations.get_entry(config.ABYSSAL_SAFE_SPOT_LOCATION)
         click(safe_spot_entry, MOUSE_RIGHT)
-        if self.context_menu.click_safe("Set Destination", 5):
+
+        destination_set = False
+        warping = False
+        while not destination_set and not warping:
+            destination_set = self.context_menu.click("Set Destination")
+            warping = self.context_menu.click("Warp to Within", contains=True)
+
+        if destination_set:
             self.ui.route.autopilot(self.ui.ship_ui, self.ui.timers)
             click(safe_spot_entry, MOUSE_RIGHT)
-        self.context_menu.click_safe("Warp to Within", 5, contains=True)
+            self.context_menu.click_safe("Warp to Within", 5, contains=True)
 
-        wait_for_truthy(lambda: not self.ui.ship_ui.update().is_warping and self.ui.ship_ui.speed == 0, 60)
+        wait_for_truthy(lambda: not self.ui.ship_ui.update().is_warping and self.ui.ship_ui.speed < 10, 60)
 
     def dock_home_base(self):
         base_entry = self.ui.locations.get_entry(config.ABYSSAL_BASE_LOCATION)
@@ -161,7 +170,7 @@ class AbyssBot:
             self.ui.inventory.move_item(item_to_move, target_hangar)
 
         for item_name in config.ABYSSAL_SUPPLIES.keys():
-            item_in_ship = next(i for i in self.ui.inventory.items if i.name == item_name)
+            item_in_ship = next((i for i in self.ui.inventory.items if i.name == item_name), None)
             if not item_in_ship:
                 continue
 
@@ -185,7 +194,7 @@ class AbyssBot:
         click(self.ui.inventory.main_station_hangar)
         self.ui.inventory.stack_all()
 
-        for item_name, amount_in_ship in supplies_in_ship:
+        for item_name, amount_in_ship in supplies_in_ship.items():
             amount_for_max = config.ABYSSAL_SUPPLIES[item_name][1] - amount_in_ship
             if amount_for_max <= 0:
                 continue
@@ -200,11 +209,12 @@ class AbyssBot:
                 raise Exception("Not enough supply")
 
             amount_to_move = min(amount_for_max, amount_in_hangar)
-            self.ui.inventory.move_item(
-                self.ui.inventory.items[0],
-                self.ui.inventory.active_ship_hangar,
-                amount_to_move,
-            )
+            if amount_to_move > 0:
+                self.ui.inventory.move_item(
+                    self.ui.inventory.items[0].node,
+                    self.ui.inventory.active_ship_hangar,
+                    amount_to_move,
+                )
 
     def pick_up_drones(self):
         click(self.ui.inventory.active_ship_drone_bay)
@@ -252,9 +262,9 @@ class AbyssBot:
         armor = self.ui.ship_ui.armor_percent
         structure = self.ui.ship_ui.structure_percent
         if (
-            (config.ABYSSAL_IS_SHIELD_TANK and (shield < 0.5 or armor < 0.9))
-            or (config.ABYSSAL_IS_ARMOR_TANK and (armor < 0.5 or structure < 0.9))
-            or (config.ABYSSAL_IS_STRUCTURE_TANK and structure < 0.5)
+            (config.ABYSSAL_IS_SHIELD_TANK and (shield < 0.7 or armor < 0.9))
+            or (config.ABYSSAL_IS_ARMOR_TANK and (armor < 0.7 or structure < 0.9))
+            or (config.ABYSSAL_IS_STRUCTURE_TANK and structure < 0.7)
         ):
             return True
 
