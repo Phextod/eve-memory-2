@@ -134,21 +134,22 @@ class AbyssFighter:
             click(target_to_set_active.node, pos_y=0.3)
             break
 
-    def manage_modules(self):
-        # Deactivate weapons on non-primary targets
-        self.ui.target_bar.update()
-        non_active_targets = [t for t in self.ui.target_bar.targets if not t.is_active_target]
-        for non_active_target in non_active_targets:
-            for weapon_icon in non_active_target.active_weapon_icons:
-                click(weapon_icon)
+    def manage_modules(self, manage_weapons=True):
+        if manage_weapons:
+            # Deactivate weapons on non-primary targets
+            self.ui.target_bar.update()
+            non_active_targets = [t for t in self.ui.target_bar.targets if not t.is_active_target]
+            for non_active_target in non_active_targets:
+                for weapon_icon in non_active_target.active_weapon_icons:
+                    click(weapon_icon)
 
-        # Activate weapons on primary target
-        self.ui.ship_ui.update()
-        weapon_modules = [self.ui.ship_ui.high_modules[i] for i in config.ABYSSAL_WEAPON_MODULE_INDICES]
-        for weapon_module in weapon_modules:
-            if weapon_module.active_status != ShipModule.ActiveStatus.not_active:
-                continue
-            weapon_module.set_active(True)
+            # Activate weapons on primary target
+            self.ui.ship_ui.update()
+            weapon_modules = [self.ui.ship_ui.high_modules[i] for i in config.ABYSSAL_WEAPON_MODULE_INDICES]
+            for weapon_module in weapon_modules:
+                if weapon_module.active_status != ShipModule.ActiveStatus.not_active:
+                    continue
+                weapon_module.set_active(True)
 
         # Activate hardeners
         for i in config.ABYSSAL_HARDENER_MODULE_INDICES:
@@ -179,7 +180,9 @@ class AbyssFighter:
 
     def deactivate_modules(self):
         self.ui.ship_ui.update_modules()
-        for _, m in self.ui.ship_ui.high_modules.items():
+        for i, m in self.ui.ship_ui.high_modules.items():
+            if i in config.ABYSSAL_WEAPON_MODULE_INDICES:
+                continue
             m.set_active(False)
         for _, m in self.ui.ship_ui.medium_modules.items():
             m.set_active(False)
@@ -208,8 +211,9 @@ class AbyssFighter:
         wait_for_truthy(lambda: self.ui.target_bar.update().targets, 20)
 
         while len(potential_caches) == 1 and "largeCollidableStructure" in potential_caches[0].icon:
-            self.manage_modules()
             self.manage_drones()
+            manage_weapons = not any(d.status != DroneStatus.returning for d in self.ui.drones.update().in_space)
+            self.manage_modules(manage_weapons)
 
             self.ui.overview.update()
             potential_caches = [e for e in self.ui.overview.entries if "Cache" in e.type]

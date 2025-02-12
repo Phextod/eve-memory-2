@@ -65,7 +65,8 @@ class OverviewEntry:
             refresh=False,
         )
         icon = UITree.instance().find_node({'_name': 'iconSprite'}, root=entry_node, refresh=False)
-        entry_labels.append(icon)
+        if icon:
+            entry_labels.append(icon)
         entry_labels.sort(key=lambda a: a.x)
 
         entry_dict = dict()

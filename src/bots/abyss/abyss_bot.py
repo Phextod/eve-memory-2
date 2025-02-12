@@ -97,6 +97,7 @@ class AbyssBot:
             wait_for_truthy(lambda: self.prepare_for_next_room(current_room), 30)
             self.jump_to_next_room()
             current_room += 1
+        time.sleep(5)
 
     def undock(self):
         self.ui.station_window.undock()
@@ -192,15 +193,15 @@ class AbyssBot:
             self.ui.inventory.search_for(item_name)
             self.ui.inventory.update()
 
-            amount_in_hangar = next((i.quantity for i in self.ui.inventory.items if i.name == item_name), 0)
+            item_to_move = next(i for i in self.ui.inventory.items if i.name == item_name)
 
-            if amount_in_hangar < amount_for_min:
+            if item_to_move.quantity < amount_for_min:
                 raise Exception("Not enough supply")
 
-            amount_to_move = min(amount_for_max, amount_in_hangar)
+            amount_to_move = min(amount_for_max, item_to_move.quantity)
             if amount_to_move > 0:
                 self.ui.inventory.move_item(
-                    self.ui.inventory.items[0].node,
+                    item_to_move.node,
                     self.ui.inventory.active_ship_hangar,
                     amount_to_move,
                 )
@@ -224,11 +225,12 @@ class AbyssBot:
             self.ui.inventory.search_for(drone_type)
             self.ui.inventory.update_items()
 
-            if not self.ui.inventory.items:
+            drone_item = next((i for i in self.ui.inventory.items if i.name == drone_type), None)
+
+            if not drone_item or drone_item.quantity < pick_up_quantity:
                 raise Exception("Not enough drones")
 
-            item_node = self.ui.inventory.items[0].node
-            self.ui.inventory.move_item(item_node, self.ui.inventory.active_ship_drone_bay, pick_up_quantity)
+            self.ui.inventory.move_item(drone_item.node, self.ui.inventory.active_ship_drone_bay, pick_up_quantity)
 
     def repair(self):
         self.ui.inventory.repair_active_ship()
@@ -259,15 +261,14 @@ class AbyssBot:
         # Inventory
         self.ui.inventory.stack_all()
         self.ui.inventory.update()
-        if self.ui.inventory.capacity_max / self.ui.inventory.capacity_filled > 0.8:
+        if self.ui.inventory.capacity_filled / self.ui.inventory.capacity_max > 0.8:
             return True
 
-        for supply_name, supply_amounts in config.ABYSSAL_SUPPLIES:
+        for supply_name, supply_amounts in config.ABYSSAL_SUPPLIES.items():
             self.ui.inventory.search_for(supply_name)
             self.ui.inventory.update_items()
-            if not self.ui.inventory.items:
-                return True
-            if self.ui.inventory.items[0].quantity < supply_amounts[0]:
+            item = next((i for i in self.ui.inventory.items if i.name == supply_name), None)
+            if not item or item.quantity < supply_amounts[0]:
                 return True
 
         return False

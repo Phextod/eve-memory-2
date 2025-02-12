@@ -96,6 +96,8 @@ class Drones:
             elif entry_node.type == "DroneInBayEntry":
                 self.in_bay.append(Drone.from_entry_node(entry_node, UITree.instance()))
 
+        return self
+
     @staticmethod
     def launch_drones(drones: List[Drone]):
         drones.sort(key=lambda d: d.entry_node.y, reverse=True)
