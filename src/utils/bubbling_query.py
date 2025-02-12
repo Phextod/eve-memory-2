@@ -25,19 +25,20 @@ class BubblingQuery:
         self.run(refresh_on_init)
 
     def run(self, refresh=True):
-        self.result = None
+        self.result = [] if self.select_many else None
 
-        # If parent.result is a list then it shouldn't be a parent in the first place
-        root_node = None if not self.parent_query else self.parent_query.result
+        if not self.parent_query or self.parent_query.result:
+            # If parent.result is a list then it shouldn't be a parent in the first place
+            root_node = None if not self.parent_query else self.parent_query.result
 
-        self.result = UITree.instance().find_node(
-            query=self.query,
-            node_type=self.node_type,
-            select_many=self.select_many,
-            contains=self.contains,
-            root=root_node,
-            refresh=refresh,
-        )
+            self.result = UITree.instance().find_node(
+                query=self.query,
+                node_type=self.node_type,
+                select_many=self.select_many,
+                contains=self.contains,
+                root=root_node,
+                refresh=refresh,
+            )
 
         if not self.result and self.parent_query:
             if self.parent_query.run():
