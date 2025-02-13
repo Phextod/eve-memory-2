@@ -18,6 +18,19 @@ class AbyssBot:
         self.context_menu: ContextMenu = ContextMenu.instance()
         self.ui_tree: UITree = UITree.instance()
         self.abyss_fighter = AbyssFighter(ui)
+        self.start_finish_timer = time.time()
+        self.abyss_run_counter = 1
+
+    def log_abyss_start(self):
+        print(f"Abyss run {self.abyss_run_counter} start")
+        print(f"downtime: {time.time() - self.start_finish_timer}")
+        self.start_finish_timer = time.time()
+
+    def log_abyss_finish(self):
+        print(f"runtime: {time.time() - self.start_finish_timer}")
+        self.start_finish_timer = time.time()
+        print(f"Abyss run {self.abyss_run_counter} finish")
+        self.abyss_run_counter += 1
 
     def loot(self):
         """
@@ -193,7 +206,12 @@ class AbyssBot:
             self.ui.inventory.search_for(item_name)
             self.ui.inventory.update()
 
-            item_to_move = next(i for i in self.ui.inventory.items if i.name == item_name)
+            item_to_move = next((i for i in self.ui.inventory.items if i.name == item_name), None)
+
+            if item_to_move is None:
+                if amount_for_min > 0:
+                    raise Exception("Not enough supply")
+                continue
 
             if item_to_move.quantity < amount_for_min:
                 raise Exception("Not enough supply")
@@ -293,8 +311,10 @@ class AbyssBot:
         self.undock()
         self.warp_to_safe_spot()
         while True:
+            self.log_abyss_start()
             self.use_filament()
             self.do_abyss()
+            self.log_abyss_finish()
             if self.is_reset_needed():
                 self.dock_home_base()
                 self.drop_off_loot()
