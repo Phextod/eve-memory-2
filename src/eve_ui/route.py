@@ -46,8 +46,7 @@ class Route:
             is_jumping = context_menu.click("Jump through stargate")
             is_docking = context_menu.click("Dock")
 
-        if is_jumping:
-            click(self.route_sprites[0], MOUSE_RIGHT)
+        click(self.route_sprites[0], MOUSE_RIGHT)
 
         while is_jumping and context_menu.click_safe("Jump through stargate", 5):
             if not wait_for_truthy(lambda: TimerNames.jumpCloak.value in timers.update().timers, 60):
@@ -58,7 +57,7 @@ class Route:
             else:
                 return False
 
-        if not is_docking and context_menu.click_safe("Dock", 5):
+        if context_menu.click_safe("Dock", 5):
             wait_for_truthy(lambda: ship_ui.update().main_container_query.result is None, 60)
             return True
 

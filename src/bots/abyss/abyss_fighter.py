@@ -212,8 +212,8 @@ class AbyssFighter:
 
         while len(potential_caches) == 1 and "largeCollidableStructure" in potential_caches[0].icon:
             self.manage_drones()
-            manage_weapons = not any(d.status != DroneStatus.returning for d in self.ui.drones.update().in_space)
-            self.manage_modules(manage_weapons)
+            active_drones_in_space = any(d.status != DroneStatus.returning for d in self.ui.drones.update().in_space)
+            self.manage_modules(manage_weapons=not active_drones_in_space)
 
             self.ui.overview.update()
             potential_caches = [e for e in self.ui.overview.entries if "Cache" in e.type]
