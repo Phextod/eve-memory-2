@@ -42,15 +42,15 @@ class Drone:
 
         struct_gauge = ui_tree.find_node({'_name': 'structGauge'}, root=entry_node, refresh=False)
         struct_fill = ui_tree.find_node(node_type="Fill", root=struct_gauge, refresh=False)
-        structure_percent = struct_fill.attrs["_displayWidth"] / struct_gauge.attrs["_displayWidth"]
+        structure_percent = struct_fill.attrs.get("_displayWidth", 0) / struct_gauge.attrs.get("_displayWidth", 1)
 
         armor_gauge = ui_tree.find_node({'_name': 'armorGauge'}, root=entry_node, refresh=False)
         armor_fill = ui_tree.find_node(node_type="Fill", root=armor_gauge, refresh=False)
-        armor_percent = armor_fill.attrs["_displayWidth"] / armor_gauge.attrs["_displayWidth"]
+        armor_percent = armor_fill.attrs.get("_displayWidth", 0) / armor_gauge.attrs.get("_displayWidth", 1)
 
         shield_gauge = ui_tree.find_node({'_name': 'shieldGauge'}, root=entry_node, refresh=False)
         shield_fill = ui_tree.find_node(node_type="Fill", root=shield_gauge, refresh=False)
-        shield_percent = shield_fill.attrs["_displayWidth"] / shield_gauge.attrs["_displayWidth"]
+        shield_percent = shield_fill.attrs.get("_displayWidth", 0) / shield_gauge.attrs.get("_displayWidth", 1)
 
         status = DroneStatus.idle
         status_split = type_node.attrs.get("_setText").split(">")

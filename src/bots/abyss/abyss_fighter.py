@@ -174,8 +174,7 @@ class AbyssFighter:
                 continue
             self.ui.drones.recall(drone)
 
-        if any(d.status == DroneStatus.idle for d in self.ui.drones.in_space) \
-                and not any(d.status == DroneStatus.returning for d in self.ui.drones.in_space):
+        if not any(d.status == DroneStatus.returning for d in self.ui.drones.in_space):
             self.ui.drones.attack_target()
 
     def deactivate_modules(self):
