@@ -1,3 +1,4 @@
+import copy
 from dataclasses import dataclass
 from enum import Enum
 from typing import List
@@ -24,6 +25,7 @@ class Drone:
     armor_percent: float
     structure_percent: float
     status: DroneStatus
+    quantity: int
 
     @staticmethod
     def from_entry_node(entry_node, ui_tree):
@@ -33,6 +35,10 @@ class Drone:
             refresh=False,
         )
         name = type_node.attrs.get("_setText").split(" <")[0]
+
+        quantity = int(name.split("(")[1].replace(")", "")) if "(" in name else 1
+        if quantity > 1:
+            name = name.split(" (")[0]
 
         struct_gauge = ui_tree.find_node({'_name': 'structGauge'}, root=entry_node, refresh=False)
         struct_fill = ui_tree.find_node(node_type="Fill", root=struct_gauge, refresh=False)
@@ -61,7 +67,8 @@ class Drone:
             shield_percent=shield_percent,
             armor_percent=armor_percent,
             structure_percent=structure_percent,
-            status=status
+            status=status,
+            quantity=quantity,
         )
 
 
@@ -91,10 +98,22 @@ class Drones:
         self.drone_entries_query.run(refresh)
 
         for entry_node in self.drone_entries_query.result:
-            if entry_node.type == "DroneInSpaceEntry":
-                self.in_space.append(Drone.from_entry_node(entry_node, UITree.instance()))
-            elif entry_node.type == "DroneInBayEntry":
-                self.in_bay.append(Drone.from_entry_node(entry_node, UITree.instance()))
+            if "NoDroneIn" in entry_node.type:
+                continue
+            drone = Drone.from_entry_node(entry_node, UITree.instance())
+            if drone.quantity == 1:
+                if entry_node.type == "DroneInSpaceEntry":
+                    self.in_space.append(drone)
+                elif entry_node.type == "DroneInBayEntry":
+                    self.in_bay.append(drone)
+            else:
+                for _ in range(drone.quantity):
+                    copy_drone = copy.deepcopy(drone)
+                    copy_drone.quantity = 1
+                    if entry_node.type == "DroneInSpaceEntry":
+                        self.in_space.append(copy_drone)
+                    elif entry_node.type == "DroneInBayEntry":
+                        self.in_bay.append(copy_drone)
 
         return self
 
