@@ -9,8 +9,6 @@ from src.bots.abyss.ship_attributes import Tank, DamageType
 @dataclass
 class AbyssShip(Ship):
     name: str
-    signature_radius: float
-    max_velocity: float
 
     # Additional info
     # primary_ewar: str
@@ -78,7 +76,13 @@ class AbyssShip(Ship):
         ship_data.update({"turret_falloff": in_data.get("falloff")})
         ship_data.update({"turret_optimal_range": in_data.get("maxRange")})
         ship_data.update({"turret_tracking": in_data.get("trackingSpeed")})
-        ship_data.update({"turret_rate_of_fire": in_data.get("speed", 0) / 1000})
+
+        time_between_shots = in_data.get("speed", 0) / 1000
+        ship_data.update({"turret_time_between_shots": time_between_shots})
+        ship_data.update(
+            {"dmg_multiplier_bonus_per_second": in_data.get("damageMultiplierBonusPerCycle", 0.0) / time_between_shots}
+        )
+        ship_data.update({"dmg_multiplier_bonus_max": in_data.get("damageMultiplierBonusMax", 0.0)})
 
         # Missile
         missile_damage_multiplier = in_data.get("missileDamageMultiplier", 1.0)
@@ -100,7 +104,7 @@ class AbyssShip(Ship):
             {"missile_explosion_velocity": missile_data.get("aoeVelocity", 0) * missile_explosion_velocity_bonus}
         )
         ship_data.update({"missile_damage_reduction_factor": missile_data.get("aoeDamageReductionFactor", 0.0)})
-        ship_data.update({"missile_rate_of_fire": in_data.get("missileLaunchDuration", 0) / 1000})
+        ship_data.update({"missile_time_between_shots": in_data.get("missileLaunchDuration", 0) / 1000})
 
         return AbyssShip(**ship_data)
 

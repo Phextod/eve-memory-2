@@ -1,5 +1,7 @@
+import copy
 import json
-from typing import Dict
+import math
+from typing import Dict, List
 
 from src import config
 from src.bots.abyss.abyss_ship import AbyssShip
@@ -11,6 +13,28 @@ from src.eve_ui.overview import OverviewEntry
 from src.eve_ui.ship_ui import ShipModule
 from src.utils.ui_tree import UITree
 from src.utils.utils import get_path, wait_for_truthy, move_cursor, click
+
+
+class Stage:
+    def __init__(self, enemies, _target, _player):
+        self.enemies: List[AbyssShip] = enemies
+        self.target: Ship = _target
+        self.duration: float = _target.hp / (_player.turret + _player.missile)
+
+    def get_dmg_taken(self, time_from_start, player: Ship):
+        total_dmg_to_player = 0
+
+        for enemy in self.enemies:
+            total_dmg_to_player += enemy.get_dps_to(player, time_from_start) * self.duration
+
+    @staticmethod
+    def calc_total_dmg_to_player(stages: List["Stage"], player: Ship):
+        total_dmg_taken = 0
+        total_time = 0
+        for stage in stages:
+            total_time += stage.duration
+            total_dmg_taken += stage.get_dmg_taken(total_time, player)
+        return total_dmg_taken
 
 
 class AbyssFighter:
@@ -53,54 +77,6 @@ class AbyssFighter:
             item_data = json.load(file)
         for key, ship_data in ships_data.items():
             self.enemy_ship_data.append(AbyssShip.from_json(ship_data, item_data))
-
-    @staticmethod
-    def get_missile_applied_dps(ship: Ship, target_signature_radius, target_velocity):
-        # https://wiki.eveuniversity.org/Missile_mechanics
-        term1 = target_signature_radius / ship.missile_explosion_radius
-        term2 = ((target_signature_radius * ship.missile_explosion_velocity)
-                 / (ship.missile_explosion_radius * target_velocity)) ** ship.missile_damage_reduction_factor
-        dmg_multiplier = min(1, term1, term2)
-
-        dps = dict()
-        for dmg_type, dmg in ship.missile_damage_profile.items():
-            rate_of_fire_multiplier = 1 / ship.missile_rate_of_fire
-            dps.update({dmg_type: dmg * rate_of_fire_multiplier * dmg_multiplier})
-        return dps
-
-    @staticmethod
-    def get_turret_applied_dps(ship: Ship, target_signature_radius, target_distance, target_angular=0.0):
-        # https://wiki.eveuniversity.org/Turret_mechanics
-        tracking_terms = ((target_angular * 40_000) / (ship.turret_tracking * target_signature_radius)) ** 2
-        range_terms = (max(0, target_distance - ship.turret_optimal_range) / ship.turret_falloff) ** 2
-        hit_chance = 0.5 ** (tracking_terms + range_terms)
-        normalised_dmg_multiplier = 0.5 * min(hit_chance ** 2 + 0.98 * hit_chance + 0.0501, 6 * hit_chance)
-
-        dps = dict()
-        for dmg_type, dmg in ship.turret_damage_profile.items():
-            rate_of_fire_multiplier = 1 / ship.turret_rate_of_fire
-            dps.update({dmg_type: dmg * rate_of_fire_multiplier * normalised_dmg_multiplier})
-        return dps
-
-    @staticmethod
-    def get_time_to_kill(ship: Ship, applied_dps: Dict[DamageType, float]):
-        time_to_kill = 0.0
-        real_dps_to_shield = 0.0
-        for dmg_type, dmg_value in applied_dps.items():
-            real_dps_to_shield += dmg_value * ship.shield.resist_profile[dmg_type]
-        time_to_kill += ship.shield.hp / real_dps_to_shield
-
-        real_dps_to_armor = 0.0
-        for dmg_type, dmg_value in applied_dps.items():
-            real_dps_to_armor += dmg_value * ship.armor.resist_profile[dmg_type]
-        time_to_kill += ship.armor.hp / real_dps_to_armor
-
-        real_dps_to_structure = 0.0
-        for dmg_type, dmg_value in applied_dps.items():
-            real_dps_to_structure += dmg_value * ship.structure.resist_profile[dmg_type]
-        time_to_kill += ship.structure.hp / real_dps_to_structure
-
-        return time_to_kill
 
     def manage_navigation(self):
         self.ui.ship_ui.update()
@@ -196,6 +172,37 @@ class AbyssFighter:
                 continue
             clear_order.append(e.type)
         return clear_order
+
+    def calculate_clear_stages(self, enemy_types, player_ship):
+        best_stage_order = []
+        best_target_order = []
+
+        enemies = [self.enemy_ship_data[enemy_type] for enemy_type in enemy_types]
+
+        ewar_enemies = [e for e in enemies if e.target_resist_multi or e.missile_multi or e.turret_multi]
+        not_ewar_enemies = [e for e in enemies if e not in ewar_enemies]
+        ordered_enemies = not_ewar_enemies + ewar_enemies
+
+        for i in range(len(ordered_enemies)):
+            previous_target_order = best_target_order.copy()
+            least_dmg_taken = float("inf")
+            for j in range(len(previous_target_order) + 1):
+                target_order = previous_target_order.copy()
+                target_order.insert(j, ordered_enemies[i])
+                stages = []
+                temp_enemies = ordered_enemies.copy()
+
+                for target in target_order:
+                    stages.append(Stage(temp_enemies.copy(), target, player_ship))
+                    temp_enemies.remove(target)
+                dmg_taken = Stage.calc_total_dmg_to_player(stages, player_ship)
+
+                if dmg_taken < least_dmg_taken:
+                    least_dmg_taken = dmg_taken
+                    best_target_order = target_order.copy()
+                    best_stage_order = stages.copy()
+
+        return best_stage_order
 
     def open_bio_cache(self):
         potential_caches = [e for e in self.ui.overview.entries if "Cache" in e.type]

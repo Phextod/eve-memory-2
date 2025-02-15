@@ -9,3 +9,4 @@ out/*
 !out/.gitkeep
 /data/dogma_attributes.json
 /data/types.json
+/src/debug.py.pclprof
