@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Dict
+from typing import Dict, Optional
 
 
 class DamageType(Enum):
@@ -10,9 +10,13 @@ class DamageType(Enum):
 
 
 class Tank:
-    def __init__(self, hp: int, resist_profile: Dict[DamageType, float]):
-        self.hp = hp
+    def __init__(self, max_hp: int, resist_profile: Dict[DamageType, float], current_hp: Optional[int] = None):
+        self.max_hp = max_hp
         self.resist_profile = resist_profile
+
+        if current_hp is None:
+            current_hp = max_hp
+        self.current_hp = current_hp
 
     def get_effective_dmg_from(self, damage_profile: Dict[DamageType, int]):
         effective_dmg = dict()

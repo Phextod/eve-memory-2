@@ -18,6 +18,9 @@ SHIP_RELEVANT_GROUP_IDS = [
 ITEM_RELEVANT_GROUP_IDS = [
     384,  # Light Missile
     385,  # Heavy Missile
+    387,  # Rocket
+    386,  # Cruise Missile
+    772,  # Heavy Assault Missile
 ]
 
 
