@@ -9,12 +9,14 @@ from src.bots.abyss.ship import Ship
 class AbyssShip(Ship):
     name: str
 
-    # Additional info
-    # primary_ewar: str
-    # secondary_ewar: int
-    # neut_per_second: int
+    # NPC navigation
     orbit_velocity: int
     npc_orbit_range: int
+
+    # EWAR
+    web_speed_multiplier: float
+    energy_neut_amount: int
+    painter_signature_radius_multiplier: float
 
     dmg_without_orbit: np.float64 = field(default=np.float64("inf"))
     dmg_with_orbit: np.float64 = field(default=np.float64("inf"))
@@ -131,7 +133,17 @@ class AbyssShip(Ship):
             {"missile_rate_of_fire": 1 / missile_time_between_shots if missile_time_between_shots else 0.0}
         )
         ship_data.update(
-            {"missile_range": int((missile_data.get("explosionDelay", 0) / 1000) * missile_data.get("maxVelocity", 0))}
+            {"missile_range": int(
+                (missile_data.get("explosionDelay", 0) / 1000) *
+                missile_data.get("maxVelocity", 0) *
+                in_data.get("missileEntityVelocityMultiplier", 1.0) *
+                in_data.get("missileEntityFlightTimeMultiplier", 1.0)
+            )}
         )
+
+        # EWAR
+        ship_data.update({"web_speed_multiplier": in_data.get("speedFactor", 0.0) / 100 + 1})
+        ship_data.update({"energy_neut_amount": in_data.get("energyNeutralizerAmount", 0)})
+        ship_data.update({"painter_signature_radius_multiplier": in_data.get("signatureRadiusBonus", 0.0) / 100 + 1})
 
         return AbyssShip(**ship_data)

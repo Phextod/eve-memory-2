@@ -41,24 +41,17 @@ enemy_types = [
     "Anchoring Damavik",
     "Anchoring Damavik",
     "Anchoring Damavik",
-    "Anchoring Damavik",
-    "Anchoring Damavik",
-    "Anchoring Damavik",
-    "Anchoring Damavik",
-    "Anchoring Damavik",
-    "Anchoring Damavik",
-    "Anchoring Damavik",
-    "Anchoring Damavik",
-    "Anchoring Damavik",
-    "Anchoring Damavik",
-    "Anchoring Damavik",
-    "Anchoring Damavik",
+    "Shining Vila Damavik",
+    "Lucid Upholder",
+    "Devoted Knight"
 ]
 enemies = [next(copy.deepcopy(e) for e in fighter.enemy_ship_data if e.name == t) for t in enemy_types]
 
 
 fight_plan = FightPlan(config.ABYSSAL_PLAYER_SHIP, enemies)
 best_stages = fight_plan.find_best_plan()
+
+fight_plan._evaluate_stage_order(best_stages)
 
 for i, stage in enumerate(best_stages):
     print(

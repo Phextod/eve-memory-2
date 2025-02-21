@@ -1,3 +1,4 @@
+import copy
 import itertools
 from collections import Counter
 from typing import List
@@ -17,6 +18,11 @@ class Stage:
 
         self.duration = 0.0
 
+    def apply_enemy_ewar(self, player: PlayerShip):
+        for enemy in self.enemies:
+            player.max_velocity *= enemy.web_speed_multiplier
+            player.signature_radius *= enemy.painter_signature_radius_multiplier
+
     def update_stage_duration(self, player: PlayerShip, time_from_start, same_orbit_target_duration):
         # https://wiki.eveuniversity.org/Velocity#Angular_Velocity
         target_angular = (self.target.orbit_velocity or self.target.max_velocity) \
@@ -25,7 +31,7 @@ class Stage:
 
         if self.target == self.orbit_target:
             orbit_range = 2_500
-            target_distance = self.target.npc_orbit_range or self.target.turret_optimal_range
+            target_distance = self.target.npc_orbit_range or self.target.turret_optimal_range or 10_000
 
             velocity_diff = max(1.0, player.max_velocity - self.target.max_velocity)
 
@@ -93,9 +99,13 @@ class Stage:
         total_dmg_to_player = 0
 
         for enemy in self.enemies:
+
+            # Neut weighed as a big damage
+            total_dmg_to_player += self.duration * enemy.energy_neut_amount * 10_000
+
             if enemy == self.orbit_target:
                 orbit_range = 2_500
-                target_distance = self.target.npc_orbit_range
+                target_distance = self.target.npc_orbit_range or self.target.turret_optimal_range or 10_000
                 velocity_diff = player.max_velocity - self.target.max_velocity
                 time_to_orbit = max(0.0, (target_distance - orbit_range) / velocity_diff - same_orbit_target_duration)
 
@@ -126,7 +136,7 @@ class Stage:
                     time_from_start=time_from_start,
                     target_distance=distance_from_player,
                     target_velocity=player.max_velocity,
-                    target_angular=(player.max_velocity / distance_from_player) * 0.25  # todo try different multipliers
+                    target_angular=(player.max_velocity / distance_from_player) * 0.15  # todo try different multipliers
                 )
 
         return total_dmg_to_player
@@ -136,8 +146,13 @@ class FightPlan:
     def __init__(self, player: PlayerShip, enemies: List[AbyssShip]):
         self.player = player
 
-        # todo: filter ewar enemies
-        ewar_enemies = []
+        ewar_enemies = [
+            e for e in enemies if (
+                e.web_speed_multiplier < 1.0
+                or e.painter_signature_radius_multiplier < 1.0
+                or e.energy_neut_amount > 0
+            )
+        ]
         not_ewar_enemies = [e for e in enemies if e not in ewar_enemies]
         self.ordered_enemies = not_ewar_enemies + ewar_enemies
 
@@ -149,13 +164,16 @@ class FightPlan:
         same_orbit_target_duration = 0.0
 
         for stage in stages:
+            player = copy.deepcopy(self.player)
+            stage.apply_enemy_ewar(player)
+
             if stage.orbit_target != previous_orbit_target:
                 previous_orbit_target = stage.orbit_target
                 same_orbit_target_duration = 0.0
 
-            stage.update_stage_duration(self.player, total_time, same_orbit_target_duration)
+            stage.update_stage_duration(player, total_time, same_orbit_target_duration)
             total_time += stage.duration
-            total_dmg_taken += stage.get_dmg_taken_by_player(self.player, total_time, same_orbit_target_duration)
+            total_dmg_taken += stage.get_dmg_taken_by_player(player, total_time, same_orbit_target_duration)
 
             same_orbit_target_duration += stage.duration
 
@@ -204,12 +222,17 @@ class FightPlan:
         return best_stage_order, dmg_taken
 
     def find_best_plan(self):
-        enemies_types_worth_orbiting = [
+        enemy_types_to_orbit = [
             e.name for e in self.ordered_enemies
-            if e.dmg_without_orbit > e.dmg_with_orbit * 2
+            if e.dmg_without_orbit > e.dmg_with_orbit * 10
         ]
 
-        orbit_target_types_orders = set(itertools.permutations(enemies_types_worth_orbiting))
+        enemy_types_to_orbit += [
+            e.name for e in self.ordered_enemies
+            if e.dmg_without_orbit > e.dmg_with_orbit * 2
+        ][:max(0, 3 - len(enemy_types_to_orbit))]
+
+        orbit_target_types_orders = set(itertools.permutations(enemy_types_to_orbit))
 
         orbit_target_lists = []
         for orbit_target_types_order in orbit_target_types_orders:

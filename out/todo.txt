@@ -23,10 +23,10 @@ abyss clear:
 ✔ get dps calculations for room
 ✔ determine clear order
 
-calc neut
+✔ calc neut
 use navigation plan in fight
 prevent ship from going out of bounds
-apply ewar to player
+✔ calc applied ewar to player
 apply ewar to enemies
 apply weather (and support structure) effects
 handle modules
