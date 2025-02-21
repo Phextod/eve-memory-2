@@ -5,8 +5,8 @@ from typing import Dict, List
 
 from src import config
 from src.bots.abyss.abyss_ship import AbyssShip
+from src.bots.abyss.fight_plan import Stage
 from src.bots.abyss.ship import Ship
-from src.bots.abyss.ship_attributes import DamageType
 from src.eve_ui.drones import DroneStatus
 from src.eve_ui.eve_ui import EveUI
 from src.eve_ui.overview import OverviewEntry
@@ -19,12 +19,14 @@ class AbyssFighter:
     def __init__(self):  # , ui: EveUI):
         self.ui_tree: UITree = None  # UITree.instance()
         self.ui = None  # ui
-        # exported from: https://caldarijoans.streamlit.app/Abyssal_Enemies_Database
+
         self.enemy_ship_data: List[AbyssShip] = []
+
         self.load_enemy_ships(
             get_path(config.ABYSSAL_SHIP_DATA_PATH),
             get_path(config.ABYSSAL_ITEM_DATA_PATH)
         )
+        self.precompute_enemy_ship_attributes()
 
     def get_weather_modifiers(self):
         move_cursor(self.ui.ship_ui.buff_buttons[0].get_center())
@@ -55,6 +57,27 @@ class AbyssFighter:
             item_data = json.load(file)
         for key, ship_data in ships_data.items():
             self.enemy_ship_data.append(AbyssShip.from_json(ship_data, item_data))
+
+    def precompute_enemy_ship_attributes(self):
+        for enemy in self.enemy_ship_data:
+            no_orbit_stage = Stage([enemy], enemy, None)
+            no_orbit_stage.update_stage_duration(config.ABYSSAL_PLAYER_SHIP, 0.0, 0.0)
+            no_orbit_dmg = no_orbit_stage.get_dmg_taken_by_player(
+                config.ABYSSAL_PLAYER_SHIP,
+                no_orbit_stage.duration,
+                0.0
+            )
+
+            orbit_stage = Stage([enemy], enemy, enemy)
+            orbit_stage.update_stage_duration(config.ABYSSAL_PLAYER_SHIP, 0.0, 0.0)
+            orbit_dmg = orbit_stage.get_dmg_taken_by_player(
+                config.ABYSSAL_PLAYER_SHIP,
+                orbit_stage.duration,
+                0.0
+            )
+
+            enemy.dmg_without_orbit = no_orbit_dmg
+            enemy.dmg_with_orbit = orbit_dmg
 
     def manage_navigation(self):
         self.ui.ship_ui.update()

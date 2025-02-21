@@ -1,34 +1,48 @@
 from dataclasses import dataclass
-from typing import Dict
+from typing import Dict, Optional
 
-from src.bots.abyss.ship_attributes import Tank, DamageType
+import numpy as np
+from line_profiler_pycharm import profile
 
 
 @dataclass
 class Ship:
-    shield: Tank
-    armor: Tank
-    structure: Tank
+    # shield[em, thermal, kinetic, explosive]
+    # armor[em, thermal, kinetic, explosive]
+    # structure[em, thermal, kinetic, explosive]
+    # RESONANCE values!!! (eg.: 0.2 resist => 0.8 resonance)
+    resist_matrix: np.ndarray
+
+    shield_max_hp: int
+    shield_hp: int
+
+    armor_max_hp: int
+    armor_hp: int
+
+    structure_max_hp: int
+    structure_hp: int
 
     max_velocity: float
     signature_radius: float
 
     # Weapon
     # Turret
-    turret_damage_profile: Dict[DamageType, float]
+    # [em, thermal, kinetic, explosive]
+    turret_damage_profile: np.ndarray
     turret_falloff: int
     turret_optimal_range: int
-    turret_time_between_shots: float
+    turret_rate_of_fire: float
     turret_tracking: int
     dmg_multiplier_bonus_per_second: float
     dmg_multiplier_bonus_max: float
 
     # Missile
-    missile_damage_profile: Dict[DamageType, float]
+    # [em, thermal, kinetic, explosive]
+    missile_damage_profile: np.ndarray
     missile_explosion_radius: float
     missile_explosion_velocity: float
     missile_damage_reduction_factor: float
-    missile_time_between_shots: float
+    missile_rate_of_fire: float
     missile_range: int
 
     def get_dps_to(
@@ -39,8 +53,8 @@ class Ship:
             target_velocity,
             target_angular,
     ):
-        applied_dps = {DamageType.em: 0.0, DamageType.thermal: 0.0, DamageType.kinetic: 0.0, DamageType.explosive: 0.0}
-        if self.turret_time_between_shots > 0:
+        applied_dps = np.zeros(4)
+        if self.turret_rate_of_fire > 0:
             spooling = 1.0 + min(self.dmg_multiplier_bonus_per_second * time_from_start, self.dmg_multiplier_bonus_max)
             applied_dps = self.get_turret_applied_dps_to(
                 target.signature_radius,
@@ -48,40 +62,35 @@ class Ship:
                 target_angular,
                 spooling,
             )
-        elif self.missile_time_between_shots > 0 and target_distance <= self.missile_range:
+        elif self.missile_rate_of_fire > 0 and target_distance <= self.missile_range:
             applied_dps = self.get_missile_applied_dps_to(target.signature_radius, target_velocity)
+
         return target.apply_resists_to_dps(applied_dps)
 
-    def apply_resists_to_dps(self, incoming_dps: Dict[DamageType, float]):
-        for _, dmg_value in incoming_dps.items():
-            if dmg_value > 0:
-                break
-        else:
+    def apply_resists_to_dps(self, incoming_dps: Optional[np.ndarray]):
+        incoming_dps.reshape(4, 1)
+        dps_values = self.resist_matrix @ incoming_dps  # (3×4) @ (4×1) -> (3×1)
+
+        if not np.any(dps_values):
             return 0.0
 
-        shield_dps = \
-            sum([(1 - self.shield.resist_profile[dmg_type]) * dmg for dmg_type, dmg in incoming_dps.items()])
-        armor_dps = \
-            sum([(1 - self.armor.resist_profile[dmg_type]) * dmg for dmg_type, dmg in incoming_dps.items()])
-        structure_dps = \
-            sum([(1 - self.structure.resist_profile[dmg_type]) * dmg for dmg_type, dmg in incoming_dps.items()])
-        ttk_sum = self.shield.current_hp / shield_dps \
-            + self.armor.current_hp / armor_dps \
-            + self.structure.current_hp / structure_dps
-        return (self.shield.current_hp + self.armor.current_hp + self.structure.current_hp) / ttk_sum
+        ttk_sum = self.shield_hp / dps_values[0] \
+            + self.armor_hp / dps_values[1] \
+            + self.structure_hp / dps_values[2]
+        return (self.shield_hp + self.armor_hp + self.structure_hp) / ttk_sum
 
     def get_turret_applied_dps_to(
             self,
             target_signature_radius,
             target_distance,
             target_angular,
-            multiplier=1.0
+            spooling_multiplier=1.0
     ):
         """
         :param target_distance: in meters
         :param target_signature_radius: aka target size
         :param target_angular: angular velocity in radian per second
-        :param multiplier: multiplier used for spooling damage (>1.0)
+        :param spooling_multiplier: multiplier used for spooling damage (>1.0)
         """
         # https://wiki.eveuniversity.org/Turret_mechanics
         tracking_terms = ((target_angular * 40_000) / (self.turret_tracking * target_signature_radius)) ** 2
@@ -89,11 +98,9 @@ class Ship:
         hit_chance = 0.5 ** (tracking_terms + range_terms)
         normalised_dmg_multiplier = 0.5 * min(hit_chance ** 2 + 0.98 * hit_chance + 0.0501, 6 * hit_chance)
 
-        applied_dmg = {}
-        for dmg_type, dmg in self.turret_damage_profile.items():
-            rate_of_fire_multiplier = 1 / self.turret_time_between_shots
-            applied_dmg.update({dmg_type: dmg * rate_of_fire_multiplier * normalised_dmg_multiplier * multiplier})
-        return applied_dmg
+        effective_dmg_multiplier = self.turret_rate_of_fire * normalised_dmg_multiplier * spooling_multiplier
+
+        return self.turret_damage_profile * effective_dmg_multiplier
 
     def get_missile_applied_dps_to(self, target_signature_radius, target_velocity):
         # https://wiki.eveuniversity.org/Missile_mechanics
@@ -102,8 +109,4 @@ class Ship:
                  / (self.missile_explosion_radius * target_velocity)) ** self.missile_damage_reduction_factor
         dmg_multiplier = min(1, term1, term2)
 
-        applied_dmg = {}
-        for dmg_type, dmg in self.missile_damage_profile.items():
-            rate_of_fire_multiplier = 1 / self.missile_time_between_shots
-            applied_dmg.update({dmg_type: dmg * rate_of_fire_multiplier * dmg_multiplier})
-        return applied_dmg
+        return self.missile_damage_profile * (self.missile_rate_of_fire * dmg_multiplier)

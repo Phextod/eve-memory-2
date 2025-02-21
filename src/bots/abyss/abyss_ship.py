@@ -1,9 +1,8 @@
-from dataclasses import dataclass
-from enum import Enum
-from typing import Dict
+from dataclasses import dataclass, field
+
+import numpy as np
 
 from src.bots.abyss.ship import Ship
-from src.bots.abyss.ship_attributes import Tank, DamageType
 
 
 @dataclass
@@ -16,6 +15,15 @@ class AbyssShip(Ship):
     # neut_per_second: int
     orbit_velocity: int
     npc_orbit_range: int
+
+    dmg_without_orbit: np.float64 = field(default=np.float64("inf"))
+    dmg_with_orbit: np.float64 = field(default=np.float64("inf"))
+
+    def __eq__(self, other: "AbyssShip"):
+        return (
+            other is not None and
+            id(self) == id(other)
+        )
 
     @staticmethod
     def from_json(in_data: dict, item_data: dict):
@@ -33,58 +41,66 @@ class AbyssShip(Ship):
         ship_data.update({"npc_orbit_range": in_data.get("npcBehaviorMaximumCombatOrbitRange", 0)})
 
         # Tanks
+        ship_data.update({
+            "resist_matrix":
+                np.array([
+                    [
+                        in_data.get("shieldEmDamageResonance", 1.0),
+                        in_data.get("shieldThermalDamageResonance", 1.0),
+                        in_data.get("shieldKineticDamageResonance", 1.0),
+                        in_data.get("shieldExplosiveDamageResonance", 1.0),
+                    ],
+                    [
+                        in_data.get("armorEmDamageResonance", 1.0),
+                        in_data.get("armorThermalDamageResonance", 1.0),
+                        in_data.get("armorKineticDamageResonance", 1.0),
+                        in_data.get("armorExplosiveDamageResonance", 1.0),
+                    ],
+                    [
+                        in_data.get("emDamageResonance", 1.0),
+                        in_data.get("thermalDamageResonance", 1.0),
+                        in_data.get("kineticDamageResonance", 1.0),
+                        in_data.get("explosiveDamageResonance", 1.0),
+                    ]
+                ])
+        })
+
         # Shield
         shield_max_hp = in_data.get("shieldCapacity", 0)
-        shield_resists = {
-            DamageType.em: in_data.get("shieldEmDamageResonance", 0.0),
-            DamageType.thermal: in_data.get("shieldThermalDamageResonance", 0.0),
-            DamageType.kinetic: in_data.get("shieldKineticDamageResonance", 0.0),
-            DamageType.explosive: in_data.get("shieldExplosiveDamageResonance", 0.0),
-        }
-        shield_current_hp = in_data.get("shieldCharge", None)
-        ship_data.update({"shield": Tank(shield_max_hp, shield_resists, shield_current_hp)})
+        ship_data.update({"shield_max_hp": shield_max_hp})
+        ship_data.update({"shield_hp": in_data.get("shieldCharge", shield_max_hp)})
 
         # Armor
         armor_max_hp = in_data.get("armorHP", 0)
-        armor_resists = {
-            DamageType.em: in_data.get("armorEmDamageResonance", 0),
-            DamageType.thermal: in_data.get("armorThermalDamageResonance", 0),
-            DamageType.kinetic: in_data.get("armorKineticDamageResonance", 0),
-            DamageType.explosive: in_data.get("armorExplosiveDamageResonance", 0),
-        }
-        current_armor_hp = armor_max_hp - in_data.get("armorDamage", 0.0)
-        ship_data.update({"armor": Tank(armor_max_hp, armor_resists, current_armor_hp)})
+        ship_data.update({"armor_max_hp": armor_max_hp})
+        ship_data.update({"armor_hp": armor_max_hp - in_data.get("armorDamage", 0.0)})
 
         # Structure
         structure_max_hp = in_data.get("hp", 0)
-        structure_resists = {
-            DamageType.em: in_data.get("emDamageResonance", 0.0),
-            DamageType.thermal: in_data.get("thermalDamageResonance", 0.0),
-            DamageType.kinetic: in_data.get("kineticDamageResonance", 0.0),
-            DamageType.explosive: in_data.get("explosiveDamageResonance", 0.0),
-        }
-        current_structure_hp = structure_max_hp - in_data.get("damage", 0.0)
-        ship_data.update({"structure": Tank(structure_max_hp, structure_resists, current_structure_hp)})
+        ship_data.update({"structure_max_hp": structure_max_hp})
+        ship_data.update({"structure_hp": structure_max_hp - in_data.get("damage", 0.0)})
 
         # Offensive
         # Turret
         turret_damage_multiplier = in_data.get("damageMultiplier", 1.0)
-        turret_damage_profile = {
-            DamageType.em: in_data.get("emDamage", 0.0 * turret_damage_multiplier),
-            DamageType.thermal: in_data.get("thermalDamage", 0.0) * turret_damage_multiplier,
-            DamageType.kinetic: in_data.get("kineticDamage", 0.0) * turret_damage_multiplier,
-            DamageType.explosive: in_data.get("explosiveDamage", 0.0) * turret_damage_multiplier,
-        }
-        ship_data.update({"turret_damage_profile": turret_damage_profile})
+        ship_data.update({
+            "turret_damage_profile":
+            np.array([
+                in_data.get("emDamage", 0.0) * turret_damage_multiplier,
+                in_data.get("thermalDamage", 0.0) * turret_damage_multiplier,
+                in_data.get("kineticDamage", 0.0) * turret_damage_multiplier,
+                in_data.get("explosiveDamage", 0.0) * turret_damage_multiplier,
+            ])
+        })
         ship_data.update({"turret_falloff": in_data.get("falloff")})
-        ship_data.update({"turret_optimal_range": in_data.get("maxRange")})
+        ship_data.update({"turret_optimal_range": in_data.get("maxRange", 0)})
         ship_data.update({"turret_tracking": in_data.get("trackingSpeed", 10_000)})
 
-        time_between_shots = in_data.get("speed", 0) / 1000
-        ship_data.update({"turret_time_between_shots": time_between_shots})
+        turret_time_between_shots = in_data.get("speed", 0) / 1000
+        ship_data.update({"turret_rate_of_fire": 1 / turret_time_between_shots if turret_time_between_shots else 0.0})
         damage_multiplier_bonus_per_cycle = in_data.get("damageMultiplierBonusPerCycle", 0.0)
         ship_data.update(
-            {"dmg_multiplier_bonus_per_second": damage_multiplier_bonus_per_cycle / (time_between_shots or 1)}
+            {"dmg_multiplier_bonus_per_second": damage_multiplier_bonus_per_cycle / (turret_time_between_shots or 1)}
         )
         ship_data.update({"dmg_multiplier_bonus_max": in_data.get("damageMultiplierBonusMax", 0.0)})
 
@@ -92,13 +108,15 @@ class AbyssShip(Ship):
         missile_damage_multiplier = in_data.get("missileDamageMultiplier", 1.0)
         missile_type_id = str(in_data.get("entityMissileTypeID", ""))
         missile_data = item_data.get(missile_type_id, dict())
-        missile_damage_profile = {
-            DamageType.em: missile_data.get("emDamage", 0.0) * missile_damage_multiplier,
-            DamageType.thermal: missile_data.get("thermalDamage", 0.0) * missile_damage_multiplier,
-            DamageType.kinetic: missile_data.get("kineticDamage", 0.0) * missile_damage_multiplier,
-            DamageType.explosive: missile_data.get("explosiveDamage", 0.0) * missile_damage_multiplier,
-        }
-        ship_data.update({"missile_damage_profile": missile_damage_profile})
+        ship_data.update({
+            "missile_damage_profile":
+            np.array([
+                missile_data.get("emDamage", 0.0) * missile_damage_multiplier,
+                missile_data.get("thermalDamage", 0.0) * missile_damage_multiplier,
+                missile_data.get("kineticDamage", 0.0) * missile_damage_multiplier,
+                missile_data.get("explosiveDamage", 0.0) * missile_damage_multiplier,
+            ])
+        })
         missile_explosion_radius_multiplier = in_data.get("missileEntityAoeCloudSizeMultiplier", 1.0)
         ship_data.update(
             {"missile_explosion_radius": missile_data.get("aoeCloudSize", 0) * missile_explosion_radius_multiplier}
@@ -108,13 +126,12 @@ class AbyssShip(Ship):
             {"missile_explosion_velocity": missile_data.get("aoeVelocity", 0) * missile_explosion_velocity_bonus}
         )
         ship_data.update({"missile_damage_reduction_factor": missile_data.get("aoeDamageReductionFactor", 0.0)})
-        ship_data.update({"missile_time_between_shots": in_data.get("missileLaunchDuration", 0) / 1000})
+        missile_time_between_shots = in_data.get("missileLaunchDuration", 0) / 1000
         ship_data.update(
-            {"missile_range": int((missile_data.get("explosionDelay") / 1000) * missile_data.get("maxVelocity"))}
+            {"missile_rate_of_fire": 1 / missile_time_between_shots if missile_time_between_shots else 0.0}
+        )
+        ship_data.update(
+            {"missile_range": int((missile_data.get("explosionDelay", 0) / 1000) * missile_data.get("maxVelocity", 0))}
         )
 
         return AbyssShip(**ship_data)
-
-
-
-

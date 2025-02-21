@@ -13,16 +13,26 @@
 ship ui overheating info
 status effects (top left and middle bottom)
 ✔ repair in station
-handle packaged drones (ex: "Hobgoblin I (2)")
+✔ handle packaged drones (ex: "Hobgoblin I (2)")
 
-get own ship info from config file
+✔ get own ship info from config file
 (get own ship info from simulated fit window)
 
 
 abyss clear:
-get dps calculations for room
-determine clear order
+✔ get dps calculations for room
+✔ determine clear order
 
+calc neut
+use navigation plan in fight
+prevent ship from going out of bounds
+apply ewar to player
+apply ewar to enemies
+apply weather (and support structure) effects
+handle modules
+"spiral in" navigation instead of straight approach
+ship stuck detection and solution
+kiting / variable orbit range / keep at range
 
 
 
