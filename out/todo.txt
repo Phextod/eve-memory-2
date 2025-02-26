@@ -32,7 +32,7 @@ apply weather (and support structure) effects
 handle modules
 "spiral in" navigation instead of straight approach
 ship stuck detection and solution
-kiting / variable orbit range / keep at range
+✔ kiting / variable orbit range / keep at range
 
 
 

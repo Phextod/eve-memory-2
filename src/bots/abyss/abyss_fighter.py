@@ -1,11 +1,15 @@
 import copy
 import json
 import math
+from collections import Counter
 from typing import Dict, List
+
+import numpy as np
 
 from src import config
 from src.bots.abyss.abyss_ship import AbyssShip
-from src.bots.abyss.fight_plan import Stage
+from src.bots.abyss.fight_plan import Stage, FightPlan
+from src.bots.abyss.player_ship import PlayerShip
 from src.bots.abyss.ship import Ship
 from src.eve_ui.drones import DroneStatus
 from src.eve_ui.eve_ui import EveUI
@@ -19,6 +23,7 @@ class AbyssFighter:
     def __init__(self):  # , ui: EveUI):
         self.ui_tree: UITree = None  # UITree.instance()
         self.ui = None  # ui
+        self.player: PlayerShip = copy.deepcopy(config.ABYSSAL_PLAYER_SHIP)
 
         self.enemy_ship_data: List[AbyssShip] = []
 
@@ -41,6 +46,45 @@ class AbyssFighter:
         bonus_multiplier = float(bonus_text.split(" ")[0]) / 100
         return penalty_multiplier, bonus_multiplier
 
+    def init_room(self):
+        self.enemy_ship_data.clear()
+        self.load_enemy_ships(
+            get_path(config.ABYSSAL_SHIP_DATA_PATH),
+            get_path(config.ABYSSAL_ITEM_DATA_PATH)
+        )
+
+        self.player = copy.deepcopy(config.ABYSSAL_PLAYER_SHIP)
+
+        penalty_multiplier, bonus_multiplier = self.get_weather_modifiers()
+
+        for enemy in self.enemy_ship_data:
+            if config.ABYSSAL_WEATHER == "Electrical":
+                enemy.resist_matrix[0][0] *= penalty_multiplier
+                enemy.resist_matrix[1][0] *= penalty_multiplier
+                enemy.resist_matrix[2][0] *= penalty_multiplier
+            elif config.ABYSSAL_WEATHER == "Exotic":
+                enemy.resist_matrix[0][2] *= penalty_multiplier
+                enemy.resist_matrix[1][2] *= penalty_multiplier
+                enemy.resist_matrix[2][2] *= penalty_multiplier
+            elif config.ABYSSAL_WEATHER == "Firestorm":
+                enemy.resist_matrix[0][1] *= penalty_multiplier
+                enemy.resist_matrix[1][1] *= penalty_multiplier
+                enemy.resist_matrix[2][1] *= penalty_multiplier
+                armor_damage = enemy.armor_max_hp - enemy.armor_hp
+                enemy.armor_max_hp *= bonus_multiplier
+                enemy.armor_hp = enemy.armor_max_hp - armor_damage
+            elif config.ABYSSAL_WEATHER == "Gamma":
+                enemy.resist_matrix[0][3] *= penalty_multiplier
+                enemy.resist_matrix[1][3] *= penalty_multiplier
+                enemy.resist_matrix[2][3] *= penalty_multiplier
+                enemy.shield_max_hp *= bonus_multiplier
+            elif config.ABYSSAL_WEATHER == "Dark":
+                enemy.turret_optimal_range *= penalty_multiplier
+                enemy.turret_falloff *= penalty_multiplier
+                enemy.max_velocity *= bonus_multiplier
+
+        self.precompute_enemy_ship_attributes()
+
     def enemies_on_overview(self):
         enemy_entries = []
         for entry in self.ui.overview.entries:
@@ -59,6 +103,9 @@ class AbyssFighter:
             self.enemy_ship_data.append(AbyssShip.from_json(ship_data, item_data))
 
     def precompute_enemy_ship_attributes(self):
+        far_orbit_distance = 15_000
+        close_orbit_distance = 2_500
+
         for enemy in self.enemy_ship_data:
             no_orbit_stage = Stage([enemy], enemy, None)
             no_orbit_stage.update_stage_duration(config.ABYSSAL_PLAYER_SHIP, 0.0, 0.0)
@@ -68,48 +115,139 @@ class AbyssFighter:
                 0.0
             )
 
-            orbit_stage = Stage([enemy], enemy, enemy)
-            orbit_stage.update_stage_duration(config.ABYSSAL_PLAYER_SHIP, 0.0, 0.0)
-            orbit_dmg = orbit_stage.get_dmg_taken_by_player(
+            enemy.optimal_orbit_range = close_orbit_distance
+            close_orbit_stage = Stage([enemy], enemy, enemy)
+            close_orbit_stage.update_stage_duration(config.ABYSSAL_PLAYER_SHIP, 0.0, 0.0)
+            close_orbit_dmg = close_orbit_stage.get_dmg_taken_by_player(
                 config.ABYSSAL_PLAYER_SHIP,
-                orbit_stage.duration,
-                0.0
+                close_orbit_stage.duration,
+                600.0
             )
 
-            enemy.dmg_without_orbit = no_orbit_dmg
-            enemy.dmg_with_orbit = orbit_dmg
+            enemy.optimal_orbit_range = far_orbit_distance
+            far_orbit_stage = Stage([enemy], enemy, enemy)
+            far_orbit_stage.update_stage_duration(config.ABYSSAL_PLAYER_SHIP, 0.0, 0.0)
+            far_orbit_dmg = far_orbit_stage.get_dmg_taken_by_player(
+                config.ABYSSAL_PLAYER_SHIP,
+                far_orbit_stage.duration,
+                600.0
+            )
 
-    def manage_navigation(self):
+            enemy.dmg_without_orbit = no_orbit_dmg if no_orbit_stage.duration < np.float64("inf") else np.float64("inf")
+
+            if far_orbit_dmg > close_orbit_dmg:
+                enemy.optimal_orbit_range = close_orbit_distance
+                enemy.dmg_with_orbit = close_orbit_dmg
+            else:
+                enemy.optimal_orbit_range = far_orbit_distance
+                enemy.dmg_with_orbit = far_orbit_dmg
+
+    def get_current_and_next_stage(self, clear_order):
+        enemy_entries = self.enemies_on_overview()
+        enemy_amounts_on_overview = Counter([e.type for e in enemy_entries])
+        enemy_amounts_required = {}
+        clear_order_iter = iter(clear_order[::-1])
+        while stage := next(clear_order_iter, None):
+            enemy_amount = enemy_amounts_required.get(stage.target.name, 0)
+            enemy_amounts_required.update({stage.target.name: enemy_amount + 1})
+
+            if enemy_amounts_on_overview == enemy_amounts_required:
+                active_stage: Stage = stage
+                next_stage = next(clear_order_iter, None)
+                break
+        else:
+            return None, None
+
+        return active_stage, next_stage
+
+    def manage_navigation(self, clear_order):
+        current_stage, _ = self.get_current_and_next_stage(clear_order)
+        # todo to be continued
+
         self.ui.ship_ui.update()
         if "Orbiting" not in self.ui.ship_ui.indication_text or "Bioadaptive" not in self.ui.ship_ui.indication_text:
             self.ui.overview.update()
             bio_cache_entry = next(e for e in self.ui.overview.entries if "Cache" in e.type)
             bio_cache_entry.orbit(5000)
 
+    def target_current_stage_orbit_target(self, current_stage: Stage):
+        if not self.ui.overview.entries:
+            if current_stage.orbit_target is None:
+                current_orbit_entry = next(e for e in self.ui.overview.entries if "Cache" in e.type)
+            else:
+                current_orbit_entry = next(
+                    e for e in self.ui.overview.entries
+                    if current_stage.orbit_target.name == e.type
+                )
+            current_orbit_entry.target()
+            wait_for_truthy(lambda: not [e for e in self.ui.overview.update().entries if e.is_being_targeted], 10)
+            self.ui.target_bar.update()
+
+    def target_current_stage_target(self, current_stage: Stage):
+        if current_stage.target != current_stage.orbit_target and len(self.ui.overview.entries) < 2:
+            current_target_entry = next(
+                e for e in self.ui.overview.entries
+                if current_stage.target.name == e.type
+                and not e.is_targeted_by_me
+            )
+            current_target_entry.target()
+            wait_for_truthy(lambda: not [e for e in self.ui.overview.update().entries if e.is_being_targeted], 10)
+            self.ui.target_bar.update()
+
+    def target_next_stage_orbit_target(self, current_stage: Stage, next_stage: Stage):
+        if (
+            next_stage.orbit_target != current_stage.orbit_target
+            and (
+                (next_stage.target != next_stage.orbit_target and len(self.ui.overview.entries) < 3)
+                or (next_stage.target == next_stage.orbit_target and len(self.ui.overview.entries) < 2)
+            )
+        ):
+            if next_stage.orbit_target is None:
+                next_orbit_entry = next(e for e in self.ui.overview.entries if "Cache" in e.type)
+            else:
+                next_orbit_entry = next(
+                    e for e in self.ui.overview.entries
+                    if next_stage.orbit_target.name == e.type
+                    and not e.is_targeted_by_me
+                )
+            next_orbit_entry.target()
+            wait_for_truthy(lambda: not [e for e in self.ui.overview.update().entries if e.is_being_targeted], 10)
+            self.ui.target_bar.update()
+
+    def target_next_stage_target(self, current_stage: Stage, next_stage: Stage):
+        if (
+            next_stage.target != next_stage.orbit_target
+            and next_stage.target != next_stage.orbit_target and len(self.ui.overview.entries) < 3
+        ):
+            next_target_entry = next(
+                e for e in self.ui.overview.entries
+                if next_stage.target.name == e.type
+                and not e.is_targeted_by_me
+            )
+            next_target_entry.target()
+            wait_for_truthy(lambda: not [e for e in self.ui.overview.update().entries if e.is_being_targeted], 10)
+            self.ui.target_bar.update()
+
     def manage_targeting(self, clear_order):
         self.ui.overview.update()
         self.ui.target_bar.update()
-        active_targets = 0
-        for target_type in clear_order:
-            targets = [e for e in self.ui.overview.entries if e.type == target_type]
-            for target in targets:
-                if active_targets >= config.ABYSSAL_MAX_TARGET_COUNT:
-                    return
-                active_targets += 1
-                if target.is_being_targeted or target.is_targeted_by_me:
-                    continue
-                target.target()
 
-        self.ui.target_bar.update()
-        if not self.ui.target_bar.targets:
+        current_stage, next_stage = self.get_current_and_next_stage(clear_order)
+        if current_stage is None:
             return
 
-        for target_type in clear_order:
-            target_to_set_active = next((t for t in self.ui.target_bar.targets if target_type in t.name), None)
-            if not target_to_set_active:
-                continue
-            click(target_to_set_active.node, pos_y=0.3)
-            break
+        self.target_current_stage_orbit_target(current_stage)
+        self.target_current_stage_target(current_stage)
+        self.target_next_stage_orbit_target(current_stage, next_stage)
+        self.target_next_stage_target(current_stage, next_stage)
+
+        # Select current target
+        if current_stage.target != current_stage.orbit_target:
+            current_target = self.ui.target_bar.targets[1]
+        else:
+            current_target = self.ui.target_bar.targets[0]
+        if not current_target.is_active_target:
+            click(current_target.node, pos_y=0.3)
 
     def manage_modules(self, manage_weapons=True):
         if manage_weapons:
@@ -165,14 +303,13 @@ class AbyssFighter:
         for _, m in self.ui.ship_ui.low_modules.items():
             m.set_active(False)
 
-    def calculate_clear_order(self):
+    def calculate_clear_order(self) -> List[Stage]:
         enemy_entries = self.enemies_on_overview()
-        clear_order = []
-        for e in enemy_entries:
-            if e.type in clear_order:
-                continue
-            clear_order.append(e.type)
-        return clear_order
+
+        enemies = [e.type for e in enemy_entries]
+
+        fight_plan = FightPlan(config.ABYSSAL_PLAYER_SHIP, enemies)
+        return fight_plan.find_best_plan()
 
     def open_bio_cache(self):
         potential_caches = [e for e in self.ui.overview.entries if "Cache" in e.type]
@@ -198,7 +335,7 @@ class AbyssFighter:
         self.ui.overview.update()
         clear_order = self.calculate_clear_order()
         while self.enemies_on_overview():
-            self.manage_navigation()
+            self.manage_navigation(clear_order)
             self.manage_targeting(clear_order)
             self.manage_modules()
             self.manage_drones()

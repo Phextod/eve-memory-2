@@ -18,6 +18,8 @@ class AbyssShip(Ship):
     energy_neut_amount: int
     painter_signature_radius_multiplier: float
 
+    optimal_orbit_range: int = field(default=2_500)
+
     dmg_without_orbit: np.float64 = field(default=np.float64("inf"))
     dmg_with_orbit: np.float64 = field(default=np.float64("inf"))
 

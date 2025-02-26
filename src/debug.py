@@ -31,19 +31,17 @@ np.seterr(all='raise')
 
 fighter = AbyssFighter()
 enemy_types = [
-    "Battered Drifter Battleship",
-    "Striking Leshak",
-    "Battered Drifter Battleship",
-    "Striking Leshak",
-    "Anchoring Damavik",
-    "Anchoring Damavik",
-    "Anchoring Damavik",
-    "Anchoring Damavik",
-    "Anchoring Damavik",
-    "Anchoring Damavik",
-    "Shining Vila Damavik",
-    "Lucid Upholder",
-    "Devoted Knight"
+    "Drifter Assault Battleship",
+    "Drifter Nullwarp Cruiser",
+    "Drifter Nullwarp Cruiser",
+    "Drifter Entanglement Cruiser",
+    "Drifter Entanglement Cruiser",
+    "Drifter Entanglement Cruiser",
+    "Drifter Entanglement Cruiser",
+    "Drifter Entanglement Cruiser",
+    "Drifter Nullcharge Cruiser",
+    "Drifter Nullcharge Cruiser",
+    "Drifter Nullcharge Cruiser",
 ]
 enemies = [next(copy.deepcopy(e) for e in fighter.enemy_ship_data if e.name == t) for t in enemy_types]
 
