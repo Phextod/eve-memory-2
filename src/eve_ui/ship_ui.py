@@ -1,6 +1,6 @@
 import math
 from enum import Enum
-from typing import Dict
+from typing import Dict, List
 
 import pyautogui
 
@@ -98,7 +98,7 @@ class ShipUI:
         self.medium_modules: Dict[int, ShipModule] = dict()
         self.low_modules: Dict[int, ShipModule] = dict()
         self.capacitor_percent = 0.0
-        self.buff_buttons = []
+        self.buff_buttons: List[UITreeNode] = []
 
         self.is_warping = False
         self.speed: float = 0.0
@@ -145,6 +145,9 @@ class ShipUI:
             select_many=True,
             refresh_on_init=refresh
         ).result
+        if containers is None:
+            return
+
         for container in containers:
             label = self.ui_tree.find_node(node_type="EveLabelSmall", root=container, refresh=False)
             percent = int(label.attrs.get("_setText", "0").split("%")[0]) / 100

@@ -97,6 +97,9 @@ class Drones:
 
         self.drone_entries_query.run(refresh)
 
+        if self.drone_entries_query.result is None:
+            return self
+
         for entry_node in self.drone_entries_query.result:
             if "NoDroneIn" in entry_node.type:
                 continue

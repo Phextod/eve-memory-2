@@ -1,6 +1,7 @@
 import copy
 import json
 import math
+import time
 from collections import Counter
 from typing import Dict, List
 
@@ -24,19 +25,23 @@ class AbyssFighter:
     def __init__(self, ui: EveUI):
         self.ui_tree: UITree = UITree.instance()
         self.ui = ui
-        # self.player: PlayerShip = copy.deepcopy(config.ABYSSAL_PLAYER_SHIP)
+        self.player: PlayerShip = copy.deepcopy(config.ABYSSAL_PLAYER_SHIP)
 
         self.enemy_ship_data: List[AbyssShip] = []
-        #
-        # self.load_enemy_ships(
-        #     get_path(config.ABYSSAL_SHIP_DATA_PATH),
-        #     get_path(config.ABYSSAL_ITEM_DATA_PATH)
-        # )
+        self.load_enemy_ships(
+            get_path(config.ABYSSAL_SHIP_DATA_PATH),
+            get_path(config.ABYSSAL_ITEM_DATA_PATH)
+        )
         # self.precompute_enemy_ship_attributes()
 
     def get_weather_modifiers(self):
-        move_cursor(self.ui.ship_ui.buff_buttons[0].get_center())
+        weather_btn = wait_for_truthy(
+            lambda: next((b for b in self.ui.ship_ui.update().buff_buttons if "weather" in b.attrs["_name"]), None),
+            10
+        )
+        move_cursor(weather_btn.get_center())
         tooltip_panel = wait_for_truthy(lambda: self.ui_tree.find_node(node_type="TooltipPanel", refresh=True), 5)
+        time.sleep(1)
 
         percentage_container_1 = self.ui_tree.find_node({"_name": "Row1_Col0"}, root=tooltip_panel)
         penalty_text = self.ui_tree.find_node(node_type="EveLabelMedium", root=percentage_container_1).attrs["_setText"]
@@ -56,43 +61,43 @@ class AbyssFighter:
 
         self.player = copy.deepcopy(config.ABYSSAL_PLAYER_SHIP)
 
-        # penalty_multiplier, bonus_multiplier = self.get_weather_modifiers()
-        #
-        # for enemy in self.enemy_ship_data:
-        #     if config.ABYSSAL_WEATHER == "Electrical":
-        #         enemy.resist_matrix[0][0] *= penalty_multiplier
-        #         enemy.resist_matrix[1][0] *= penalty_multiplier
-        #         enemy.resist_matrix[2][0] *= penalty_multiplier
-        #     elif config.ABYSSAL_WEATHER == "Exotic":
-        #         enemy.resist_matrix[0][2] *= penalty_multiplier
-        #         enemy.resist_matrix[1][2] *= penalty_multiplier
-        #         enemy.resist_matrix[2][2] *= penalty_multiplier
-        #     elif config.ABYSSAL_WEATHER == "Firestorm":
-        #         enemy.resist_matrix[0][1] *= penalty_multiplier
-        #         enemy.resist_matrix[1][1] *= penalty_multiplier
-        #         enemy.resist_matrix[2][1] *= penalty_multiplier
-        #         armor_damage = enemy.armor_max_hp - enemy.armor_hp
-        #         enemy.armor_max_hp *= bonus_multiplier
-        #         enemy.armor_hp = enemy.armor_max_hp - armor_damage
-        #     elif config.ABYSSAL_WEATHER == "Gamma":
-        #         enemy.resist_matrix[0][3] *= penalty_multiplier
-        #         enemy.resist_matrix[1][3] *= penalty_multiplier
-        #         enemy.resist_matrix[2][3] *= penalty_multiplier
-        #         enemy.shield_max_hp *= bonus_multiplier
-        #     elif config.ABYSSAL_WEATHER == "Dark":
-        #         enemy.turret_optimal_range *= penalty_multiplier
-        #         enemy.turret_falloff *= penalty_multiplier
-        #         enemy.max_velocity *= bonus_multiplier
+        penalty_multiplier, bonus_multiplier = self.get_weather_modifiers()
+
+        for enemy in self.enemies_on_overview():
+            if config.ABYSSAL_WEATHER == "Electrical":
+                enemy.resist_matrix[0][0] *= penalty_multiplier
+                enemy.resist_matrix[1][0] *= penalty_multiplier
+                enemy.resist_matrix[2][0] *= penalty_multiplier
+            elif config.ABYSSAL_WEATHER == "Exotic":
+                enemy.resist_matrix[0][2] *= penalty_multiplier
+                enemy.resist_matrix[1][2] *= penalty_multiplier
+                enemy.resist_matrix[2][2] *= penalty_multiplier
+            elif config.ABYSSAL_WEATHER == "Firestorm":
+                enemy.resist_matrix[0][1] *= penalty_multiplier
+                enemy.resist_matrix[1][1] *= penalty_multiplier
+                enemy.resist_matrix[2][1] *= penalty_multiplier
+                armor_damage = enemy.armor_max_hp - enemy.armor_hp
+                enemy.armor_max_hp *= bonus_multiplier
+                enemy.armor_hp = enemy.armor_max_hp - armor_damage
+            elif config.ABYSSAL_WEATHER == "Gamma":
+                enemy.resist_matrix[0][3] *= penalty_multiplier
+                enemy.resist_matrix[1][3] *= penalty_multiplier
+                enemy.resist_matrix[2][3] *= penalty_multiplier
+                enemy.shield_max_hp *= bonus_multiplier
+            elif config.ABYSSAL_WEATHER == "Dark":
+                enemy.turret_optimal_range *= penalty_multiplier
+                enemy.turret_falloff *= penalty_multiplier
+                enemy.max_velocity *= bonus_multiplier
 
         self.precompute_enemy_ship_attributes()
 
     def enemies_on_overview(self):
-        enemy_entries = []
+        enemies = []
         for entry in self.ui.overview.entries:
             enemy = next((ship for ship in self.enemy_ship_data if ship.name == entry.type), None)
             if enemy:
-                enemy_entries.append(entry)
-        return enemy_entries
+                enemies.append(enemy)
+        return enemies
 
     def load_enemy_ships(self, ship_filepath, item_filepath):
         self.enemy_ship_data.clear()
@@ -107,29 +112,29 @@ class AbyssFighter:
         far_orbit_distance = 15_000
         close_orbit_distance = 2_500
 
-        for enemy in self.enemy_ship_data:
+        for enemy in self.enemies_on_overview():
             no_orbit_stage = Stage([enemy], enemy, None)
-            no_orbit_stage.update_stage_duration(config.ABYSSAL_PLAYER_SHIP, 0.0, 0.0)
+            no_orbit_stage.update_stage_duration(self.player, 0.0, 0.0)
             no_orbit_dmg = no_orbit_stage.get_dmg_taken_by_player(
-                config.ABYSSAL_PLAYER_SHIP,
+                self.player,
                 no_orbit_stage.duration,
                 0.0
             )
 
             enemy.optimal_orbit_range = close_orbit_distance
             close_orbit_stage = Stage([enemy], enemy, enemy)
-            close_orbit_stage.update_stage_duration(config.ABYSSAL_PLAYER_SHIP, 0.0, 0.0)
+            close_orbit_stage.update_stage_duration(self.player, 0.0, 0.0)
             close_orbit_dmg = close_orbit_stage.get_dmg_taken_by_player(
-                config.ABYSSAL_PLAYER_SHIP,
+                self.player,
                 close_orbit_stage.duration,
                 600.0
             )
 
             enemy.optimal_orbit_range = far_orbit_distance
             far_orbit_stage = Stage([enemy], enemy, enemy)
-            far_orbit_stage.update_stage_duration(config.ABYSSAL_PLAYER_SHIP, 0.0, 0.0)
+            far_orbit_stage.update_stage_duration(self.player, 0.0, 0.0)
             far_orbit_dmg = far_orbit_stage.get_dmg_taken_by_player(
-                config.ABYSSAL_PLAYER_SHIP,
+                self.player,
                 far_orbit_stage.duration,
                 600.0
             )
@@ -144,22 +149,22 @@ class AbyssFighter:
                 enemy.dmg_with_orbit = far_orbit_dmg
 
     def get_current_and_next_stage(self, clear_order):
-        enemy_entries = self.enemies_on_overview()
-        enemy_amounts_on_overview = Counter([e.type for e in enemy_entries])
+        enemies = self.enemies_on_overview()
+        enemy_amounts_on_overview = Counter([e.name for e in enemies])
         enemy_amounts_required = {}
         clear_order_iter = iter(clear_order[::-1])
-        while stage := next(clear_order_iter, None):
-            enemy_amount = enemy_amounts_required.get(stage.target.name, 0)
-            enemy_amounts_required.update({stage.target.name: enemy_amount + 1})
+
+        next_stage = None
+        while active_stage := next(clear_order_iter, None):
+            enemy_amount = enemy_amounts_required.get(active_stage.target.name, 0)
+            enemy_amounts_required.update({active_stage.target.name: enemy_amount + 1})
 
             if enemy_amounts_on_overview == enemy_amounts_required:
-                active_stage: Stage = stage
-                next_stage = next(clear_order_iter, None)
-                break
+                return active_stage, next_stage
+
+            next_stage = active_stage
         else:
             return None, None
-
-        return active_stage, next_stage
 
     def manage_navigation(self, clear_order):
         if "Orbiting" in self.ui.ship_ui.indication_text:
@@ -255,6 +260,7 @@ class AbyssFighter:
             click(current_target.node, pos_y=0.3)
 
     def manage_modules(self, weapons=True, hardeners=True, speed=True, repair=True):
+        self.ui.ship_ui.update()
         # Activate weapons
         if weapons:
             # Deactivate weapons on non-primary targets
@@ -270,7 +276,6 @@ class AbyssFighter:
                 self.ui.target_bar.get_active_target() is not None
                 and self.ui.target_bar.get_active_target().distance <= weapon_range
             ):
-                self.ui.ship_ui.update()
                 weapon_modules = [self.ui.ship_ui.high_modules[i] for i in config.ABYSSAL_WEAPON_MODULE_INDICES]
                 for weapon_module in weapon_modules:
                     if weapon_module.active_status != ShipModule.ActiveStatus.not_active:
@@ -297,14 +302,17 @@ class AbyssFighter:
             drones_with_shield = [d for d in self.ui.drones.in_bay if d.shield_percent > 0.9]
             self.ui.drones.launch_drones(drones_with_shield[:drones_to_launch])
 
+        drone_recalled = False
         for drone in self.ui.drones.in_space:
             if drone.shield_percent > 0.8:
                 continue
             self.ui.drones.recall(drone)
+            drone_recalled = True
 
         self.ui.target_bar.update()
         if (
-            not any(d.status == DroneStatus.returning for d in self.ui.drones.in_space)
+            not drone_recalled
+            and not any(d.status == DroneStatus.returning for d in self.ui.drones.in_space)
             and self.ui.target_bar.get_active_target() is not None
             and self.ui.target_bar.get_active_target().distance < config.ABYSSAL_PLAYER_SHIP.drone_range
         ):
@@ -322,9 +330,7 @@ class AbyssFighter:
             m.set_active(False)
 
     def calculate_clear_order(self) -> List[Stage]:
-        enemy_entries = self.enemies_on_overview()
-
-        enemies = [next(ship for ship in self.enemy_ship_data if ship.name == e.type) for e in enemy_entries]
+        enemies = self.enemies_on_overview()
 
         fight_plan = FightPlan(config.ABYSSAL_PLAYER_SHIP, enemies)
         return fight_plan.find_best_plan()

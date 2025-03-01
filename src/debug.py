@@ -22,11 +22,15 @@ ui = EveUI()
 ui_tree: UITree = UITree.instance()
 self = AbyssBot(ui)
 
+# abyss_fighter = AbyssFighter(ui)
+# abyss_fighter.init_room()
+# abyss_fighter.clear_room()
+
 # self.run()
-self.do_abyss()
+# self.do_abyss()
 
 # self.use_filament()
-# self.do_abyss()
+self.do_abyss()
 
 
 print("Done")
