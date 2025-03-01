@@ -11,27 +11,28 @@ from src.bots.abyss.abyss_ship import AbyssShip
 from src.bots.abyss.fight_plan import Stage, FightPlan
 from src.bots.abyss.player_ship import PlayerShip
 from src.bots.abyss.ship import Ship
+from src.eve_ui.context_menu import DistancePresets
 from src.eve_ui.drones import DroneStatus
 from src.eve_ui.eve_ui import EveUI
 from src.eve_ui.overview import OverviewEntry
 from src.eve_ui.ship_ui import ShipModule
 from src.utils.ui_tree import UITree
-from src.utils.utils import get_path, wait_for_truthy, move_cursor, click
+from src.utils.utils import get_path, wait_for_truthy, move_cursor, click, MOUSE_RIGHT
 
 
 class AbyssFighter:
-    def __init__(self):  # , ui: EveUI):
-        self.ui_tree: UITree = None  # UITree.instance()
-        self.ui = None  # ui
-        self.player: PlayerShip = copy.deepcopy(config.ABYSSAL_PLAYER_SHIP)
+    def __init__(self, ui: EveUI):
+        self.ui_tree: UITree = UITree.instance()
+        self.ui = ui
+        # self.player: PlayerShip = copy.deepcopy(config.ABYSSAL_PLAYER_SHIP)
 
         self.enemy_ship_data: List[AbyssShip] = []
-
-        self.load_enemy_ships(
-            get_path(config.ABYSSAL_SHIP_DATA_PATH),
-            get_path(config.ABYSSAL_ITEM_DATA_PATH)
-        )
-        self.precompute_enemy_ship_attributes()
+        #
+        # self.load_enemy_ships(
+        #     get_path(config.ABYSSAL_SHIP_DATA_PATH),
+        #     get_path(config.ABYSSAL_ITEM_DATA_PATH)
+        # )
+        # self.precompute_enemy_ship_attributes()
 
     def get_weather_modifiers(self):
         move_cursor(self.ui.ship_ui.buff_buttons[0].get_center())
@@ -39,11 +40,11 @@ class AbyssFighter:
 
         percentage_container_1 = self.ui_tree.find_node({"_name": "Row1_Col0"}, root=tooltip_panel)
         penalty_text = self.ui_tree.find_node(node_type="EveLabelMedium", root=percentage_container_1).attrs["_setText"]
-        penalty_multiplier = float(penalty_text.split(" ")[0]) / 100
+        penalty_multiplier = 1.0 + float(penalty_text.split(" ")[0]) / 100
 
         percentage_container_2 = self.ui_tree.find_node({"_name": "Row2_Col0"}, root=tooltip_panel)
         bonus_text = self.ui_tree.find_node(node_type="EveLabelMedium", root=percentage_container_2).attrs["_setText"]
-        bonus_multiplier = float(bonus_text.split(" ")[0]) / 100
+        bonus_multiplier = 1.0 + float(bonus_text.split(" ")[0]) / 100
         return penalty_multiplier, bonus_multiplier
 
     def init_room(self):
@@ -55,33 +56,33 @@ class AbyssFighter:
 
         self.player = copy.deepcopy(config.ABYSSAL_PLAYER_SHIP)
 
-        penalty_multiplier, bonus_multiplier = self.get_weather_modifiers()
-
-        for enemy in self.enemy_ship_data:
-            if config.ABYSSAL_WEATHER == "Electrical":
-                enemy.resist_matrix[0][0] *= penalty_multiplier
-                enemy.resist_matrix[1][0] *= penalty_multiplier
-                enemy.resist_matrix[2][0] *= penalty_multiplier
-            elif config.ABYSSAL_WEATHER == "Exotic":
-                enemy.resist_matrix[0][2] *= penalty_multiplier
-                enemy.resist_matrix[1][2] *= penalty_multiplier
-                enemy.resist_matrix[2][2] *= penalty_multiplier
-            elif config.ABYSSAL_WEATHER == "Firestorm":
-                enemy.resist_matrix[0][1] *= penalty_multiplier
-                enemy.resist_matrix[1][1] *= penalty_multiplier
-                enemy.resist_matrix[2][1] *= penalty_multiplier
-                armor_damage = enemy.armor_max_hp - enemy.armor_hp
-                enemy.armor_max_hp *= bonus_multiplier
-                enemy.armor_hp = enemy.armor_max_hp - armor_damage
-            elif config.ABYSSAL_WEATHER == "Gamma":
-                enemy.resist_matrix[0][3] *= penalty_multiplier
-                enemy.resist_matrix[1][3] *= penalty_multiplier
-                enemy.resist_matrix[2][3] *= penalty_multiplier
-                enemy.shield_max_hp *= bonus_multiplier
-            elif config.ABYSSAL_WEATHER == "Dark":
-                enemy.turret_optimal_range *= penalty_multiplier
-                enemy.turret_falloff *= penalty_multiplier
-                enemy.max_velocity *= bonus_multiplier
+        # penalty_multiplier, bonus_multiplier = self.get_weather_modifiers()
+        #
+        # for enemy in self.enemy_ship_data:
+        #     if config.ABYSSAL_WEATHER == "Electrical":
+        #         enemy.resist_matrix[0][0] *= penalty_multiplier
+        #         enemy.resist_matrix[1][0] *= penalty_multiplier
+        #         enemy.resist_matrix[2][0] *= penalty_multiplier
+        #     elif config.ABYSSAL_WEATHER == "Exotic":
+        #         enemy.resist_matrix[0][2] *= penalty_multiplier
+        #         enemy.resist_matrix[1][2] *= penalty_multiplier
+        #         enemy.resist_matrix[2][2] *= penalty_multiplier
+        #     elif config.ABYSSAL_WEATHER == "Firestorm":
+        #         enemy.resist_matrix[0][1] *= penalty_multiplier
+        #         enemy.resist_matrix[1][1] *= penalty_multiplier
+        #         enemy.resist_matrix[2][1] *= penalty_multiplier
+        #         armor_damage = enemy.armor_max_hp - enemy.armor_hp
+        #         enemy.armor_max_hp *= bonus_multiplier
+        #         enemy.armor_hp = enemy.armor_max_hp - armor_damage
+        #     elif config.ABYSSAL_WEATHER == "Gamma":
+        #         enemy.resist_matrix[0][3] *= penalty_multiplier
+        #         enemy.resist_matrix[1][3] *= penalty_multiplier
+        #         enemy.resist_matrix[2][3] *= penalty_multiplier
+        #         enemy.shield_max_hp *= bonus_multiplier
+        #     elif config.ABYSSAL_WEATHER == "Dark":
+        #         enemy.turret_optimal_range *= penalty_multiplier
+        #         enemy.turret_falloff *= penalty_multiplier
+        #         enemy.max_velocity *= bonus_multiplier
 
         self.precompute_enemy_ship_attributes()
 
@@ -161,17 +162,19 @@ class AbyssFighter:
         return active_stage, next_stage
 
     def manage_navigation(self, clear_order):
-        current_stage, _ = self.get_current_and_next_stage(clear_order)
-        # todo to be continued
+        if "Orbiting" in self.ui.ship_ui.indication_text:
+            return
 
-        self.ui.ship_ui.update()
-        if "Orbiting" not in self.ui.ship_ui.indication_text or "Bioadaptive" not in self.ui.ship_ui.indication_text:
-            self.ui.overview.update()
-            bio_cache_entry = next(e for e in self.ui.overview.entries if "Cache" in e.type)
-            bio_cache_entry.orbit(5000)
+        current_stage: Stage
+        current_stage, _ = self.get_current_and_next_stage(clear_order)
+
+        click(self.ui.target_bar.targets[0].node, button=MOUSE_RIGHT, pos_y=0.3)
+        self.ui.context_menu.open_submenu("Orbit", contains=True)
+        distance = 1_000 if current_stage.orbit_target is None else current_stage.orbit_target.optimal_orbit_range
+        self.ui.context_menu.click_safe(DistancePresets.closest(distance)["text"], 5)
 
     def target_current_stage_orbit_target(self, current_stage: Stage):
-        if not self.ui.overview.entries:
+        if not self.ui.target_bar.targets:
             if current_stage.orbit_target is None:
                 current_orbit_entry = next(e for e in self.ui.overview.entries if "Cache" in e.type)
             else:
@@ -184,7 +187,7 @@ class AbyssFighter:
             self.ui.target_bar.update()
 
     def target_current_stage_target(self, current_stage: Stage):
-        if current_stage.target != current_stage.orbit_target and len(self.ui.overview.entries) < 2:
+        if current_stage.target != current_stage.orbit_target and len(self.ui.target_bar.targets) < 2:
             current_target_entry = next(
                 e for e in self.ui.overview.entries
                 if current_stage.target.name == e.type
@@ -198,8 +201,8 @@ class AbyssFighter:
         if (
             next_stage.orbit_target != current_stage.orbit_target
             and (
-                (next_stage.target != next_stage.orbit_target and len(self.ui.overview.entries) < 3)
-                or (next_stage.target == next_stage.orbit_target and len(self.ui.overview.entries) < 2)
+                (next_stage.target != next_stage.orbit_target and len(self.ui.target_bar.targets) < 3)
+                or (next_stage.target == next_stage.orbit_target and len(self.ui.target_bar.targets) < 2)
             )
         ):
             if next_stage.orbit_target is None:
@@ -214,10 +217,10 @@ class AbyssFighter:
             wait_for_truthy(lambda: not [e for e in self.ui.overview.update().entries if e.is_being_targeted], 10)
             self.ui.target_bar.update()
 
-    def target_next_stage_target(self, current_stage: Stage, next_stage: Stage):
+    def target_next_stage_target(self, next_stage: Stage):
         if (
             next_stage.target != next_stage.orbit_target
-            and next_stage.target != next_stage.orbit_target and len(self.ui.overview.entries) < 3
+            and next_stage.target != next_stage.orbit_target and len(self.ui.target_bar.targets) < 3
         ):
             next_target_entry = next(
                 e for e in self.ui.overview.entries
@@ -238,8 +241,10 @@ class AbyssFighter:
 
         self.target_current_stage_orbit_target(current_stage)
         self.target_current_stage_target(current_stage)
-        self.target_next_stage_orbit_target(current_stage, next_stage)
-        self.target_next_stage_target(current_stage, next_stage)
+
+        if next_stage is not None:
+            self.target_next_stage_orbit_target(current_stage, next_stage)
+            self.target_next_stage_target(next_stage)
 
         # Select current target
         if current_stage.target != current_stage.orbit_target:
@@ -249,8 +254,9 @@ class AbyssFighter:
         if not current_target.is_active_target:
             click(current_target.node, pos_y=0.3)
 
-    def manage_modules(self, manage_weapons=True):
-        if manage_weapons:
+    def manage_modules(self, weapons=True, hardeners=True, speed=True, repair=True):
+        # Activate weapons
+        if weapons:
             # Deactivate weapons on non-primary targets
             self.ui.target_bar.update()
             non_active_targets = [t for t in self.ui.target_bar.targets if not t.is_active_target]
@@ -259,20 +265,27 @@ class AbyssFighter:
                     click(weapon_icon)
 
             # Activate weapons on primary target
-            self.ui.ship_ui.update()
-            weapon_modules = [self.ui.ship_ui.high_modules[i] for i in config.ABYSSAL_WEAPON_MODULE_INDICES]
-            for weapon_module in weapon_modules:
-                if weapon_module.active_status != ShipModule.ActiveStatus.not_active:
-                    continue
-                weapon_module.set_active(True)
+            weapon_range = max(config.ABYSSAL_PLAYER_SHIP.missile_range, config.ABYSSAL_PLAYER_SHIP.turret_optimal_range)
+            if (
+                self.ui.target_bar.get_active_target() is not None
+                and self.ui.target_bar.get_active_target().distance <= weapon_range
+            ):
+                self.ui.ship_ui.update()
+                weapon_modules = [self.ui.ship_ui.high_modules[i] for i in config.ABYSSAL_WEAPON_MODULE_INDICES]
+                for weapon_module in weapon_modules:
+                    if weapon_module.active_status != ShipModule.ActiveStatus.not_active:
+                        continue
+                    weapon_module.set_active(True)
 
         # Activate hardeners
-        for i in config.ABYSSAL_HARDENER_MODULE_INDICES:
-            self.ui.ship_ui.medium_modules[i].set_active(self.ui.ship_ui.capacitor_percent > 0.3)
+        if hardeners:
+            for i in config.ABYSSAL_HARDENER_MODULE_INDICES:
+                self.ui.ship_ui.medium_modules[i].set_active(self.ui.ship_ui.capacitor_percent > 0.3)
 
         # Activate speed modules
-        for i in config.ABYSSAL_SPEED_MODULE_INDICES:
-            self.ui.ship_ui.medium_modules[i].set_active(self.ui.ship_ui.capacitor_percent > 0.5)
+        if speed:
+            for i in config.ABYSSAL_SPEED_MODULE_INDICES:
+                self.ui.ship_ui.medium_modules[i].set_active(self.ui.ship_ui.capacitor_percent > 0.5)
 
     def manage_drones(self):
         self.ui.drones.update()
@@ -289,7 +302,12 @@ class AbyssFighter:
                 continue
             self.ui.drones.recall(drone)
 
-        if not any(d.status == DroneStatus.returning for d in self.ui.drones.in_space):
+        self.ui.target_bar.update()
+        if (
+            not any(d.status == DroneStatus.returning for d in self.ui.drones.in_space)
+            and self.ui.target_bar.get_active_target() is not None
+            and self.ui.target_bar.get_active_target().distance < config.ABYSSAL_PLAYER_SHIP.drone_range
+        ):
             self.ui.drones.attack_target()
 
     def deactivate_modules(self):
@@ -306,7 +324,7 @@ class AbyssFighter:
     def calculate_clear_order(self) -> List[Stage]:
         enemy_entries = self.enemies_on_overview()
 
-        enemies = [e.type for e in enemy_entries]
+        enemies = [next(ship for ship in self.enemy_ship_data if ship.name == e.type) for e in enemy_entries]
 
         fight_plan = FightPlan(config.ABYSSAL_PLAYER_SHIP, enemies)
         return fight_plan.find_best_plan()
@@ -325,22 +343,24 @@ class AbyssFighter:
 
         while len(potential_caches) == 1 and "largeCollidableStructure" in potential_caches[0].icon:
             self.manage_drones()
-            active_drones_in_space = any(d.status != DroneStatus.returning for d in self.ui.drones.update().in_space)
-            self.manage_modules(manage_weapons=not active_drones_in_space)
+            self.manage_modules(hardeners=False)
 
             self.ui.overview.update()
             potential_caches = [e for e in self.ui.overview.entries if "Cache" in e.type]
 
     def clear_room(self):
         self.ui.overview.update()
+        self.init_room()
+
         clear_order = self.calculate_clear_order()
         while self.enemies_on_overview():
-            self.manage_navigation(clear_order)
             self.manage_targeting(clear_order)
+            self.manage_navigation(clear_order)
             self.manage_modules()
             self.manage_drones()
 
             self.ui.overview.update()
 
+        self.deactivate_modules()
         self.open_bio_cache()
         self.deactivate_modules()

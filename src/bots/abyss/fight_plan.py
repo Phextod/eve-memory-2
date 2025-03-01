@@ -19,6 +19,11 @@ class Stage:
 
         self.duration = 0.0
 
+    def __str__(self):
+        return f"target: {self.target.name: {' '} < 30}, " \
+               f"duration:{self.duration:10.2f}, " \
+               f"orbit_target: {self.orbit_target.name + f'({id(self.orbit_target)})' if self.orbit_target else None}"
+
     def apply_enemy_ewar_to(self, player: PlayerShip):
         velocity_multipliers_count = 0
         signature_radius_multipliers_count = 0
@@ -164,6 +169,7 @@ class Stage:
 class FightPlan:
     def __init__(self, player: PlayerShip, enemies: List[AbyssShip]):
         self.player = player
+        self.stages: List[Stage] = []
 
         ewar_enemies = [
             e for e in enemies if (
@@ -173,7 +179,11 @@ class FightPlan:
             )
         ]
         not_ewar_enemies = [e for e in enemies if e not in ewar_enemies]
-        self.ordered_enemies = not_ewar_enemies + ewar_enemies
+        self.ordered_enemies = [copy.deepcopy(e) for e in not_ewar_enemies + ewar_enemies]
+
+    def print(self):
+        for i, stage in enumerate(self.stages):
+            print(f"stage {i:{' '}>2}: {str(stage)}")
 
     def _evaluate_stage_order(self, stages: List[Stage]):
         total_dmg_taken = 0
@@ -280,4 +290,5 @@ class FightPlan:
                 least_dmg_taken = dmg_taken
                 best_stage_order = stages.copy()
 
+        self.stages = best_stage_order
         return best_stage_order

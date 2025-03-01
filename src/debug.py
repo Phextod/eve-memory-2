@@ -18,45 +18,17 @@ from src.utils.utils import *
 
 np.seterr(all='raise')
 
-# ui = EveUI()
-# ui_tree: UITree = UITree.instance()
-# self = AbyssBot(ui)
+ui = EveUI()
+ui_tree: UITree = UITree.instance()
+self = AbyssBot(ui)
 
 # self.run()
-# self.do_abyss()
+self.do_abyss()
 
 # self.use_filament()
 # self.do_abyss()
 
 
-fighter = AbyssFighter()
-enemy_types = [
-    "Drifter Assault Battleship",
-    "Drifter Nullwarp Cruiser",
-    "Drifter Nullwarp Cruiser",
-    "Drifter Entanglement Cruiser",
-    "Drifter Entanglement Cruiser",
-    "Drifter Entanglement Cruiser",
-    "Drifter Entanglement Cruiser",
-    "Drifter Entanglement Cruiser",
-    "Drifter Nullcharge Cruiser",
-    "Drifter Nullcharge Cruiser",
-    "Drifter Nullcharge Cruiser",
-]
-enemies = [next(copy.deepcopy(e) for e in fighter.enemy_ship_data if e.name == t) for t in enemy_types]
-
-
-fight_plan = FightPlan(config.ABYSSAL_PLAYER_SHIP, enemies)
-best_stages = fight_plan.find_best_plan()
-
-fight_plan._evaluate_stage_order(best_stages)
-
-for i, stage in enumerate(best_stages):
-    print(
-        f"stage {i:{' '}>2}: target: {stage.target.name:{' '}<30},"
-        f" duration:{stage.duration:10.2f},"
-        f" orbit_target: {stage.orbit_target.name + f'({id(stage.orbit_target)})' if stage.orbit_target else None}"
-    )
 print("Done")
 
 

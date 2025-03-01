@@ -24,7 +24,7 @@ abyss clear:
 ✔ determine clear order
 
 ✔ calc neut
-use navigation plan in fight
+✔ use navigation plan in fight
 prevent ship from going out of bounds
 ✔ calc applied ewar to player
 apply ewar to enemies
