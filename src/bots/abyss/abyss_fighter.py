@@ -181,12 +181,17 @@ class AbyssFighter:
     def target_current_stage_orbit_target(self, current_stage: Stage):
         if not self.ui.target_bar.targets:
             if current_stage.orbit_target is None:
-                current_orbit_entry = next(e for e in self.ui.overview.entries if "Cache" in e.type)
+                current_orbit_entry = next((e for e in self.ui.overview.entries if "Cache" in e.type), None)
             else:
                 current_orbit_entry = next(
-                    e for e in self.ui.overview.entries
-                    if current_stage.orbit_target.name == e.type
+                    (
+                        e for e in self.ui.overview.entries
+                        if current_stage.orbit_target.name == e.type
+                    ),
+                    None
                 )
+            if current_orbit_entry is None:
+                return
             current_orbit_entry.target()
             wait_for_truthy(lambda: not [e for e in self.ui.overview.update().entries if e.is_being_targeted], 10)
             self.ui.target_bar.update()
@@ -194,10 +199,15 @@ class AbyssFighter:
     def target_current_stage_target(self, current_stage: Stage):
         if current_stage.target != current_stage.orbit_target and len(self.ui.target_bar.targets) < 2:
             current_target_entry = next(
-                e for e in self.ui.overview.entries
-                if current_stage.target.name == e.type
-                and not e.is_targeted_by_me
+                (
+                    e for e in self.ui.overview.entries
+                    if current_stage.target.name == e.type
+                    and not e.is_targeted_by_me
+                ),
+                None
             )
+            if current_target_entry is None:
+                return
             current_target_entry.target()
             wait_for_truthy(lambda: not [e for e in self.ui.overview.update().entries if e.is_being_targeted], 10)
             self.ui.target_bar.update()
@@ -260,7 +270,7 @@ class AbyssFighter:
             click(current_target.node, pos_y=0.3)
 
     def manage_modules(self, weapons=True, hardeners=True, speed=True, repair=True):
-        self.ui.ship_ui.update()
+        self.ui.ship_ui.update_modules()
         # Activate weapons
         if weapons:
             # Deactivate weapons on non-primary targets
@@ -270,13 +280,20 @@ class AbyssFighter:
                 for weapon_icon in non_active_target.active_weapon_icons:
                     click(weapon_icon)
 
+            weapon_modules = [self.ui.ship_ui.high_modules[i] for i in config.ABYSSAL_WEAPON_MODULE_INDICES]
+            for weapon_module in weapon_modules:
+                if weapon_module.ammo_count == 0:
+                    click(weapon_module.node, MOUSE_RIGHT)
+                    self.ui.context_menu.click_safe("Reload all", 5)
+
+            self.ui.ship_ui.update_high_slots()
+
             # Activate weapons on primary target
             weapon_range = max(config.ABYSSAL_PLAYER_SHIP.missile_range, config.ABYSSAL_PLAYER_SHIP.turret_optimal_range)
             if (
                 self.ui.target_bar.get_active_target() is not None
                 and self.ui.target_bar.get_active_target().distance <= weapon_range
             ):
-                weapon_modules = [self.ui.ship_ui.high_modules[i] for i in config.ABYSSAL_WEAPON_MODULE_INDICES]
                 for weapon_module in weapon_modules:
                     if weapon_module.active_status != ShipModule.ActiveStatus.not_active:
                         continue
@@ -285,12 +302,12 @@ class AbyssFighter:
         # Activate hardeners
         if hardeners:
             for i in config.ABYSSAL_HARDENER_MODULE_INDICES:
-                self.ui.ship_ui.medium_modules[i].set_active(self.ui.ship_ui.capacitor_percent > 0.3)
+                self.ui.ship_ui.medium_modules[i].set_active(self.ui.ship_ui.capacitor_percent > 0.25)
 
         # Activate speed modules
         if speed:
             for i in config.ABYSSAL_SPEED_MODULE_INDICES:
-                self.ui.ship_ui.medium_modules[i].set_active(self.ui.ship_ui.capacitor_percent > 0.5)
+                self.ui.ship_ui.medium_modules[i].set_active(self.ui.ship_ui.capacitor_percent > 0.4)
 
     def manage_drones(self):
         self.ui.drones.update()

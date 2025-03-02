@@ -52,20 +52,22 @@ class ShipModule:
                 else:
                     self.active_status = ShipModule.ActiveStatus.active
             else:
-                self.active_status = ShipModule.ActiveStatus.not_active
+                left_ramp = ui_tree.find_node({'_name': 'leftRamp'}, root=node, refresh=False)
+                right_ramp = ui_tree.find_node({'_name': 'rightRamp'}, root=node, refresh=False)
+                ramp_displayed = False
+                if left_ramp and right_ramp:
+                    left_rotation = float(left_ramp.attrs.get("_rotation", 0.0))
+                    right_rotation = float(right_ramp.attrs.get("_rotation", 0.0))
+                    ramp_displayed = (
+                        not math.isclose(left_rotation, math.pi, abs_tol=1e-06)
+                        or not math.isclose(right_rotation, math.pi, abs_tol=1e-06)
+                    )
+                if ramp_displayed:
+                    self.active_status = ShipModule.ActiveStatus.reloading
+                else:
+                    self.active_status = ShipModule.ActiveStatus.not_active
         else:
-            left_ramp = ui_tree.find_node({'_name': 'leftRamp'}, root=node, refresh=False)
-            right_ramp = ui_tree.find_node({'_name': 'rightRamp'}, root=node, refresh=False)
-            ramp_displayed = False
-            if left_ramp and right_ramp:
-                left_rotation = float(left_ramp.attrs.get("_rotation", 0.0))
-                right_rotation = float(right_ramp.attrs.get("_rotation", 0.0))
-                ramp_displayed = math.isclose(left_rotation, math.pi, abs_tol=1e-06) \
-                                 or math.isclose(right_rotation, math.pi, abs_tol=1e-06)
-            if ramp_displayed:
-                self.active_status = ShipModule.ActiveStatus.reloading
-            else:
-                self.active_status = ShipModule.ActiveStatus.not_activatable
+            self.active_status = ShipModule.ActiveStatus.not_activatable
 
         if "Disabled" in overload_button.attrs["_texturePath"]:
             self.overload_status = ShipModule.OverloadStatus.not_overloadable
@@ -79,6 +81,7 @@ class ShipModule:
     def set_active(self, activate: bool):
         if (activate and self.active_status == ShipModule.ActiveStatus.not_active) or \
                 (not activate and self.active_status == ShipModule.ActiveStatus.active):
+            print(self.active_status)
             click(self.node)
 
     def set_overload(self, overload: bool):

@@ -30,7 +30,8 @@ self = AbyssBot(ui)
 # self.do_abyss()
 
 # self.use_filament()
-self.do_abyss()
+# self.do_abyss()
+
 
 
 print("Done")

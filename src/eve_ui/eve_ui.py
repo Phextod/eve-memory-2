@@ -27,7 +27,7 @@ class EveUI:
         self.ship_ui = ShipUI()
         self.drones = Drones()
         self.inventory = Inventory()
-        self.context_menu = ContextMenu.instance()
+        self.context_menu: ContextMenu = ContextMenu.instance()
         self.locations = Locations()
         self.station_window = StationWindow()
         self.timers = Timers()
