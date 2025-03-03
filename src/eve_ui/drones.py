@@ -84,7 +84,6 @@ class Drones:
             contains=True,
             select_many=True,
             parent_query=self.main_window_query,
-            refresh_on_init=refresh_on_init,
         )
 
         self.in_bay: List[Drone] = []

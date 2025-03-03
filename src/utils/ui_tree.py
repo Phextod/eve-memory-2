@@ -45,7 +45,7 @@ class UITreeNode(object):
         height = self.attrs.get("_displayHeight") + add_size * 2
         return left, top, width, height
 
-    def find_image(self, img_file_path, region_size_offset=30, confidence=0.9):
+    def find_image(self, img_file_path, region_size_offset=50, confidence=0.9):
         img = None
 
         error_counter = 0
@@ -86,8 +86,8 @@ class UITree(object):
         self.hwnd = win32gui.FindWindow(None, f"EVE - {config.CHARACTER_NAME}")
         self.window_position_offset = (0, 0)
         self.nodes: dict[int, UITreeNode] = dict()
-        self.width_ratio = 0
-        self.height_ratio = 0
+        # self.width_ratio = 0
+        # self.height_ratio = 0
 
         self.eve_memory_reader = ctypes.WinDLL(config.MEMORY_READER_DLL_PATH)
         self.eve_memory_reader.initialize.argtypes = []
@@ -152,9 +152,11 @@ class UITree(object):
 
         self.ingest(tree, parent=parent, x=real_x, y=real_y)
 
-        screensize = get_screensize()
-        self.width_ratio = screensize[0] / tree["attrs"].get("_displayWidth", 0)
-        self.height_ratio = screensize[1] / tree["attrs"].get("_displayHeight", 0)
+        # if self.width_ratio == 0 or self.height_ratio == 0:
+        #     screensize = get_screensize()
+        #     self.width_ratio = screensize[0] / tree["attrs"].get("_displayWidth")
+        #     self.height_ratio = screensize[1] / tree["attrs"].get("_displayHeight")
+
         window_rect = win32gui.GetWindowRect(self.hwnd)
         self.window_position_offset = (window_rect[0], window_rect[1])
 

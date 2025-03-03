@@ -13,6 +13,7 @@ from src.bots.abyss.abyss_fighter import AbyssFighter
 from src.bots.abyss.abyss_ship import AbyssShip
 from src.bots.abyss.fight_plan import FightPlan, Stage
 from src.bots.abyss.ship import Ship
+from src.bots.hauler.eve_hauler_v3 import Hauler
 from src.eve_ui.eve_ui import EveUI
 from src.utils.utils import *
 
@@ -20,7 +21,8 @@ np.seterr(all='raise')
 
 ui = EveUI()
 ui_tree: UITree = UITree.instance()
-self = AbyssBot(ui)
+# self = AbyssBot(ui)
+self = Hauler(ui)
 
 # abyss_fighter = AbyssFighter(ui)
 # abyss_fighter.init_room()

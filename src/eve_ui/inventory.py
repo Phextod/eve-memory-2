@@ -68,7 +68,8 @@ class Inventory:
         )
         if not self.active_ship_drone_bay:
             click(self.active_ship_hangar, MOUSE_RIGHT)
-            self.context_menu.click_safe("Open Drone Bay", 5)
+            if not self.context_menu.click_safe("Open Drone Bay", 3):
+                click(self.active_ship_hangar)
             self.active_ship_drone_bay = self.ui_tree.find_node(
                 {'_name': 'topCont_ShipDroneBay'},
                 root=active_ship_container,

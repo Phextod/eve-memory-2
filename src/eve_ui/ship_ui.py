@@ -170,6 +170,9 @@ class ShipUI:
             select_many=True,
             refresh_on_init=refresh,
         ).result
+        if capacitor_sprites is None:
+            self.capacitor_percent = 0.0
+            return
 
         sprite_alphas = [c.attrs["_color"]["aPercent"] for c in capacitor_sprites]
         count_0 = sprite_alphas.count(0)

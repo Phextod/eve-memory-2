@@ -1,5 +1,6 @@
 import time
 
+from src.eve_ui.agent_window import AgentWindow
 from src.eve_ui.context_menu import ContextMenu
 from src.eve_ui.drones import Drones
 from src.eve_ui.inventory import Inventory
@@ -32,4 +33,5 @@ class EveUI:
         self.station_window = StationWindow()
         self.timers = Timers()
         self.route = Route()
+        self.agent_window = AgentWindow()
         print(f"UI components initialized in {time.time() - start}")

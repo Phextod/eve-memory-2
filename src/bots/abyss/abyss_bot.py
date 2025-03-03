@@ -141,7 +141,7 @@ class AbyssBot:
             warping = self.context_menu.click("Warp to Within", contains=True)
 
         if destination_set:
-            self.ui.route.autopilot(self.ui.ship_ui, self.ui.timers)
+            self.ui.route.autopilot(self.ui.station_window, self.ui.timers)
             click(safe_spot_entry, MOUSE_RIGHT)
             self.context_menu.click_safe("Warp to Within", 5, contains=True)
 
@@ -151,7 +151,7 @@ class AbyssBot:
         base_entry = self.ui.locations.get_entry(config.ABYSSAL_BASE_LOCATION)
         click(base_entry, MOUSE_RIGHT)
         if self.context_menu.click_safe("Set Destination", 5):
-            self.ui.route.autopilot(self.ui.ship_ui, self.ui.timers)
+            self.ui.route.autopilot(self.ui.station_window, self.ui.timers)
 
     def drop_off_loot(self):
         click(self.ui.inventory.active_ship_hangar)
