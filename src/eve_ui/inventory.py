@@ -4,6 +4,7 @@ from typing import List, Tuple
 
 import keyboard
 import pyautogui
+import pyperclip
 
 from src.eve_ui.context_menu import ContextMenu
 from src.utils.bubbling_query import BubblingQuery
@@ -178,16 +179,26 @@ class Inventory:
         return True
 
     def search_for(self, search_text):
-        search_field = BubblingQuery(
-            {'_name': 'quickFilterInputBox'},
-            parent_query=self.main_window_query
-        ).result
-        if not search_field:
-            return False
+        search_field = None
+        while not search_field:
+            search_field = BubblingQuery(
+                {'_name': 'quickFilterInputBox'},
+                parent_query=self.main_window_query
+            ).result
 
-        click(search_field)
-        pyautogui.hotkey('ctrl', 'a', interval=0.1)
-        pyautogui.write(search_text, interval=0.1)
+        first_iter = True
+        text_label = None
+        while first_iter or text_label.attrs["_setText"] != search_text:
+            first_iter = False
+            pyperclip.copy(search_text)
+            click(search_field)
+            pyautogui.hotkey('ctrl', 'a', interval=0.1)
+            pyautogui.hotkey('ctrl', 'v', interval=0.1)
+
+            text_label = self.ui_tree.find_node(
+                node_type="EveLabelMedium",
+                root=search_field,
+            )
         return True
 
     def loot_all(self):
