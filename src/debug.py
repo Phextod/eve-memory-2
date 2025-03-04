@@ -21,21 +21,15 @@ np.seterr(all='raise')
 
 ui = EveUI()
 ui_tree: UITree = UITree.instance()
-# self = AbyssBot(ui)
-self = Hauler(ui)
+self = AbyssBot(ui)
+# self = Hauler(ui)
 
 # abyss_fighter = AbyssFighter(ui)
 # abyss_fighter.init_room()
 # abyss_fighter.clear_room()
 
 # self.run()
-# self.do_abyss()
-
-# self.use_filament()
-# self.do_abyss()
-
-
+self.use_filament()
+self.do_abyss()
 
 print("Done")
-
-

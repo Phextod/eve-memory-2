@@ -22,16 +22,18 @@ class Target:
 
         label_texts = [label.attrs["_setText"].split(">")[-1] for label in labels]
         name = " ".join(label_texts[:-1])
-        distance_text = label_texts[-1].replace(" ", "")
-        distance_multiplier = 0
-        if "km" in distance_text:
-            distance_multiplier = 1_000
-            distance_text = distance_text.replace("km", "")
-        elif "m" in distance_text:
-            distance_multiplier = 1
-            distance_text = distance_text.replace("m", "")
+        distance = 100_000
+        if label_texts:
+            distance_text = label_texts[-1].replace(" ", "")
+            distance_multiplier = 0
+            if "km" in distance_text:
+                distance_multiplier = 1_000
+                distance_text = distance_text.replace("km", "")
+            elif "m" in distance_text:
+                distance_multiplier = 1
+                distance_text = distance_text.replace("m", "")
 
-        distance = int(distance_text) * distance_multiplier
+            distance = int(distance_text) * distance_multiplier
 
         active_target_marker = ui_tree.find_node(
             node_type="ActiveTargetOnBracket",

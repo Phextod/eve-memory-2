@@ -28,10 +28,10 @@ abyss clear:
 ✔ calc applied ewar to player
 ✔ apply weather (and support structure) effects
 ✔ kiting / variable orbit range / keep at range
+apply ewar to enemies(✔ web, neut, painter)
 prevent ship from going out of bounds
 "spiral in" navigation instead of straight approach
-apply ewar to enemies
-handle modules
+handle modules in fight plan
 ship stuck detection and solution
 
 

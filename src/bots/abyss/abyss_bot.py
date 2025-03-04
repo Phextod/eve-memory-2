@@ -7,6 +7,7 @@ from src.bots.abyss.abyss_fighter import AbyssFighter
 from src.eve_ui.context_menu import ContextMenu
 from src.eve_ui.eve_ui import EveUI
 from src.eve_ui.overview import OverviewEntry
+from src.eve_ui.ship_ui import ShipModule
 from src.eve_ui.timers import TimerNames
 from src.utils.ui_tree import UITree
 from src.utils.utils import wait_for_truthy, click, MOUSE_RIGHT, move_cursor
@@ -61,11 +62,13 @@ class AbyssBot:
 
         # reload weapons
         for i, high_module in self.ui.ship_ui.high_modules.items():
-            if high_module.ammo_count == config.ABYSSAL_AMMO_PER_WEAPON[i]:
+            if high_module.active_status == ShipModule.ActiveStatus.reloading:
+                is_prepared = False
                 continue
-            click(high_module.node, MOUSE_RIGHT)
-            self.context_menu.click_safe("Reload all", 5)
-            is_prepared = False
+            if high_module.ammo_count < config.ABYSSAL_AMMO_PER_WEAPON[i]:
+                click(high_module.node, MOUSE_RIGHT)
+                self.context_menu.click_safe("Reload all", 5)
+                is_prepared = False
 
         # repair
         # todo later
@@ -78,7 +81,7 @@ class AbyssBot:
 
         # wait for cap
         self.ui.ship_ui.update()
-        if self.ui.ship_ui.capacitor_percent < 0.8 and current_room < 3:
+        if self.ui.ship_ui.capacitor_percent < 0.7 and current_room < 3:
             is_prepared = False
 
         return is_prepared
@@ -101,13 +104,24 @@ class AbyssBot:
         )
 
     def do_abyss(self):
+        start_timer = time.time()
+
         current_room = 1
         while current_room <= 3:
             self.abyss_fighter.clear_room()
             while self.loot():
                 self.prepare_for_next_room(current_room)
+                self.ui.ship_ui.update_modules()
+                self.ui.ship_ui.update_capacitor_percent()
+                if self.abyss_fighter.manage_propulsion(0.5):
+                    time.sleep(0.1)
             self.approach_jump_gate()
-            wait_for_truthy(lambda: self.prepare_for_next_room(current_room), 30)
+            while not self.prepare_for_next_room(current_room) and time.time() - start_timer < 5 * 60:
+                self.ui.ship_ui.update_modules()
+                self.ui.ship_ui.update_capacitor_percent()
+                if self.abyss_fighter.manage_propulsion(0.7):
+                    time.sleep(0.1)
+            self.abyss_fighter.deactivate_modules()
             self.jump_to_next_room()
             current_room += 1
         time.sleep(5)

@@ -30,6 +30,7 @@ class OverviewEntry:
     is_targeted_by_me = False
     is_active_target = False
     is_being_targeted = False
+    is_only_targeting = False
 
     node: UITreeNode = None
 
@@ -57,14 +58,15 @@ class OverviewEntry:
             "transversal_velocity": "Transversal Velocity (m/s)",
             "angular_velocity": "Angular Velocity (deg/s)",
         }
+        ui_tree: UITree = UITree.instance()
 
-        entry_labels = UITree.instance().find_node(
+        entry_labels = ui_tree.find_node(
             node_type="OverviewLabel",
             root=entry_node,
             select_many=True,
             refresh=False,
         )
-        icon = UITree.instance().find_node({'_name': 'iconSprite'}, root=entry_node, refresh=False)
+        icon = ui_tree.find_node({'_name': 'iconSprite'}, root=entry_node, refresh=False)
         if icon:
             entry_labels.append(icon)
         entry_labels.sort(key=lambda a: a.x)
@@ -81,25 +83,36 @@ class OverviewEntry:
 
         entry = OverviewEntry(**decoded_data)
 
-        active_target_node = UITree.instance().find_node(
+        active_target_node = ui_tree.find_node(
             {'_name': 'myActiveTargetIndicator'},
             root=entry_node,
             refresh=False,
         )
         entry.is_active_target = active_target_node is not None
 
-        targeted_by_me_node = UITree.instance().find_node(
+        targeted_by_me_node = ui_tree.find_node(
             {'_name': 'targetedByMeIndicator'},
             root=entry_node,
             refresh=False,
         )
         entry.is_targeted_by_me = targeted_by_me_node is not None
 
-        targeting_node = UITree.instance().find_node({'_name': 'targeting'}, root=entry_node, refresh=False)
+        targeting_node = ui_tree.find_node({'_name': 'targeting'}, root=entry_node, refresh=False)
         entry.is_being_targeted = targeting_node is not None
 
+        hostile_bracket = ui_tree.find_node({'_name': 'hostile'}, root=entry_node, refresh=False)
+        if hostile_bracket:
+            bracket_color = hostile_bracket.attrs["_color"]
+            entry.is_only_targeting = (
+                bracket_color["rPercent"] == 100
+                and bracket_color["gPercent"] == 80
+                and bracket_color["bPercent"] == 0
+            )
+        else:
+            entry.is_only_targeting = False
+
         entry.node = entry_node
-        entry.ui_tree = UITree.instance()
+        entry.ui_tree = ui_tree
 
         return entry
 

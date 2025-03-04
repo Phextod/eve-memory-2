@@ -81,8 +81,9 @@ class ShipModule:
     def set_active(self, activate: bool):
         if (activate and self.active_status == ShipModule.ActiveStatus.not_active) or \
                 (not activate and self.active_status == ShipModule.ActiveStatus.active):
-            print(self.active_status)
             click(self.node)
+            return True
+        return False
 
     def set_overload(self, overload: bool):
         if (overload and self.overload_status == ShipModule.OverloadStatus.not_overloaded) or \
