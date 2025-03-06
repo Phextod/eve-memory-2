@@ -1,5 +1,7 @@
+import time
 from dataclasses import dataclass
 from enum import Enum
+from threading import Event, Thread
 from typing import List
 
 import pyautogui
@@ -7,7 +9,7 @@ import pyautogui
 from src.eve_ui.context_menu import ContextMenu, DistancePresets
 from src.utils.bubbling_query import BubblingQuery
 from src.utils.ui_tree import UITree, UITreeNode
-from src.utils.utils import click, MOUSE_RIGHT
+from src.utils.utils import click, MOUSE_RIGHT, move_cursor
 
 
 @dataclass
@@ -136,6 +138,9 @@ class OverviewEntry:
 
 class Overview:
     def __init__(self, refresh_on_init=False):
+        self.order_unlock_event = Event()
+        self.order_lock_thread = Thread(target=self._loop_hover_entries)
+
         self.main_window_query = BubblingQuery(
             node_type="OverviewWindow",
             refresh_on_init=refresh_on_init,
@@ -190,3 +195,23 @@ class Overview:
         self.entries.sort(key=lambda e: e.node.y)
 
         return self
+
+    def _loop_hover_entries(self):
+        if len(self.entries) < 2:
+            return
+
+        i = 0
+        while not self.order_unlock_event.is_set():
+            move_cursor(self.entries[0])
+            time.sleep(0.2)
+            i = (i + 1) % 2
+
+    def lock_order(self):
+        self.order_unlock_event.clear()
+        if not self.order_lock_thread.is_alive():
+            self.order_lock_thread.start()
+
+    def unlock_order(self):
+        self.order_unlock_event.set()
+        if self.order_lock_thread.is_alive():
+            self.order_lock_thread.join()

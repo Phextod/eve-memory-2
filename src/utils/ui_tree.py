@@ -161,33 +161,32 @@ class UITree(object):
         self.window_position_offset = (window_rect[0], window_rect[1])
 
     def refresh(self, root_address=None):
-        if root_address:
-            if not self.nodes.get(root_address):
-                return False
+        while True:
+            if root_address:
+                if not self.nodes.get(root_address):
+                    return False
+                else:
+                    self.eve_memory_reader.read_ui_trees_from_address(ctypes.c_ulonglong(root_address))
             else:
-                self.eve_memory_reader.read_ui_trees_from_address(ctypes.c_ulonglong(root_address))
-        else:
-            self.eve_memory_reader.read_ui_trees()
-        tree_bytes = self.eve_memory_reader.get_ui_json()
-        self.eve_memory_reader.free_ui_json()
-        if not tree_bytes:
-            print("no ui trees found")
-            return False
-        try:
-            tree_str = tree_bytes.decode("utf-8", errors="ignore")
+                self.eve_memory_reader.read_ui_trees()
+            tree_bytes = self.eve_memory_reader.get_ui_json()
+            self.eve_memory_reader.free_ui_json()
+            if not tree_bytes:
+                print("no ui trees found")
+            try:
+                tree_str = tree_bytes.decode("utf-8", errors="ignore")
 
-            # with open("ui_tree.json", "w") as f:
-            #     f.write(tree_str)
+                # with open("ui_tree.json", "w") as f:
+                #     f.write(tree_str)
 
-            tree = json.loads(tree_str)
-            self.load(tree, root_address)
-        except UnicodeDecodeError as e:
-            print(f"error reading ui trees: {e}")
-            return False
-        except ValueError as e:
-            print(f"error reading ui trees: {e}")
-            return False
-        return True
+                tree = json.loads(tree_str)
+                self.load(tree, root_address)
+            except UnicodeDecodeError as e:
+                print(f"error reading ui trees: {e}")
+            except ValueError as e:
+                print(f"error reading ui trees: {e}")
+
+            return True
 
     def find_node(
             self,
