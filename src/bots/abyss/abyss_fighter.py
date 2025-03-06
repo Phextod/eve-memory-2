@@ -187,6 +187,8 @@ class AbyssFighter:
 
     def target_current_stage_orbit_target(self, current_stage: Stage):
         if not self.ui.target_bar.targets:
+            self.ui.overview.lock_order()
+            self.ui.overview.update()
             if current_stage.orbit_target is None:
                 current_orbit_entry = next((e for e in self.ui.overview.entries if "Cache" in e.type), None)
             else:
@@ -199,14 +201,15 @@ class AbyssFighter:
                 )
             if current_orbit_entry is None:
                 return
-            self.ui.overview.unlock_order()
             current_orbit_entry.target()
-            self.ui.overview.lock_order()
+            self.ui.overview.unlock_order()
             wait_for_truthy(lambda: not [e for e in self.ui.overview.update().entries if e.is_being_targeted], 10)
             self.ui.target_bar.update()
 
     def target_current_stage_target(self, current_stage: Stage):
         if current_stage.target != current_stage.orbit_target and len(self.ui.target_bar.targets) < 2:
+            self.ui.overview.lock_order()
+            self.ui.overview.update()
             current_target_entry = next(
                 (
                     e for e in self.ui.overview.entries
@@ -216,9 +219,8 @@ class AbyssFighter:
             )
             if current_target_entry is None:
                 return
-            self.ui.overview.unlock_order()
             current_target_entry.target()
-            self.ui.overview.lock_order()
+            self.ui.overview.unlock_order()
             wait_for_truthy(lambda: not [e for e in self.ui.overview.update().entries if e.is_being_targeted], 10)
             self.ui.target_bar.update()
 
@@ -230,6 +232,8 @@ class AbyssFighter:
                 or (next_stage.target == next_stage.orbit_target and len(self.ui.target_bar.targets) < 2)
             )
         ):
+            self.ui.overview.lock_order()
+            self.ui.overview.update()
             if next_stage.orbit_target is None:
                 next_orbit_entry = next(e for e in self.ui.overview.entries if "Cache" in e.type)
             else:
@@ -238,9 +242,8 @@ class AbyssFighter:
                     if next_stage.orbit_target.name == e.type
                     and not e.is_targeted_by_me
                 )
-            self.ui.overview.unlock_order()
             next_orbit_entry.target()
-            self.ui.overview.lock_order()
+            self.ui.overview.unlock_order()
             wait_for_truthy(lambda: not [e for e in self.ui.overview.update().entries if e.is_being_targeted], 10)
             self.ui.target_bar.update()
 
@@ -249,14 +252,15 @@ class AbyssFighter:
             next_stage.target != next_stage.orbit_target
             and next_stage.target != next_stage.orbit_target and len(self.ui.target_bar.targets) < 3
         ):
+            self.ui.overview.lock_order()
+            self.ui.overview.update()
             next_target_entry = next(
                 e for e in self.ui.overview.entries
                 if next_stage.target.name == e.type
                 and not e.is_targeted_by_me
             )
-            self.ui.overview.unlock_order()
             next_target_entry.target()
-            self.ui.overview.lock_order()
+            self.ui.overview.unlock_order()
             wait_for_truthy(lambda: not [e for e in self.ui.overview.update().entries if e.is_being_targeted], 10)
             self.ui.target_bar.update()
 
@@ -278,16 +282,8 @@ class AbyssFighter:
         if not current_target.is_active_target:
             click(current_target.node, pos_y=0.3)
 
-    def manage_targeting(self, clear_order):
+    def manage_targeting(self, current_stage, next_stage):
         self.ui.target_bar.update()
-
-        self.ui.overview.lock_order()
-        self.ui.overview.update()
-
-        current_stage, next_stage = self.get_current_and_next_stage(clear_order)
-        if current_stage is None:
-            self.ui.overview.unlock_order()
-            return True
 
         self.target_current_stage_orbit_target(current_stage)
         self.target_current_stage_target(current_stage)
@@ -297,9 +293,6 @@ class AbyssFighter:
             self.target_next_stage_target(next_stage)
 
         self.select_current_target(current_stage)
-
-        self.ui.overview.unlock_order()
-        return True
 
     def manage_weapons(self):
         changed_module_status = False
@@ -474,9 +467,10 @@ class AbyssFighter:
             print(f"{stage.target.name}: {stage.target.dmg_without_orbit}, {stage.target.dmg_with_orbit}")
 
         while self.enemies_on_overview():
-            while not self.manage_targeting(clear_order):
-                pass
             self.ui.overview.update()
+            current_stage, next_stage = self.get_current_and_next_stage(clear_order)
+
+            self.manage_targeting(current_stage, next_stage)
             self.ui.target_bar.update()
 
             self.manage_navigation(clear_order)

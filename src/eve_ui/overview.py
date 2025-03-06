@@ -2,14 +2,14 @@ import time
 from dataclasses import dataclass
 from enum import Enum
 from threading import Event, Thread
-from typing import List
+from typing import List, Optional
 
 import pyautogui
 
 from src.eve_ui.context_menu import ContextMenu, DistancePresets
 from src.utils.bubbling_query import BubblingQuery
 from src.utils.ui_tree import UITree, UITreeNode
-from src.utils.utils import click, MOUSE_RIGHT, move_cursor
+from src.utils.utils import click, MOUSE_RIGHT, move_cursor, wait_for_truthy
 
 
 @dataclass
@@ -139,7 +139,9 @@ class OverviewEntry:
 class Overview:
     def __init__(self, refresh_on_init=False):
         self.order_unlock_event = Event()
-        self.order_lock_thread = Thread(target=self._loop_hover_entries)
+        self.order_lock_thread: Optional[Thread] = None
+
+        self.ui_tree: UITree = UITree.instance()
 
         self.main_window_query = BubblingQuery(
             node_type="OverviewWindow",
@@ -200,16 +202,35 @@ class Overview:
         if len(self.entries) < 2:
             return
 
+        first_pos = self.entries[0].node.get_center()
+        entry_height = self.entries[1].node.y - self.entries[0].node.y
+        entry_count = len(self.entries)
+
         i = 0
         while not self.order_unlock_event.is_set():
-            move_cursor(self.entries[0])
-            time.sleep(0.2)
-            i = (i + 1) % 2
+            move_cursor((first_pos[0], first_pos[1] + entry_height * i))
+            time.sleep(0.1)
+            i = (i + 1) % entry_count
+
+            if len(self.entries) > 2:
+                entry_count = len(self.entries)
 
     def lock_order(self):
+        if self.order_lock_thread is not None and self.order_lock_thread.is_alive():
+            self.unlock_order()
+
         self.order_unlock_event.clear()
-        if not self.order_lock_thread.is_alive():
-            self.order_lock_thread.start()
+        self.order_lock_thread = Thread(target=self._loop_hover_entries)
+        self.order_lock_thread.start()
+        wait_for_truthy(
+            lambda: self.ui_tree.find_node(
+                {"_texturePath": "columnLock"},
+                contains=True,
+                root=self.main_window_query.result,
+                refresh=True
+            ),
+            10
+        )
 
     def unlock_order(self):
         self.order_unlock_event.set()
