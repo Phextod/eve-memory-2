@@ -33,6 +33,8 @@ class Target:
                 distance_multiplier = 1
                 distance_text = distance_text.replace("m", "")
 
+            distance_text = distance_text.split(",")[0]
+
             distance = int(distance_text) * distance_multiplier
 
         active_target_marker = ui_tree.find_node(

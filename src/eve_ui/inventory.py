@@ -102,6 +102,11 @@ class Inventory:
             refresh_on_init=refresh
         ).result
 
+        if capacity_container is None:
+            self.capacity_filled = 0
+            self.capacity_max = 0
+            return
+
         capacity_text = capacity_container.attrs["_setText"]
         split = capacity_text.split(")")[-1].split("/")
 

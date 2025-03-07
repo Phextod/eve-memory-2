@@ -37,8 +37,11 @@ class AbyssBot:
         """
         :return: True if there is loot to be taken, False if looting is done
         """
-        self.ui.overview.update()
-        potential_caches = [e for e in self.ui.overview.entries if "Cache" in e.type]
+        potential_caches = None
+        while not potential_caches:
+            self.ui.overview.update()
+            potential_caches = [e for e in self.ui.overview.entries if "Cache" in e.type]
+
         if len(potential_caches) != 1:
             return True
 
@@ -68,6 +71,7 @@ class AbyssBot:
             if high_module.ammo_count < config.ABYSSAL_AMMO_PER_WEAPON[i]:
                 click(high_module.node, MOUSE_RIGHT)
                 self.context_menu.click_safe("Reload all")
+                high_module.set_state_change_time()
                 is_prepared = False
 
         # repair
@@ -87,7 +91,10 @@ class AbyssBot:
         return is_prepared
 
     def jump_to_next_room(self):
+        self.ui.overview.lock_order()
+        self.ui.overview.update()
         jump_gate_entry = next(e for e in self.ui.overview.entries if "Conduit" in e.type)
+        self.ui.overview.unlock_order()
         jump_gate_entry.generic_action(OverviewEntry.Action.activate_gate)
 
         self.ui.ship_ui.update()
@@ -105,7 +112,6 @@ class AbyssBot:
 
     def do_abyss(self):
         start_timer = time.time()
-        self.ui.overview.order_lock_thread_start()
 
         current_room = 1
         while current_room <= 3:
@@ -114,19 +120,16 @@ class AbyssBot:
                 self.prepare_for_next_room(current_room)
                 self.ui.ship_ui.update_modules()
                 self.ui.ship_ui.update_capacitor_percent()
-                if self.abyss_fighter.manage_propulsion(0.5):
-                    time.sleep(0.2)
+                self.abyss_fighter.manage_propulsion(0.5)
             self.approach_jump_gate()
             while not self.prepare_for_next_room(current_room) and time.time() - start_timer < 5 * 60:
                 self.ui.ship_ui.update_modules()
                 self.ui.ship_ui.update_capacitor_percent()
-                if self.abyss_fighter.manage_propulsion(0.7):
-                    time.sleep(0.2)
+                self.abyss_fighter.manage_propulsion(0.7)
             self.abyss_fighter.deactivate_modules()
             self.jump_to_next_room()
             current_room += 1
 
-        self.ui.overview.order_lock_thread_exit()
         time.sleep(5)
 
     def undock(self):

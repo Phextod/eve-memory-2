@@ -51,10 +51,10 @@ class Route:
         context_menu: ContextMenu = ContextMenu.instance()
 
         while True:
-            self.update()
             is_jumping = False
             is_docking = False
             while not (is_docking or is_jumping):
+                self.update()
                 click(self.route_sprites[0], MOUSE_RIGHT)
                 time.sleep(0.5)
                 is_jumping = context_menu.click("Jump through stargate")

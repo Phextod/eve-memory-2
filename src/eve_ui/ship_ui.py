@@ -1,4 +1,5 @@
 import math
+import time
 from enum import Enum
 from typing import Dict, List
 
@@ -22,6 +23,9 @@ class ShipModule:
         not_overloaded = 1
         overloaded = 2
         turning_off = 3
+
+    latest_state_change_times = dict()
+    WAIT_TIME_ON_STATE_CHANGE = 1
 
     def __init__(self, node: UITreeNode):
         ui_tree: UITree = UITree.instance()
@@ -78,19 +82,34 @@ class ShipModule:
         else:
             self.overload_status = ShipModule.OverloadStatus.turning_off
 
+    def get_latest_state_change_time(self):
+        return ShipModule.latest_state_change_times.get(self.node.attrs['_name'], 0.0)
+
+    def set_state_change_time(self):
+        ShipModule.latest_state_change_times.update({self.node.attrs['_name']: time.time()})
+
     def set_active(self, activate: bool):
+        if time.time() - self.get_latest_state_change_time() < ShipModule.WAIT_TIME_ON_STATE_CHANGE:
+            return False
+
         if (activate and self.active_status == ShipModule.ActiveStatus.not_active) or \
                 (not activate and self.active_status == ShipModule.ActiveStatus.active):
             click(self.node)
+            self.set_state_change_time()
             return True
         return False
 
     def set_overload(self, overload: bool):
+        latest_state_change_time = ShipModule.latest_state_change_times.get(self.node.attrs['_name'])
+        if time.time() - latest_state_change_time < ShipModule.WAIT_TIME_ON_STATE_CHANGE:
+            return
+
         if (overload and self.overload_status == ShipModule.OverloadStatus.not_overloaded) or \
                 (not overload and self.overload_status == ShipModule.OverloadStatus.overloaded):
             pyautogui.keyDown("shift")
             click(self.node)
             pyautogui.keyUp("shift")
+            self.set_state_change_time()
 
 
 class ShipUI:

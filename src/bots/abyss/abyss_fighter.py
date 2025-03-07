@@ -176,8 +176,13 @@ class AbyssFighter:
             return
 
         current_stage: Stage
+        self.ui.overview.update()
         current_stage, _ = self.get_current_and_next_stage(clear_order)
         if current_stage is None:
+            return
+
+        self.ui.target_bar.update()
+        if not self.ui.target_bar.targets:
             return
 
         click(self.ui.target_bar.targets[0].node, button=MOUSE_RIGHT, pos_y=0.3)
@@ -345,6 +350,7 @@ class AbyssFighter:
             if weapon_module.ammo_count == 0:
                 click(weapon_module.node, MOUSE_RIGHT)
                 self.ui.context_menu.click_safe("Reload all")
+                weapon_module.set_state_change_time()
                 changed_module_status = True
 
         self.ui.ship_ui.update_high_slots()
@@ -488,13 +494,20 @@ class AbyssFighter:
         click(self.ui.target_bar.targets[0].node, button=MOUSE_RIGHT, pos_y=0.3)
         self.ui.context_menu.click("Approach")
 
+        weapon_max_range = max(
+            config.ABYSSAL_PLAYER_SHIP.missile_range,
+            config.ABYSSAL_PLAYER_SHIP.turret_optimal_range
+        )
+
         while len(potential_caches) == 1 and "largeCollidableStructure" in potential_caches[0].icon:
+            self.ui.target_bar.update()
             self.ui.ship_ui.update_modules()
             self.ui.ship_ui.update_capacitor_percent()
 
             self.manage_drones()
-            if self.manage_propulsion(0.5):
-                time.sleep(0.2)
+            self.manage_propulsion(0.5)
+            if self.ui.target_bar.targets[0].distance < weapon_max_range / 2:
+                self.manage_weapons()
 
             self.ui.overview.update()
             potential_caches = [e for e in self.ui.overview.entries if "Cache" in e.type]

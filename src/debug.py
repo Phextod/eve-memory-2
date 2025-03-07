@@ -30,8 +30,8 @@ self = AbyssBot(ui)
 # abyss_fighter.init_room()
 # abyss_fighter.clear_room()
 
-self.run()
+# self.run()
 # self.use_filament()
-# self.do_abyss()
+self.do_abyss()
 
 print("Done")
