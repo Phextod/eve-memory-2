@@ -120,7 +120,7 @@ class OverviewEntry:
 
     def generic_action(self, action: Action):
         click(self.node, MOUSE_RIGHT)
-        return ContextMenu.instance().click_safe(action.value, 5)
+        return ContextMenu.instance().click_safe(action.value)
 
     def target(self):
         pyautogui.keyDown("ctrl")
@@ -133,13 +133,13 @@ class OverviewEntry:
         if distance > 0:
             ContextMenu.instance().open_submenu(distance_text, contains=True)
             distance_text = DistancePresets.closest(distance)["text"]
-        return ContextMenu.instance().click_safe(distance_text, 5)
+        return ContextMenu.instance().click_safe(distance_text)
 
 
 class Overview:
     def __init__(self, refresh_on_init=False):
-        self.order_unlock_event = Event()
-        self.order_lock_thread: Optional[Thread] = None
+        self.order_lock_event = Event()
+        self.order_lock_thread = Thread(target=self._loop_hover_entries)
 
         self.ui_tree: UITree = UITree.instance()
 
@@ -200,6 +200,7 @@ class Overview:
 
     def _loop_hover_entries(self):
         if len(self.entries) < 2:
+            time.sleep(0.2)
             return
 
         first_pos = self.entries[0].node.get_center()
@@ -207,7 +208,7 @@ class Overview:
         entry_count = len(self.entries)
 
         i = 0
-        while not self.order_unlock_event.is_set():
+        while self.order_lock_event.is_set():
             move_cursor((first_pos[0], first_pos[1] + entry_height * i))
             time.sleep(0.1)
             i = (i + 1) % entry_count
@@ -215,11 +216,18 @@ class Overview:
             if len(self.entries) > 2:
                 entry_count = len(self.entries)
 
+    def unlock_order(self):
+        if not self.order_lock_thread.is_alive():
+            return
+
+        self.order_lock_event.clear()
+        self.order_lock_thread.join()
+
     def lock_order(self):
-        if self.order_lock_thread is not None and self.order_lock_thread.is_alive():
+        if self.order_lock_thread.is_alive():
             self.unlock_order()
 
-        self.order_unlock_event.clear()
+        self.order_lock_event.set()
         self.order_lock_thread = Thread(target=self._loop_hover_entries)
         self.order_lock_thread.start()
         wait_for_truthy(
@@ -231,8 +239,3 @@ class Overview:
             ),
             10
         )
-
-    def unlock_order(self):
-        self.order_unlock_event.set()
-        if self.order_lock_thread.is_alive():
-            self.order_lock_thread.join()

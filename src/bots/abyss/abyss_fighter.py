@@ -183,7 +183,7 @@ class AbyssFighter:
         click(self.ui.target_bar.targets[0].node, button=MOUSE_RIGHT, pos_y=0.3)
         self.ui.context_menu.open_submenu("Orbit", contains=True)
         distance = 1_000 if current_stage.orbit_target is None else current_stage.orbit_target.optimal_orbit_range
-        self.ui.context_menu.click_safe(DistancePresets.closest(distance)["text"], 5)
+        self.ui.context_menu.click_safe(DistancePresets.closest(distance)["text"])
 
     def target_current_stage_orbit_target(self, current_stage: Stage):
         if not self.ui.target_bar.targets:
@@ -200,11 +200,13 @@ class AbyssFighter:
                     None
                 )
             if current_orbit_entry is None:
-                return
-            current_orbit_entry.target()
+                self.ui.overview.unlock_order()
+                return False
             self.ui.overview.unlock_order()
+            current_orbit_entry.target()
             wait_for_truthy(lambda: not [e for e in self.ui.overview.update().entries if e.is_being_targeted], 10)
             self.ui.target_bar.update()
+        return True
 
     def target_current_stage_target(self, current_stage: Stage):
         if current_stage.target != current_stage.orbit_target and len(self.ui.target_bar.targets) < 2:
@@ -218,11 +220,13 @@ class AbyssFighter:
                 None
             )
             if current_target_entry is None:
-                return
-            current_target_entry.target()
+                self.ui.overview.unlock_order()
+                return False
             self.ui.overview.unlock_order()
+            current_target_entry.target()
             wait_for_truthy(lambda: not [e for e in self.ui.overview.update().entries if e.is_being_targeted], 10)
             self.ui.target_bar.update()
+        return True
 
     def target_next_stage_orbit_target(self, current_stage: Stage, next_stage: Stage):
         if (
@@ -235,17 +239,25 @@ class AbyssFighter:
             self.ui.overview.lock_order()
             self.ui.overview.update()
             if next_stage.orbit_target is None:
-                next_orbit_entry = next(e for e in self.ui.overview.entries if "Cache" in e.type)
+                next_orbit_entry = next((e for e in self.ui.overview.entries if "Cache" in e.type), None)
             else:
                 next_orbit_entry = next(
-                    e for e in self.ui.overview.entries
-                    if next_stage.orbit_target.name == e.type
-                    and not e.is_targeted_by_me
+                    (
+                        e for e in self.ui.overview.entries
+                        if next_stage.orbit_target.name == e.type
+                        and not e.is_targeted_by_me
+                    ),
+                    None
                 )
-            next_orbit_entry.target()
+            if not next_orbit_entry:
+                self.ui.overview.unlock_order()
+                return False
+
             self.ui.overview.unlock_order()
+            next_orbit_entry.target()
             wait_for_truthy(lambda: not [e for e in self.ui.overview.update().entries if e.is_being_targeted], 10)
             self.ui.target_bar.update()
+        return True
 
     def target_next_stage_target(self, next_stage: Stage):
         if (
@@ -255,14 +267,22 @@ class AbyssFighter:
             self.ui.overview.lock_order()
             self.ui.overview.update()
             next_target_entry = next(
-                e for e in self.ui.overview.entries
-                if next_stage.target.name == e.type
-                and not e.is_targeted_by_me
+                (
+                    e for e in self.ui.overview.entries
+                    if next_stage.target.name == e.type
+                    and not e.is_targeted_by_me
+                ),
+                None
             )
-            next_target_entry.target()
+            if not next_target_entry:
+                self.ui.overview.unlock_order()
+                return False
+
             self.ui.overview.unlock_order()
+            next_target_entry.target()
             wait_for_truthy(lambda: not [e for e in self.ui.overview.update().entries if e.is_being_targeted], 10)
             self.ui.target_bar.update()
+        return True
 
     def select_orbit_target(self):
         if not self.ui.target_bar.targets:
@@ -281,18 +301,31 @@ class AbyssFighter:
             current_target = self.ui.target_bar.targets[0]
         if not current_target.is_active_target:
             click(current_target.node, pos_y=0.3)
+        return True
 
     def manage_targeting(self, current_stage, next_stage):
+        """
+        Returns True if targeting was successful
+        """
         self.ui.target_bar.update()
 
-        self.target_current_stage_orbit_target(current_stage)
-        self.target_current_stage_target(current_stage)
+        if current_stage is None:
+            return True
+
+        if not self.target_current_stage_orbit_target(current_stage):
+            return False
+        if not self.target_current_stage_target(current_stage):
+            return False
 
         if next_stage is not None:
-            self.target_next_stage_orbit_target(current_stage, next_stage)
-            self.target_next_stage_target(next_stage)
+            if not self.target_next_stage_orbit_target(current_stage, next_stage):
+                return False
+            if not self.target_next_stage_target(next_stage):
+                return False
 
-        self.select_current_target(current_stage)
+        if not self.select_current_target(current_stage):
+            return False
+        return True
 
     def manage_weapons(self):
         changed_module_status = False
@@ -302,13 +335,16 @@ class AbyssFighter:
         non_active_targets = [t for t in self.ui.target_bar.targets if not t.is_active_target]
         for non_active_target in non_active_targets:
             for weapon_icon in non_active_target.active_weapon_icons:
+                # '12_64_6.png' == Web icon
+                if '12_64_6.png' in weapon_icon.attrs["_texturePath"]:
+                    continue
                 click(weapon_icon)
 
         weapon_modules = [self.ui.ship_ui.high_modules[i] for i in config.ABYSSAL_WEAPON_MODULE_INDICES]
         for weapon_module in weapon_modules:
             if weapon_module.ammo_count == 0:
                 click(weapon_module.node, MOUSE_RIGHT)
-                self.ui.context_menu.click_safe("Reload all", 5)
+                self.ui.context_menu.click_safe("Reload all")
                 changed_module_status = True
 
         self.ui.ship_ui.update_high_slots()
@@ -436,16 +472,21 @@ class AbyssFighter:
         return fight_plan.find_best_plan()
 
     def open_bio_cache(self):
+        self.ui.overview.lock_order()
+        self.ui.overview.update()
         potential_caches = [e for e in self.ui.overview.entries if "Cache" in e.type]
         if len(potential_caches) > 1 or "largeCollidableStructure" not in potential_caches[0].icon:
             return
 
         bio_cache = potential_caches[0]
 
-        bio_cache.generic_action(OverviewEntry.Action.approach)
-
+        self.ui.overview.unlock_order()
         bio_cache.target()
         wait_for_truthy(lambda: self.ui.target_bar.update().targets, 20)
+
+        self.ui.target_bar.update()
+        click(self.ui.target_bar.targets[0].node, button=MOUSE_RIGHT, pos_y=0.3)
+        self.ui.context_menu.click("Approach")
 
         while len(potential_caches) == 1 and "largeCollidableStructure" in potential_caches[0].icon:
             self.ui.ship_ui.update_modules()
@@ -470,7 +511,10 @@ class AbyssFighter:
             self.ui.overview.update()
             current_stage, next_stage = self.get_current_and_next_stage(clear_order)
 
-            self.manage_targeting(current_stage, next_stage)
+            while not self.manage_targeting(current_stage, next_stage):
+                self.ui.overview.update()
+                current_stage, next_stage = self.get_current_and_next_stage(clear_order)
+
             self.ui.target_bar.update()
 
             self.manage_navigation(clear_order)

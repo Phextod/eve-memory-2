@@ -34,6 +34,9 @@ class Drone:
             root=entry_node,
             refresh=False,
         )
+        if type_node is None:
+            return None
+
         name = type_node.attrs.get("_setText").split(" <")[0]
 
         quantity = int(name.split("(")[1].replace(")", "")) if "(" in name else 1
@@ -103,6 +106,8 @@ class Drones:
             if "NoDroneIn" in entry_node.type:
                 continue
             drone = Drone.from_entry_node(entry_node, UITree.instance())
+            if drone is None:
+                continue
             if drone.quantity == 1:
                 if entry_node.type == "DroneInSpaceEntry":
                     self.in_space.append(drone)
@@ -124,12 +129,12 @@ class Drones:
         drones.sort(key=lambda d: d.entry_node.y, reverse=True)
         for drone in drones:
             click(drone.entry_node, MOUSE_RIGHT, pos_x=0.2)
-            ContextMenu.instance().click_safe("Launch Drone", 5)
+            ContextMenu.instance().click_safe("Launch Drone")
 
     @staticmethod
     def recall(drone: Drone):
         click(drone.entry_node, MOUSE_RIGHT, pos_x=0.1)
-        ContextMenu.instance().click_safe("Return to Drone Bay", 5)
+        ContextMenu.instance().click_safe("Return to Drone Bay")
 
     @staticmethod
     def recall_all():

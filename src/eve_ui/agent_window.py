@@ -32,7 +32,7 @@ class AgentWindow:
         ).result
         click(location_link_1, MOUSE_RIGHT, pos_y=0.3)
 
-        self.context_menu.click_safe("Add Waypoint", 5)
+        self.context_menu.click_safe("Add Waypoint")
 
     def add_pickup_waypoint(self):
         location_link_1 = BubblingQuery(
@@ -41,4 +41,4 @@ class AgentWindow:
         ).result
         click(location_link_1, MOUSE_RIGHT, pos_y=0.3)
 
-        self.context_menu.click_safe("Add Waypoint", 5)
+        self.context_menu.click_safe("Add Waypoint")

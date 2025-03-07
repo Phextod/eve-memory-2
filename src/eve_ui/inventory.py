@@ -69,7 +69,7 @@ class Inventory:
         )
         if not self.active_ship_drone_bay:
             click(self.active_ship_hangar, MOUSE_RIGHT)
-            if not self.context_menu.click_safe("Open Drone Bay", 3):
+            if not self.context_menu.click_safe("Open Drone Bay"):
                 click(self.active_ship_hangar)
             self.active_ship_drone_bay = self.ui_tree.find_node(
                 {'_name': 'topCont_ShipDroneBay'},
@@ -210,7 +210,7 @@ class Inventory:
 
     def repair_active_ship(self):
         click(self.active_ship_hangar, MOUSE_RIGHT)
-        self.context_menu.click_safe("Get Repair Quote", 5)
+        self.context_menu.click_safe("Get Repair Quote")
         time.sleep(0.5)
 
         repair_window = self.ui_tree.find_node(node_type="RepairShopWindow")

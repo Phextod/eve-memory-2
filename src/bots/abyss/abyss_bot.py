@@ -67,7 +67,7 @@ class AbyssBot:
                 continue
             if high_module.ammo_count < config.ABYSSAL_AMMO_PER_WEAPON[i]:
                 click(high_module.node, MOUSE_RIGHT)
-                self.context_menu.click_safe("Reload all", 5)
+                self.context_menu.click_safe("Reload all")
                 is_prepared = False
 
         # repair
@@ -105,6 +105,7 @@ class AbyssBot:
 
     def do_abyss(self):
         start_timer = time.time()
+        self.ui.overview.order_lock_thread_start()
 
         current_room = 1
         while current_room <= 3:
@@ -114,16 +115,18 @@ class AbyssBot:
                 self.ui.ship_ui.update_modules()
                 self.ui.ship_ui.update_capacitor_percent()
                 if self.abyss_fighter.manage_propulsion(0.5):
-                    time.sleep(0.1)
+                    time.sleep(0.2)
             self.approach_jump_gate()
             while not self.prepare_for_next_room(current_room) and time.time() - start_timer < 5 * 60:
                 self.ui.ship_ui.update_modules()
                 self.ui.ship_ui.update_capacitor_percent()
                 if self.abyss_fighter.manage_propulsion(0.7):
-                    time.sleep(0.1)
+                    time.sleep(0.2)
             self.abyss_fighter.deactivate_modules()
             self.jump_to_next_room()
             current_room += 1
+
+        self.ui.overview.order_lock_thread_exit()
         time.sleep(5)
 
     def undock(self):
@@ -135,7 +138,7 @@ class AbyssBot:
         self.ui.inventory.update_items()
 
         click(self.ui.inventory.items[0].node, MOUSE_RIGHT)
-        self.context_menu.click_safe(f"Use {config.ABYSSAL_DIFFICULTY} {config.ABYSSAL_WEATHER}", 5, contains=True)
+        self.context_menu.click_safe(f"Use {config.ABYSSAL_DIFFICULTY} {config.ABYSSAL_WEATHER}", contains=True)
 
         activation_window = self.ui_tree.find_node(node_type="KeyActivationWindow")
         activate_btn = self.ui_tree.find_node(node_type="ActivateButton", root=activation_window)
@@ -157,14 +160,14 @@ class AbyssBot:
         if destination_set:
             self.ui.route.autopilot(self.ui.station_window, self.ui.timers)
             click(safe_spot_entry, MOUSE_RIGHT)
-            self.context_menu.click_safe("Warp to Within", 5, contains=True)
+            self.context_menu.click_safe("Warp to Within", contains=True)
 
         wait_for_truthy(lambda: not self.ui.ship_ui.update().is_warping and self.ui.ship_ui.speed < 10, 60)
 
     def dock_home_base(self):
         base_entry = self.ui.locations.get_entry(config.ABYSSAL_BASE_LOCATION)
         click(base_entry, MOUSE_RIGHT)
-        if self.context_menu.click_safe("Set Destination", 5):
+        if self.context_menu.click_safe("Set Destination"):
             self.ui.route.autopilot(self.ui.station_window, self.ui.timers)
 
     def drop_off_loot(self):

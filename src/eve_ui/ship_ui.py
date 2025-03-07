@@ -47,7 +47,7 @@ class ShipModule:
                     root=node,
                     refresh=False,
                 )
-                if glow.attrs["_color"]["rPercent"] >= 100:
+                if glow and glow.attrs["_color"]["rPercent"] >= 100:
                     self.active_status = ShipModule.ActiveStatus.turning_off
                 else:
                     self.active_status = ShipModule.ActiveStatus.active

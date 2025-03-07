@@ -69,5 +69,5 @@ class ContextMenu:
             return True
         return False
 
-    def click_safe(self, entry_text, timeout, contains=False):
+    def click_safe(self, entry_text, timeout=2, contains=False):
         return wait_for_truthy(lambda: self.click(entry_text, contains=contains), timeout) is not None

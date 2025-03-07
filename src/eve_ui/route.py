@@ -42,9 +42,9 @@ class Route:
             return
 
         click(self.route_sprites[0], MOUSE_RIGHT)
-        self.context_menu.click_safe("Set Destination", 3)
+        self.context_menu.click_safe("Set Destination")
         click(self.route_sprites[0], MOUSE_RIGHT)
-        self.context_menu.click_safe("Remove Waypoint", 3)
+        self.context_menu.click_safe("Remove Waypoint")
 
     def autopilot(self, station_window: StationWindow, timers: Timers):
         # todo autopilot for routes not ending with docking
