@@ -35,6 +35,7 @@ class OverviewEntry:
     is_only_targeting = False
 
     node: UITreeNode = None
+    context_menu: ContextMenu = ContextMenu.instance()
 
     class Action(Enum):
         unlock_target = "Unlock Target"
@@ -43,7 +44,7 @@ class OverviewEntry:
         activate_gate = "Activate Gate"
 
     @staticmethod
-    def from_entry_node(entry_node: UITreeNode, headers: list):
+    def from_entry_node(entry_node: UITreeNode, headers: list, header_centers: list):
         decode_dict = {
             "icon": "Icon",
             "distance": "Distance",
@@ -55,7 +56,7 @@ class OverviewEntry:
             "faction": "Faction",
             "militia": "Militia",
             "size": "Size",
-            "velocity": "Velocity",
+            "velocity": "Velocity (m/s)",
             "radial_velocity": "Radial Velocity (m/s)",
             "transversal_velocity": "Transversal Velocity (m/s)",
             "angular_velocity": "Angular Velocity (deg/s)",
@@ -74,8 +75,13 @@ class OverviewEntry:
         entry_labels.sort(key=lambda a: a.x)
 
         entry_dict = dict()
-        for header, entry_label in zip(headers, entry_labels):
+        for entry_label in entry_labels:
+            label_center = entry_label.x + entry_label.attrs.get("_displayWidth", 20) / 2
+            closest_header_index = min(enumerate(header_centers), key=lambda x: abs(x[1] - label_center))[0]
+
+            header = headers[closest_header_index]
             value = entry_label.attrs.get("_text") or entry_label.attrs.get("_texturePath")
+
             entry_dict.update({header: value})
 
         decoded_data = dict()
@@ -135,6 +141,20 @@ class OverviewEntry:
             distance_text = DistancePresets.closest(distance)["text"]
         return ContextMenu.instance().click_safe(distance_text)
 
+    def set_tag(self, tag_character: str):
+        click(self.node, MOUSE_RIGHT)
+        self.context_menu.click_safe("Tag Item")
+
+        if tag_character.isnumeric():
+            self.context_menu.click_safe("Number")
+        else:
+            self.context_menu.click_safe("Letter")
+        self.context_menu.click_safe(" " + tag_character.capitalize())
+
+    def clear_tag(self):
+        click(self.node, MOUSE_RIGHT)
+        self.context_menu.click_safe("Untag Item")
+
 
 class Overview:
     def __init__(self, refresh_on_init=False):
@@ -150,6 +170,7 @@ class Overview:
 
         self.entries: List[OverviewEntry] = []
         self.headers = []
+        self.header_centers = []
 
         self.header_component_query = BubblingQuery(
             node_type="Header",
@@ -169,6 +190,7 @@ class Overview:
 
     def update_headers(self, refresh=True):
         self.headers.clear()
+        self.header_centers.clear()
 
         headers = self.header_component_query.run()
         if not headers:
@@ -178,8 +200,12 @@ class Overview:
 
         for header in headers:
             label = UITree.instance().find_node(node_type="EveLabelSmall", root=header, refresh=refresh)
-            text = label.attrs["_setText"] if label else "Icon"
-            self.headers.append(text)
+            if label:
+                self.headers.append(label.attrs["_setText"])
+                self.header_centers.append(label.x + label.attrs.get("_displayWidth", 20) / 2)
+            else:
+                self.headers.append("Icon")
+                self.header_centers.append(self.main_window_query.result.x)
 
         return self
 
@@ -192,7 +218,7 @@ class Overview:
         entry_nodes = self.entry_component_query.run(refresh)
 
         for entry_node in entry_nodes[::-1]:
-            self.entries.append(OverviewEntry.from_entry_node(entry_node, self.headers))
+            self.entries.append(OverviewEntry.from_entry_node(entry_node, self.headers, self.header_centers))
 
         self.entries.sort(key=lambda e: e.node.y)
 
