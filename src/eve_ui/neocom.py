@@ -1,10 +1,12 @@
 from typing import List
 
 from src.utils.bubbling_query import BubblingQuery
+from src.utils.singleton import Singleton
 from src.utils.ui_tree import UITree
 from src.utils.utils import click, wait_for_truthy
 
 
+@Singleton
 class Neocom:
     def __init__(self, refresh_on_init=False):
         self.ui_tree: UITree = UITree.instance()
@@ -29,6 +31,3 @@ class Neocom:
                 return False
             click(menu_btn)
         return True
-
-
-

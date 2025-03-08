@@ -37,5 +37,5 @@ class EveUI:
         self.route = Route()
         self.agent_window = AgentWindow()
         self.fleet = Fleet()
-        self.neocom = Neocom()
+        self.neocom: Neocom = Neocom.instance()
         print(f"UI components initialized in {time.time() - start}")
