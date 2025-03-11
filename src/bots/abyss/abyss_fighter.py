@@ -1,21 +1,19 @@
 import copy
 import json
-import math
 import time
 from collections import Counter
-from typing import Dict, List
+from typing import List
 
 import numpy as np
+import pyautogui
 
 from src import config
 from src.bots.abyss.abyss_ship import AbyssShip
 from src.bots.abyss.fight_plan import Stage, FightPlan
 from src.bots.abyss.player_ship import PlayerShip
-from src.bots.abyss.ship import Ship
 from src.eve_ui.context_menu import DistancePresets
 from src.eve_ui.drones import DroneStatus
 from src.eve_ui.eve_ui import EveUI
-from src.eve_ui.overview import OverviewEntry
 from src.eve_ui.ship_ui import ShipModule
 from src.utils.ui_tree import UITree
 from src.utils.utils import get_path, wait_for_truthy, move_cursor, click, MOUSE_RIGHT
@@ -45,11 +43,17 @@ class AbyssFighter:
         while True:
             try:
                 percentage_container_1 = self.ui_tree.find_node({"_name": "Row1_Col0"}, root=tooltip_panel)
-                penalty_text = self.ui_tree.find_node(node_type="EveLabelMedium", root=percentage_container_1).attrs["_setText"]
+                penalty_text = self.ui_tree.find_node(
+                    node_type="EveLabelMedium",
+                    root=percentage_container_1
+                ).attrs["_setText"]
                 penalty_multiplier = 1.0 + float(penalty_text.split(" ")[0]) / 100
 
                 percentage_container_2 = self.ui_tree.find_node({"_name": "Row2_Col0"}, root=tooltip_panel)
-                bonus_text = self.ui_tree.find_node(node_type="EveLabelMedium", root=percentage_container_2).attrs["_setText"]
+                bonus_text = self.ui_tree.find_node(
+                    node_type="EveLabelMedium",
+                    root=percentage_container_2
+                ).attrs["_setText"]
                 bonus_multiplier = 1.0 + float(bonus_text.split(" ")[0]) / 100
 
                 return penalty_multiplier, bonus_multiplier
@@ -94,6 +98,14 @@ class AbyssFighter:
                 enemy.max_velocity *= bonus_multiplier
 
         self.precompute_enemy_ship_attributes()
+
+    def enemy_entries_on_overview(self):
+        enemy_entries = []
+        for entry in self.ui.overview.entries:
+            enemy = next((ship for ship in self.enemy_ship_data if ship.name == entry.type), None)
+            if enemy:
+                enemy_entries.append(entry)
+        return enemy_entries
 
     def enemies_on_overview(self):
         enemies = []
@@ -181,155 +193,206 @@ class AbyssFighter:
         if current_stage is None:
             return
 
-        self.ui.target_bar.update()
-        if not self.ui.target_bar.targets:
-            return
+        self.ui.overview.lock_order()
+        self.ui.overview.update()
+        if current_stage.orbit_target is None:
+            orbit_target_entry = next(e for e in self.ui.overview.entries if "Cache" in e.type)
+        else:
+            possible_orbit_targets = [
+                e for e in self.ui.overview.entries
+                if e.type == current_stage.orbit_target.name
+                and e.tag is not None
+            ]
+            orbit_target_entry = min(possible_orbit_targets, key=lambda x: x.tag)
 
-        click(self.ui.target_bar.targets[0].node, button=MOUSE_RIGHT, pos_y=0.3)
-        self.ui.context_menu.open_submenu("Orbit", contains=True)
-        distance = 1_000 if current_stage.orbit_target is None else current_stage.orbit_target.optimal_orbit_range
-        self.ui.context_menu.click_safe(DistancePresets.closest(distance)["text"])
-
-    def target_current_stage_orbit_target(self, current_stage: Stage):
-        if not self.ui.target_bar.targets:
-            self.ui.overview.lock_order()
-            self.ui.overview.update()
-            if current_stage.orbit_target is None:
-                current_orbit_entry = next((e for e in self.ui.overview.entries if "Cache" in e.type), None)
-            else:
-                current_orbit_entry = next(
-                    (
-                        e for e in self.ui.overview.entries
-                        if current_stage.orbit_target.name == e.type
-                    ),
-                    None
-                )
-            if current_orbit_entry is None:
-                self.ui.overview.unlock_order()
-                return False
-            self.ui.overview.unlock_order()
-            current_orbit_entry.target()
-            wait_for_truthy(lambda: not [e for e in self.ui.overview.update().entries if e.is_being_targeted], 10)
-            self.ui.target_bar.update()
-        return True
-
-    def target_current_stage_target(self, current_stage: Stage):
-        if current_stage.target != current_stage.orbit_target and len(self.ui.target_bar.targets) < 2:
-            self.ui.overview.lock_order()
-            self.ui.overview.update()
-            current_target_entry = next(
-                (
-                    e for e in self.ui.overview.entries
-                    if current_stage.target.name == e.type and not e.is_targeted_by_me
-                ),
-                None
-            )
-            if current_target_entry is None:
-                self.ui.overview.unlock_order()
-                return False
-            self.ui.overview.unlock_order()
-            current_target_entry.target()
-            wait_for_truthy(lambda: not [e for e in self.ui.overview.update().entries if e.is_being_targeted], 10)
-            self.ui.target_bar.update()
-        return True
-
-    def target_next_stage_orbit_target(self, current_stage: Stage, next_stage: Stage):
-        if (
-            next_stage.orbit_target != current_stage.orbit_target
-            and (
-                (next_stage.target != next_stage.orbit_target and len(self.ui.target_bar.targets) < 3)
-                or (next_stage.target == next_stage.orbit_target and len(self.ui.target_bar.targets) < 2)
-            )
-        ):
-            self.ui.overview.lock_order()
-            self.ui.overview.update()
-            if next_stage.orbit_target is None:
-                next_orbit_entry = next((e for e in self.ui.overview.entries if "Cache" in e.type), None)
-            else:
-                next_orbit_entry = next(
-                    (
-                        e for e in self.ui.overview.entries
-                        if next_stage.orbit_target.name == e.type
-                        and not e.is_targeted_by_me
-                    ),
-                    None
-                )
-            if not next_orbit_entry:
-                self.ui.overview.unlock_order()
-                return False
-
-            self.ui.overview.unlock_order()
-            next_orbit_entry.target()
-            wait_for_truthy(lambda: not [e for e in self.ui.overview.update().entries if e.is_being_targeted], 10)
-            self.ui.target_bar.update()
-        return True
-
-    def target_next_stage_target(self, next_stage: Stage):
-        if (
-            next_stage.target != next_stage.orbit_target
-            and next_stage.target != next_stage.orbit_target and len(self.ui.target_bar.targets) < 3
-        ):
-            self.ui.overview.lock_order()
-            self.ui.overview.update()
-            next_target_entry = next(
-                (
-                    e for e in self.ui.overview.entries
-                    if next_stage.target.name == e.type
-                    and not e.is_targeted_by_me
-                ),
-                None
-            )
-            if not next_target_entry:
-                self.ui.overview.unlock_order()
-                return False
-
-            self.ui.overview.unlock_order()
-            next_target_entry.target()
-            wait_for_truthy(lambda: not [e for e in self.ui.overview.update().entries if e.is_being_targeted], 10)
-            self.ui.target_bar.update()
-        return True
-
-    def select_orbit_target(self):
-        if not self.ui.target_bar.targets:
-            return
-
-        orbit_target = self.ui.target_bar.targets[0]
-        if not orbit_target.is_active_target:
-            click(orbit_target.node, pos_y=0.3)
+        self.ui.overview.unlock_order()
+        click(orbit_target_entry.node, button=MOUSE_RIGHT)
+        self.ui.context_menu.click_safe("Orbit", contains=True)
+        orbit_distance = 1_000 if current_stage.orbit_target is None else current_stage.orbit_target.optimal_orbit_range
+        self.ui.context_menu.click_safe(DistancePresets.closest(orbit_distance)["text"])
 
     def select_current_target(self, current_stage):
-        if current_stage.target != current_stage.orbit_target:
-            if len(self.ui.target_bar.targets) < 2:
-                return False
-            current_target = self.ui.target_bar.targets[1]
-        else:
-            current_target = self.ui.target_bar.targets[0]
-        if not current_target.is_active_target:
-            click(current_target.node, pos_y=0.3)
-        return True
+        self.ui.overview.update()
+        self.ui.target_bar.update()
 
-    def manage_targeting(self, current_stage, next_stage):
+        if len(self.ui.target_bar.targets) < 1:
+            return False
+
+        if current_stage.target == current_stage.orbit_target:
+            min_tag_target = min(
+                self.ui.target_bar.targets,
+                key=lambda x: int(x.tag) if x.tag else 10
+            )
+            if min_tag_target.tag == 10:
+                return False
+            if min_tag_target.is_active_target:
+                return True
+
+            click(min_tag_target.node, pos_y=0.3)
+            return True
+        else:
+            target_to_set = next(t for t in self.ui.target_bar if t.tag is None)
+            if target_to_set.is_active_target:
+                return True
+
+            click(target_to_set.node, pos_y=0.3)
+            return True
+
+    def target_current_orbit_target(self, current_stage: Stage):
+        if current_stage.orbit_target is None:
+            return True
+
+        tags = [int(e.tag) for e in self.ui.overview.entries if e.tag is not None]
+        if not tags:
+            return False
+        smallest_tag = min(tags)
+        starting_targets = [e for e in self.ui.overview.entries if e.is_targeted_by_me]
+
+        if next((t for t in starting_targets if t.tag == str(smallest_tag)), None) is not None:
+            return True
+
+        self.ui.overview.lock_order()
+        self.ui.overview.update()
+        current_stage_orbit_target_entry = next(t for t in self.ui.overview.entries if t.tag == str(smallest_tag))
+        self.ui.overview.unlock_order()
+        current_stage_orbit_target_entry.target()
+        wait_for_truthy(
+            lambda: next((e for e in self.ui.overview.update().entries if e.is_being_targeted), None) is None,
+            10
+        )
+
+        final_target = next((t for t in self.ui.overview.entries if t.tag == str(smallest_tag)), None)
+        return final_target is not None and final_target.is_targeted_by_me
+
+    def target_current_target(self, current_stage: Stage):
+        if current_stage.target == current_stage.orbit_target:
+            return True
+
+        starting_targets = [e for e in self.ui.overview.entries if e.is_targeted_by_me]
+
+        if current_stage.target.name in [t.name for t in starting_targets if t.tag is None]:
+            return True
+
+        self.ui.overview.lock_order()
+        self.ui.overview.update()
+        current_stage_target_entry = next(
+            t for t in self.ui.overview.entries if t.type == current_stage.target.name and t.tag is None
+        )
+        self.ui.overview.unlock_order()
+        current_stage_target_entry.target()
+        wait_for_truthy(
+            lambda: next((e for e in self.ui.overview.update().entries if e.is_being_targeted), None) is None,
+            10
+        )
+
+        return next(
+            (
+                t for t in self.ui.overview.entries
+                if t.type == current_stage.target.name
+                and t.tag is None
+                and t.is_targeted_by_me
+            ),
+            None
+        ) is not None
+
+    def target_next_orbit_target(self, current_stage: Stage, next_stage: Stage):
+        if (
+            next_stage is None
+            or next_stage.orbit_target is None
+            or next_stage.orbit_target == current_stage.orbit_target
+        ):
+            return True
+
+        tags = [int(e.tag) for e in self.ui.overview.entries if e.tag is not None]
+        if not tags:
+            return False
+        smallest_tag = min(tags)
+        starting_targets = [e for e in self.ui.overview.entries if e.is_targeted_by_me]
+
+        if next((t for t in starting_targets if t.tag == str(smallest_tag + 1)), None) is None:
+            return True
+
+        self.ui.overview.lock_order()
+        self.ui.overview.update()
+        next_stage_orbit_target_entry = next(t for t in self.ui.overview.entries if t.tag == str(smallest_tag + 1))
+        self.ui.overview.unlock_order()
+        next_stage_orbit_target_entry.target()
+        wait_for_truthy(
+            lambda: next((e for e in self.ui.overview.update().entries if e.is_being_targeted), None) is None,
+            10
+        )
+
+        return next(t for t in self.ui.overview.entries if t.tag == str(smallest_tag + 1)).is_targeted_by_me
+
+    def target_next_target(self, current_stage: Stage, next_stage: Stage):
+        if next_stage is None or next_stage.orbit_target == next_stage.target:
+            return True
+
+        starting_targets = [e for e in self.ui.overview.entries if e.is_targeted_by_me]
+
+        if next_stage.target.name != current_stage.target.name:
+            if next((t for t in starting_targets if t.type == next_stage.target.name), None) is not None:
+                return True
+        else:
+            if current_stage.target == current_stage.orbit_target:
+                if next(
+                    (t for t in starting_targets if t.type == next_stage.target.name and t.tag is None), None
+                ) is not None:
+                    return True
+            else:
+                if len([e for e in starting_targets if e.name == next_stage.target.name]) == 2:
+                    return True
+
+        self.ui.overview.lock_order()
+        self.ui.overview.update()
+        next_stage_target_entry = next(
+            t for t in self.ui.overview.entries
+            if t.type == next_stage.target.name
+            and t.tag is None
+            and not t.is_targeted_by_me
+        )
+        self.ui.overview.unlock_order()
+        next_stage_target_entry.target()
+        wait_for_truthy(
+            lambda: next((e for e in self.ui.overview.update().entries if e.is_being_targeted), None) is None,
+            10
+        )
+
+        desired_len = 2 \
+            if current_stage.target.name == next_stage.target.name \
+            and current_stage.target != current_stage.orbit_target \
+            else 1
+
+        return len([
+            t for t in self.ui.overview.entries
+            if t.type == next_stage.target.name
+            and t.tag is None
+            and t.is_targeted_by_me
+        ]) == desired_len
+
+    def manage_targeting(self, current_stage: Stage, next_stage: Stage):
         """
         Returns True if targeting was successful
         """
-        self.ui.target_bar.update()
-
         if current_stage is None:
             return True
 
-        if not self.target_current_stage_orbit_target(current_stage):
-            return False
-        if not self.target_current_stage_target(current_stage):
+        self.ui.overview.update()
+
+        if not self.target_current_orbit_target(current_stage):
             return False
 
-        if next_stage is not None:
-            if not self.target_next_stage_orbit_target(current_stage, next_stage):
-                return False
-            if not self.target_next_stage_target(next_stage):
-                return False
-
-        if not self.select_current_target(current_stage):
+        if not self.target_current_target(current_stage):
             return False
+
+        if not self.target_next_orbit_target(current_stage, next_stage):
+            return False
+
+        if not self.target_next_target(current_stage, next_stage):
+            return False
+
+        self.select_current_target(current_stage)
+
         return True
 
     def manage_weapons(self):
@@ -359,8 +422,8 @@ class AbyssFighter:
         weapon_range = max(config.ABYSSAL_PLAYER_SHIP.missile_range,
                            config.ABYSSAL_PLAYER_SHIP.turret_optimal_range)
         if (
-                self.ui.target_bar.get_active_target() is not None
-                and self.ui.target_bar.get_active_target().distance <= weapon_range
+            self.ui.target_bar.get_active_target() is not None
+            and self.ui.target_bar.get_active_target().distance <= weapon_range
         ):
             for weapon_module in weapon_modules:
                 if weapon_module.active_status == ShipModule.ActiveStatus.not_active:
@@ -382,6 +445,26 @@ class AbyssFighter:
             if self.ui.ship_ui.medium_modules[i].set_active(self.ui.ship_ui.capacitor_percent > capacitor_limit):
                 changed_module_status = True
         return changed_module_status
+
+    def select_orbit_target(self):
+        self.ui.overview.update()
+        min_tag_target_entry = min(
+            self.ui.overview.entries,
+            key=lambda x: int(x.tag) if x.tag is not None and x.is_targeted_by_me else 10
+        )
+        if min_tag_target_entry.tag == 10:
+            return False
+
+        if min_tag_target_entry.is_active_target:
+            return True
+
+        self.ui.overview.lock_order()
+        self.ui.overview.update()
+        orbit_target_entry = next(e for e in self.ui.overview.entries if e.tag == min_tag_target_entry)
+        self.ui.overview.unlock_order()
+        orbit_target_entry.target()
+
+        return True
 
     def manage_webs(self, capacitor_limit, current_stage: Stage):
         if not current_stage or not self.ui.target_bar.targets:
@@ -460,6 +543,29 @@ class AbyssFighter:
         ):
             self.ui.drones.attack_target()
 
+    def set_orbit_tags(self, clear_order: List[Stage]):
+        orbit_targets = []
+        for stage in clear_order:
+            if stage.orbit_target is not None and stage.orbit_target not in orbit_targets:
+                orbit_targets.append(stage.orbit_target)
+
+        if not clear_order:
+            return
+
+        self.ui.overview.lock_order()
+        self.ui.overview.update()
+        self.ui.overview.unlock_order()
+        for i, target in enumerate(orbit_targets):
+            target_entry = next(e for e in self.ui.overview.entries if target.name == e.type and e.tag is None)
+            target_entry.set_tag(str(i))
+
+        wait_for_truthy(
+            lambda: max(
+                [int(e.tag) if e.tag else -1 for e in self.ui.overview.update().entries]
+            ) == len(orbit_targets) - 1,
+            10
+        )
+
     def deactivate_modules(self):
         self.ui.ship_ui.update_modules()
         for i, m in self.ui.ship_ui.high_modules.items():
@@ -520,19 +626,25 @@ class AbyssFighter:
         for stage in clear_order:
             print(f"{stage.target.name}: {stage.target.dmg_without_orbit}, {stage.target.dmg_with_orbit}")
 
-        while self.enemies_on_overview():
+        self.set_orbit_tags(clear_order)
+
+        temp_e = self.enemies_on_overview()
+        while temp_e:
             self.ui.overview.update()
             current_stage, next_stage = self.get_current_and_next_stage(clear_order)
 
             while not self.manage_targeting(current_stage, next_stage):
                 self.ui.overview.update()
                 current_stage, next_stage = self.get_current_and_next_stage(clear_order)
+            if current_stage is None:
+                break
 
             self.ui.target_bar.update()
 
             self.manage_navigation(clear_order)
             self.manage_modules(clear_order)
             self.manage_drones()
+            temp_e = self.enemies_on_overview()
 
         self.deactivate_modules()
         self.open_bio_cache()

@@ -125,7 +125,7 @@ class AbyssBot:
             while not self.prepare_for_next_room(current_room) and time.time() - start_timer < 5 * 60:
                 self.ui.ship_ui.update_modules()
                 self.ui.ship_ui.update_capacitor_percent()
-                self.abyss_fighter.manage_propulsion(0.7)
+                self.abyss_fighter.manage_propulsion(1)
             self.abyss_fighter.deactivate_modules()
             self.jump_to_next_room()
             current_room += 1
@@ -323,7 +323,14 @@ class AbyssBot:
         )
         time.sleep(3)
 
+    def init_fleet(self):
+        if not self.ui.fleet.is_in_fleet():
+            self.ui.fleet.form_fleet()
+            time.sleep(1)  # todo remove constant sleep
+        self.ui.fleet.close_fleet_window()
+
     def run(self):
+        self.init_fleet()
         self.drop_off_loot()
         self.pick_up_supplies()
         self.pick_up_drones()

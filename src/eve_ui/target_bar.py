@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 from src.utils.bubbling_query import BubblingQuery
 from src.utils.ui_tree import UITree, UITreeNode
@@ -12,6 +12,7 @@ class Target:
     distance: int
     is_active_target: bool
     active_weapon_icons: List[UITreeNode]
+    tag: Optional[str]
 
     @staticmethod
     def from_component_node(target_component):
@@ -54,7 +55,13 @@ class Target:
                 refresh=False
             )
 
-        return Target(target_component, name, distance, is_active_target, active_weapon_icons)
+        tag_node = ui_tree.find_node(node_type="EveLabelMediumBold", root=target_component, refresh=False)
+        if tag_node is not None:
+            tag = tag_node.attrs["_setText"]
+        else:
+            tag = None
+
+        return Target(target_component, name, distance, is_active_target, active_weapon_icons, tag)
 
 
 class TargetBar:
