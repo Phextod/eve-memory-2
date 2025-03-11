@@ -155,6 +155,21 @@ class OverviewEntry:
         click(self.node, MOUSE_RIGHT)
         self.context_menu.click_safe("Untag Item")
 
+    def distance_in_meters(self):
+        if not self.distance:
+            return None
+
+        distance_text = self.distance
+        distance_multiplier = 0
+        if "km" in distance_text:
+            distance_multiplier = 1_000
+        elif "m" in distance_text:
+            distance_multiplier = 1
+        elif "AU" in distance_text:
+            distance_multiplier = 150_000_000_000
+
+        return int(distance_text.split(" ")[0]) * distance_multiplier
+
 
 class Overview:
     def __init__(self, refresh_on_init=False):
@@ -210,18 +225,22 @@ class Overview:
         return self
 
     def update(self, refresh=True):
-        self.entries.clear()
+        first_iter = True
+        while first_iter or next((e for e in self.entries if e.type is None), None) is not None:
+            self.entries.clear()
 
-        if not self.update_headers(refresh):
-            return self
+            if not self.update_headers(refresh):
+                return self
 
-        entry_nodes = self.entry_component_query.run(refresh)
+            entry_nodes = self.entry_component_query.run(refresh)
 
-        for entry_node in entry_nodes[::-1]:
-            self.entries.append(OverviewEntry.from_entry_node(entry_node, self.headers, self.header_centers))
+            for entry_node in entry_nodes[::-1]:
+                self.entries.append(OverviewEntry.from_entry_node(entry_node, self.headers, self.header_centers))
 
-        self.entries.sort(key=lambda e: e.node.y)
+            self.entries.sort(key=lambda e: e.node.y)
 
+            first_iter = False
+            refresh = True
         return self
 
     def _loop_hover_entries(self):
@@ -263,5 +282,5 @@ class Overview:
                 root=self.main_window_query.result,
                 refresh=True
             ),
-            10
+            0.5
         )

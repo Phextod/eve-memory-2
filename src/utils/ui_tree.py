@@ -173,6 +173,7 @@ class UITree(object):
             self.eve_memory_reader.free_ui_json()
             if not tree_bytes:
                 print("no ui trees found")
+                return False
             try:
                 tree_str = tree_bytes.decode("utf-8", errors="ignore")
 

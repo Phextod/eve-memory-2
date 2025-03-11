@@ -32,7 +32,20 @@ self = AbyssBot(ui)
 # abyss_fighter.clear_room()
 
 # self.run()
-self.use_filament()
+# self.use_filament()
 self.do_abyss()
 
+# self.ui.overview.update()
+# self.abyss_fighter.clear_room()
+#
+# clear_order = self.abyss_fighter.calculate_clear_order()
+# for stage in clear_order:
+#     print(f"target:{stage.target.name}({id(stage.target)},"
+#           f" orbit: {stage.orbit_target.name if stage.orbit_target else 'None'}"
+#           f"({id(stage.orbit_target) if stage.orbit_target else ''})")
+# current_stage, next_stage = self.abyss_fighter.get_current_and_next_stage(clear_order)
+#
+# self.abyss_fighter.set_orbit_tags(clear_order)
+#
+# self.abyss_fighter.manage_targeting(current_stage, next_stage)
 print("Done")

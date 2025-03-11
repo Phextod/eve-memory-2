@@ -28,7 +28,8 @@ class AbyssFighter:
         self.enemy_ship_data: List[AbyssShip] = []
         self.load_enemy_ships(
             get_path(config.ABYSSAL_SHIP_DATA_PATH),
-            get_path(config.ABYSSAL_ITEM_DATA_PATH)
+            get_path(config.ABYSSAL_ITEM_DATA_PATH),
+            get_path(config.ABYSSAL_SHIP_CORRECTIONS_DATA_PATH)
         )
         # self.precompute_enemy_ship_attributes()
 
@@ -64,7 +65,8 @@ class AbyssFighter:
         self.enemy_ship_data.clear()
         self.load_enemy_ships(
             get_path(config.ABYSSAL_SHIP_DATA_PATH),
-            get_path(config.ABYSSAL_ITEM_DATA_PATH)
+            get_path(config.ABYSSAL_ITEM_DATA_PATH),
+            get_path(config.ABYSSAL_SHIP_CORRECTIONS_DATA_PATH)
         )
 
         self.player = copy.deepcopy(config.ABYSSAL_PLAYER_SHIP)
@@ -115,13 +117,20 @@ class AbyssFighter:
                 enemies.append(enemy)
         return enemies
 
-    def load_enemy_ships(self, ship_filepath, item_filepath):
+    def load_enemy_ships(self, ship_filepath, item_filepath, ship_corrections_filepath):
         self.enemy_ship_data.clear()
         with open(ship_filepath) as file:
             ships_data = json.load(file)
+        with open(ship_corrections_filepath) as file:
+            ships_corrections_data = json.load(file)
         with open(item_filepath) as file:
             item_data = json.load(file)
+
         for key, ship_data in ships_data.items():
+            corrections = next((c for k, c in ships_corrections_data.items() if k == key), None)
+            if corrections:
+                for name, value in corrections.items():
+                    ship_data[name] = value
             self.enemy_ship_data.append(AbyssShip.from_json(ship_data, item_data))
 
     def precompute_enemy_ship_attributes(self):
@@ -184,6 +193,17 @@ class AbyssFighter:
 
     def manage_navigation(self, clear_order):
         self.ui.ship_ui.update_alert()
+        cache_distance = next(e for e in self.ui.overview.entries if "Cache" in e.type).distance_in_meters()
+        if cache_distance > 55_000:
+            if "Approaching" not in self.ui.ship_ui.indication_text:
+                self.ui.overview.lock_order()
+                self.ui.overview.update()
+                cache_entry = next(e for e in self.ui.overview.entries if "Cache" in e.type)
+                self.ui.overview.unlock_order()
+                click(cache_entry.node, button=MOUSE_RIGHT)
+                self.ui.context_menu.click_safe("Approach")
+            return
+
         if "Orbiting" in self.ui.ship_ui.indication_text or not self.ui.target_bar.targets:
             return
 
@@ -193,20 +213,28 @@ class AbyssFighter:
         if current_stage is None:
             return
 
-        self.ui.overview.lock_order()
-        self.ui.overview.update()
-        if current_stage.orbit_target is None:
-            orbit_target_entry = next(e for e in self.ui.overview.entries if "Cache" in e.type)
-        else:
-            possible_orbit_targets = [
-                e for e in self.ui.overview.entries
-                if e.type == current_stage.orbit_target.name
-                and e.tag is not None
-            ]
-            orbit_target_entry = min(possible_orbit_targets, key=lambda x: x.tag)
+        self.ui.target_bar.update()
+        overview_min_tag = min([int(e.tag) if e.tag else 10 for e in self.ui.overview.entries])
+        target_bar_min_tag_target = min(self.ui.target_bar.targets, key=lambda x: int(x.tag) if x.tag else 10)
 
-        self.ui.overview.unlock_order()
-        click(orbit_target_entry.node, button=MOUSE_RIGHT)
+        if target_bar_min_tag_target.tag is not None and int(target_bar_min_tag_target.tag) == overview_min_tag:
+            click(target_bar_min_tag_target.node, button=MOUSE_RIGHT, pos_y=0.3)
+        else:
+            self.ui.overview.lock_order()
+            self.ui.overview.update()
+            if current_stage.orbit_target is None:
+                orbit_target_entry = next(e for e in self.ui.overview.entries if "Cache" in e.type)
+            else:
+                possible_orbit_targets = [
+                    e for e in self.ui.overview.entries
+                    if e.type == current_stage.orbit_target.name
+                    and e.tag is not None
+                ]
+                orbit_target_entry = min(possible_orbit_targets, key=lambda x: x.tag)
+
+            self.ui.overview.unlock_order()
+            click(orbit_target_entry.node, button=MOUSE_RIGHT)
+
         self.ui.context_menu.click_safe("Orbit", contains=True)
         orbit_distance = 1_000 if current_stage.orbit_target is None else current_stage.orbit_target.optimal_orbit_range
         self.ui.context_menu.click_safe(DistancePresets.closest(orbit_distance)["text"])
@@ -231,7 +259,7 @@ class AbyssFighter:
             click(min_tag_target.node, pos_y=0.3)
             return True
         else:
-            target_to_set = next(t for t in self.ui.target_bar if t.tag is None)
+            target_to_set = next(t for t in self.ui.target_bar.targets if t.tag is None)
             if target_to_set.is_active_target:
                 return True
 
@@ -309,7 +337,7 @@ class AbyssFighter:
         smallest_tag = min(tags)
         starting_targets = [e for e in self.ui.overview.entries if e.is_targeted_by_me]
 
-        if next((t for t in starting_targets if t.tag == str(smallest_tag + 1)), None) is None:
+        if next((t for t in starting_targets if t.tag == str(smallest_tag + 1)), None) is not None:
             return True
 
         self.ui.overview.lock_order()
@@ -386,10 +414,10 @@ class AbyssFighter:
             return False
 
         if not self.target_next_orbit_target(current_stage, next_stage):
-            return False
+            return True
 
         if not self.target_next_target(current_stage, next_stage):
-            return False
+            return True
 
         self.select_current_target(current_stage)
 
@@ -460,7 +488,7 @@ class AbyssFighter:
 
         self.ui.overview.lock_order()
         self.ui.overview.update()
-        orbit_target_entry = next(e for e in self.ui.overview.entries if e.tag == min_tag_target_entry)
+        orbit_target_entry = next(e for e in self.ui.overview.entries if e.tag == min_tag_target_entry.tag)
         self.ui.overview.unlock_order()
         orbit_target_entry.target()
 
@@ -491,29 +519,34 @@ class AbyssFighter:
 
         return changed_module_status
 
-    def manage_modules(self, clear_order):
+    def manage_modules(self, clear_order, targeting_successful):
         self.ui.ship_ui.update_modules()
         self.ui.ship_ui.update_capacitor_percent()
 
         current_stage, _ = self.get_current_and_next_stage(clear_order)
 
-        changed_module_status = (
-            self.manage_weapons()
-            or self.manage_hardeners(0.25)
-            or self.manage_propulsion(0.4)
-            or self.manage_webs(0.3, current_stage)
-        )
+        if not targeting_successful:
+            changed_module_status = self.manage_propulsion(0.4)
+        else:
+            changed_module_status = (
+                self.manage_weapons()
+                or self.manage_hardeners(0.25)
+                or self.manage_propulsion(0.4)
+                or self.manage_webs(0.3, current_stage)
+            )
 
+        # todo maybe remove this
         if changed_module_status:
             time.sleep(0.1)
 
-    def manage_drones(self):
+    def manage_drones(self, targeting_successful):
         self.ui.drones.update()
 
         enemies = self.enemies_on_overview()
         drone_danger = (
                 len([e for e in enemies if "Skybreaker" in e.name]) > 0
                 or len([e for e in self.ui.overview.entries if e.is_only_targeting]) > 0
+                or not targeting_successful
         )
         if drone_danger and self.ui.drones.in_space:
             self.ui.drones.recall_all()
@@ -536,10 +569,10 @@ class AbyssFighter:
 
         self.ui.target_bar.update()
         if (
-                not drone_recalled
-                and not any(d.status == DroneStatus.returning for d in self.ui.drones.in_space)
-                and self.ui.target_bar.get_active_target() is not None
-                and self.ui.target_bar.get_active_target().distance < config.ABYSSAL_PLAYER_SHIP.drone_range
+            not drone_recalled
+            and not any(d.status == DroneStatus.returning for d in self.ui.drones.in_space)
+            and self.ui.target_bar.get_active_target() is not None
+            and self.ui.target_bar.get_active_target().distance < config.ABYSSAL_PLAYER_SHIP.drone_range
         ):
             self.ui.drones.attack_target()
 
@@ -610,7 +643,7 @@ class AbyssFighter:
             self.ui.ship_ui.update_modules()
             self.ui.ship_ui.update_capacitor_percent()
 
-            self.manage_drones()
+            self.manage_drones(True)
             self.manage_propulsion(0.5)
             if self.ui.target_bar.targets[0].distance < weapon_max_range / 2:
                 self.manage_weapons()
@@ -624,7 +657,9 @@ class AbyssFighter:
 
         clear_order = self.calculate_clear_order()
         for stage in clear_order:
-            print(f"{stage.target.name}: {stage.target.dmg_without_orbit}, {stage.target.dmg_with_orbit}")
+            print(f"target:{stage.target.name}({id(stage.target)},"
+                  f" orbit: {stage.orbit_target.name if stage.orbit_target else 'None'}"
+                  f"({id(stage.orbit_target) if stage.orbit_target else ''})")
 
         self.set_orbit_tags(clear_order)
 
@@ -632,18 +667,16 @@ class AbyssFighter:
         while temp_e:
             self.ui.overview.update()
             current_stage, next_stage = self.get_current_and_next_stage(clear_order)
-
-            while not self.manage_targeting(current_stage, next_stage):
-                self.ui.overview.update()
-                current_stage, next_stage = self.get_current_and_next_stage(clear_order)
             if current_stage is None:
                 break
+
+            targeting_successful = self.manage_targeting(current_stage, next_stage)
 
             self.ui.target_bar.update()
 
             self.manage_navigation(clear_order)
-            self.manage_modules(clear_order)
-            self.manage_drones()
+            self.manage_modules(clear_order, targeting_successful)
+            self.manage_drones(targeting_successful)
             temp_e = self.enemies_on_overview()
 
         self.deactivate_modules()
