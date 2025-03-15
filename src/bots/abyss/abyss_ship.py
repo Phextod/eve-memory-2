@@ -96,7 +96,8 @@ class AbyssShip(Ship):
                 in_data.get("explosiveDamage", 0.0) * turret_damage_multiplier,
             ])
         })
-        ship_data.update({"turret_falloff": in_data.get("falloff")})
+        falloff = in_data.get("falloff")
+        ship_data.update({"turret_falloff": falloff if falloff is not None and falloff > 0 else 1})
         ship_data.update({"turret_optimal_range": in_data.get("maxRange", 0)})
         ship_data.update({"turret_tracking": in_data.get("trackingSpeed", 10_000)})
 

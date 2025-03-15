@@ -5,7 +5,6 @@ from collections import Counter
 from typing import List
 
 import numpy as np
-import pyautogui
 
 from src import config
 from src.bots.abyss.abyss_ship import AbyssShip
@@ -177,19 +176,27 @@ class AbyssFighter:
         enemies = self.enemies_on_overview()
         enemy_amounts_on_overview = Counter([e.name for e in enemies])
         enemy_amounts_required = {}
-        clear_order_iter = iter(clear_order[::-1])
 
         next_stage = None
-        while active_stage := next(clear_order_iter, None):
+        for i in range(len(clear_order) - 1, -1, -1):
+            active_stage = clear_order[i]
             enemy_amount = enemy_amounts_required.get(active_stage.target.name, 0)
             enemy_amounts_required.update({active_stage.target.name: enemy_amount + 1})
 
             if enemy_amounts_on_overview == enemy_amounts_required:
+                if active_stage.orbit_target is not None and next(
+                    (
+                        e for e in self.ui.overview.entries
+                        if e.tag is not None and e.type == active_stage.orbit_target.name
+                    ),
+                    None
+                ) is None:
+                    break
                 return active_stage, next_stage
 
             next_stage = active_stage
-        else:
-            return None, None
+
+        return None, None
 
     def manage_navigation(self, clear_order):
         self.ui.ship_ui.update_alert()
@@ -230,6 +237,9 @@ class AbyssFighter:
                     if e.type == current_stage.orbit_target.name
                     and e.tag is not None
                 ]
+                if not possible_orbit_targets:
+                    self.ui.overview.unlock_order()
+                    return
                 orbit_target_entry = min(possible_orbit_targets, key=lambda x: x.tag)
 
             self.ui.overview.unlock_order()
@@ -259,7 +269,10 @@ class AbyssFighter:
             click(min_tag_target.node, pos_y=0.3)
             return True
         else:
-            target_to_set = next(t for t in self.ui.target_bar.targets if t.tag is None)
+            target_to_set = next((t for t in self.ui.target_bar.targets if t.tag is None), None)
+            if target_to_set is None:
+                return False
+
             if target_to_set.is_active_target:
                 return True
 
@@ -304,9 +317,12 @@ class AbyssFighter:
         self.ui.overview.lock_order()
         self.ui.overview.update()
         current_stage_target_entry = next(
-            t for t in self.ui.overview.entries if t.type == current_stage.target.name and t.tag is None
+            (t for t in self.ui.overview.entries if t.type == current_stage.target.name and t.tag is None),
+            None
         )
         self.ui.overview.unlock_order()
+        if current_stage_target_entry is None:
+            return False
         current_stage_target_entry.target()
         wait_for_truthy(
             lambda: next((e for e in self.ui.overview.update().entries if e.is_being_targeted), None) is None,
@@ -496,7 +512,14 @@ class AbyssFighter:
 
     def manage_webs(self, capacitor_limit, current_stage: Stage):
         if not current_stage or not self.ui.target_bar.targets:
-            return
+            return False
+
+        web_module_statuses = [
+            self.ui.ship_ui.medium_modules[i].active_status == ShipModule.ActiveStatus.active
+            for i in config.ABYSSAL_WEB_MODULE_INDICES
+        ]
+        if all(web_module_statuses):
+            return False
 
         changed_module_status = False
 
@@ -519,25 +542,30 @@ class AbyssFighter:
 
         return changed_module_status
 
+    def manage_shield(self, capacitor_limit):
+        missing_shield_hp = (1 - self.ui.ship_ui.shield_percent) * config.ABYSSAL_PLAYER_SHIP.shield_max_hp
+        should_turn_off = (
+            missing_shield_hp < config.ABYSSAL_SHIELD_BOOSTER_AMOUNT
+            or self.ui.ship_ui.capacitor_percent < capacitor_limit
+        )
+        for i in config.ABYSSAL_SHIELD_BOOSTER_INDICES:
+            self.ui.ship_ui.medium_modules[i].set_active(not should_turn_off)
+
     def manage_modules(self, clear_order, targeting_successful):
         self.ui.ship_ui.update_modules()
         self.ui.ship_ui.update_capacitor_percent()
+        self.ui.ship_ui.update_hp()
 
         current_stage, _ = self.get_current_and_next_stage(clear_order)
 
         if not targeting_successful:
-            changed_module_status = self.manage_propulsion(0.4)
+            self.manage_propulsion(0.4)
         else:
-            changed_module_status = (
-                self.manage_weapons()
-                or self.manage_hardeners(0.25)
-                or self.manage_propulsion(0.4)
-                or self.manage_webs(0.3, current_stage)
-            )
-
-        # todo maybe remove this
-        if changed_module_status:
-            time.sleep(0.1)
+            self.manage_weapons()
+            self.manage_hardeners(0.25)
+            self.manage_propulsion(0.4)
+            self.manage_webs(0.3, current_stage)
+            self.manage_shield(0.25)
 
     def manage_drones(self, targeting_successful):
         self.ui.drones.update()
@@ -645,7 +673,7 @@ class AbyssFighter:
 
             self.manage_drones(True)
             self.manage_propulsion(0.5)
-            if self.ui.target_bar.targets[0].distance < weapon_max_range / 2:
+            if self.ui.target_bar.targets and self.ui.target_bar.targets[0].distance < weapon_max_range / 2:
                 self.manage_weapons()
 
             self.ui.overview.update()
@@ -668,7 +696,10 @@ class AbyssFighter:
             self.ui.overview.update()
             current_stage, next_stage = self.get_current_and_next_stage(clear_order)
             if current_stage is None:
-                break
+                if self.enemies_on_overview():
+                    clear_order = self.calculate_clear_order()
+                else:
+                    break
 
             targeting_successful = self.manage_targeting(current_stage, next_stage)
 

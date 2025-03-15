@@ -11,7 +11,7 @@
 ✔ inventory loot all
 
 ship ui overheating info
-status effects (top left and middle bottom)
+✔ status effects (top left and middle bottom)
 ✔ repair in station
 ✔ handle packaged drones (ex: "Hobgoblin I (2)")
 
@@ -30,15 +30,12 @@ abyss clear:
 ✔ kiting / variable orbit range / keep at range
 
 rewrite target management
-    to not target orbit targets and
     recalculate clear plan if there are enemies on the overview, but they don't match any stage in the current plan
     (or after a certain time)
-    (use fleet markers to mark orbit targets)
 
 apply ewar to enemies(✔ web, neut, painter)
-prevent ship from going out of bounds
+✔ prevent ship from going out of bounds
 "spiral in" navigation instead of straight approach
-handle modules in fight plan
 ship stuck detection and solution
 
 

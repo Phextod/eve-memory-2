@@ -75,7 +75,11 @@ class AbyssBot:
                 is_prepared = False
 
         # repair
-        # todo later
+        if config.ABYSSAL_SHIELD_BOOSTER_INDICES:
+            self.ui.ship_ui.update_hp()
+            if self.ui.ship_ui.shield_percent < 0.9:
+                is_prepared = False
+                self.abyss_fighter.manage_shield(0.3)
 
         # recall drones
         self.ui.drones.update()
@@ -96,11 +100,6 @@ class AbyssBot:
         jump_gate_entry = next(e for e in self.ui.overview.entries if "Conduit" in e.type)
         self.ui.overview.unlock_order()
         jump_gate_entry.generic_action(OverviewEntry.Action.activate_gate)
-
-        self.ui.ship_ui.update()
-        should_speed = self.ui.ship_ui.capacitor_percent > 0.8
-        for i in config.ABYSSAL_SPEED_MODULE_INDICES:
-            self.ui.ship_ui.medium_modules[i].set_active(should_speed)
 
         wait_for_truthy(
             lambda: (

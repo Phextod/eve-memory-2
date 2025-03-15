@@ -100,6 +100,9 @@ class Ship:
 
         effective_dmg_multiplier = self.turret_rate_of_fire * normalised_dmg_multiplier * spooling_multiplier
 
+        if effective_dmg_multiplier < 0.00001:
+            effective_dmg_multiplier = 0.0
+
         return self.turret_damage_profile * effective_dmg_multiplier
 
     def get_missile_applied_dps_to(self, target_signature_radius, target_velocity):
