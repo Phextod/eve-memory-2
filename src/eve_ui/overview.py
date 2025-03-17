@@ -159,16 +159,19 @@ class OverviewEntry:
         if not self.distance:
             return None
 
-        distance_text = self.distance
+        distance_text = self.distance.replace(" ", "").replace(",", ".")
         distance_multiplier = 0
         if "km" in distance_text:
             distance_multiplier = 1_000
+            distance_text = distance_text.replace("km", "")
         elif "m" in distance_text:
             distance_multiplier = 1
+            distance_text = distance_text.replace("m", "")
         elif "AU" in distance_text:
             distance_multiplier = 150_000_000_000
+            distance_text = distance_text.replace("AU", "")
 
-        return int(distance_text.split(" ")[0]) * distance_multiplier
+        return float(distance_text) * distance_multiplier
 
 
 class Overview:

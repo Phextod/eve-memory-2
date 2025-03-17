@@ -10,7 +10,7 @@ from src.eve_ui.overview import OverviewEntry
 from src.eve_ui.ship_ui import ShipModule
 from src.eve_ui.timers import TimerNames
 from src.utils.ui_tree import UITree
-from src.utils.utils import wait_for_truthy, click, MOUSE_RIGHT, move_cursor
+from src.utils.utils import wait_for_truthy, click, MOUSE_RIGHT
 
 
 class AbyssBot:
@@ -77,7 +77,11 @@ class AbyssBot:
         # repair
         if config.ABYSSAL_SHIELD_BOOSTER_INDICES:
             self.ui.ship_ui.update_hp()
-            if self.ui.ship_ui.shield_percent < 0.9:
+            self.ui.ship_ui.update_modules()
+            if (
+                self.ui.ship_ui.shield_percent < 0.9
+                or any(m for m in self.ui.ship_ui.medium_modules if m.active_status == ShipModule.ActiveStatus.active)
+            ):
                 is_prepared = False
                 self.abyss_fighter.manage_shield(0.3)
 
@@ -143,8 +147,11 @@ class AbyssBot:
         self.context_menu.click_safe(f"Use {config.ABYSSAL_DIFFICULTY} {config.ABYSSAL_WEATHER}", contains=True)
 
         activation_window = self.ui_tree.find_node(node_type="KeyActivationWindow")
-        activate_btn = self.ui_tree.find_node(node_type="ActivateButton", root=activation_window)
-        click(activate_btn)
+        while activation_window:
+            activate_btn = self.ui_tree.find_node(node_type="ActivateButton", root=activation_window)
+            if activate_btn:
+                click(activate_btn)
+            activation_window = self.ui_tree.find_node(node_type="KeyActivationWindow")
 
         wait_for_truthy(lambda: TimerNames.abyssal.value in self.ui.timers.update().timers, 30)
         wait_for_truthy(lambda: (self.ui.overview.update() and self.abyss_fighter.enemies_on_overview()), 30)
@@ -313,11 +320,7 @@ class AbyssBot:
     def move_a_bit(self):
         self.ui.ship_ui.full_speed()
         wait_for_truthy(
-            lambda: not next(
-                (b for b in self.ui.ship_ui.update_buffs().buff_buttons
-                    if b.attrs.get("_name", None) == "notTethered"),
-                None
-            ),
+            lambda: next((e for e in self.ui.overview.update().entries if "Abyssal Trace" in e.type), None) is None,
             60
         )
         time.sleep(3)

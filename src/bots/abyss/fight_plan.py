@@ -135,20 +135,26 @@ class Stage:
                 orbit_duration = max(0.0, self.duration - time_to_orbit)
 
                 if time_to_orbit > 0.0:
+                    cos_30 = 0.8660
+                    travel_distance = abs(target_distance - self.target.optimal_orbit_range)
+                    avg_angular = (
+                        (player.max_velocity * cos_30) *
+                        (math.log(target_distance, math.e) - math.log(self.target.optimal_orbit_range, math.e))
+                    ) / travel_distance
                     total_dmg_to_player += min(self.duration, time_to_orbit) * enemy.get_dps_to(
                         player,
                         time_from_start=time_from_start,
                         target_distance=self.target.optimal_orbit_range,
                         target_velocity=player.max_velocity,
-                        target_angular=((player.max_velocity * 0.8) / self.target.optimal_orbit_range) * 0.01
+                        target_angular=avg_angular
                     )
                 if orbit_duration > 0.0:
                     total_dmg_to_player += orbit_duration * enemy.get_dps_to(
                         player,
                         time_from_start=time_from_start,
                         target_distance=self.target.optimal_orbit_range,
-                        target_velocity=player.max_velocity * 0.8,
-                        target_angular=(player.max_velocity * 0.8) / self.target.optimal_orbit_range
+                        target_velocity=player.max_velocity * 0.9,
+                        target_angular=(player.max_velocity * 0.9) / self.target.optimal_orbit_range
                         # todo try different multipliers
                     )
 
