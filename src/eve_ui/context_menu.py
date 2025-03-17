@@ -29,7 +29,7 @@ class DistancePresets:
             (p for p in DistancePresets.presets if p["value"] <= value),
             key=lambda p: p["value"], default=DistancePresets.presets[0]
         )
-        return closest["text"]
+        return closest
 
     @staticmethod
     def closest_larger(value):
@@ -45,17 +45,17 @@ class ContextMenu:
     def __init__(self, refresh_on_init=False):
         self.menu_container_query = BubblingQuery({'_name': 'l_menu'}, refresh_on_init=refresh_on_init)
 
-    def click(self, entry_text, contains=False):
-        target = BubblingQuery(
-            {'_setText': entry_text},
-            self.menu_container_query,
-            contains=contains,
-        ).result
+    def get_menu_btn(self, entry_text, contains=False):
+        return BubblingQuery({'_setText': entry_text}, self.menu_container_query, contains=contains).result
 
-        if target:
-            click(target)
-            return True
-        return False
+    def click(self, entry_text, contains=False):
+        target = self.get_menu_btn(entry_text, contains)
+
+        if not target:
+            return False
+
+        click(target)
+        return True
 
     def open_submenu(self, entry_text, contains=False):
         target = BubblingQuery(

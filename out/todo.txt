@@ -1,3 +1,12 @@
+abyss stages:
+    in abyss: (on continuous stage)
+        clear room -> loot -> reload/recall/repair (if not 3rd room) -> next room
+    out of abyss: (can be separated into multiple stages)
+        after x runs or supplies are low or inventory is full (80% ?) or ship/drones damaged:
+            dock home base -> drop off loot -> pick up supplies -> repair -> undock -> warp to safe spot -> use filament
+        else:
+            move a bit and use filament
+
 ✔ generic context menu
 ✔ locations window
 ✔ location set target
@@ -18,8 +27,6 @@ ship ui overheating info
 ✔ get own ship info from config file
 (get own ship info from simulated fit window)
 
-
-abyss clear:
 ✔ get dps calculations for room
 ✔ determine clear order
 
@@ -29,22 +36,13 @@ abyss clear:
 ✔ apply weather (and support structure) effects
 ✔ kiting / variable orbit range / keep at range
 
-rewrite target management
-    recalculate clear plan if there are enemies on the overview, but they don't match any stage in the current plan
-    (or after a certain time)
+✔ rewrite target management
 
 apply ewar to enemies(✔ web, neut, painter)
 ✔ prevent ship from going out of bounds
-"spiral in" navigation instead of straight approach
+✔ "spiral in" navigation instead of straight approach
+
 ship stuck detection and solution
-
-
-
-abyss stages:
-    in abyss: (on continuous stage)
-        clear room -> loot -> reload/recall/repair (if not 3rd room) -> next room
-    out of abyss: (can be separated into multiple stages)
-        after x runs or supplies are low or inventory is full (80% ?) or ship/drones damaged:
-            dock home base -> drop off loot -> pick up supplies -> repair -> undock -> warp to safe spot -> use filament
-        else:
-            move a bit and use filament
+prevent ship from outrunning target
+overheat modules
+recalculate clear plan if there are enemies on the overview, but they don't match any stage in the current plan (or after a certain time)

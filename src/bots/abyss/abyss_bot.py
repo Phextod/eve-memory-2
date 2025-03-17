@@ -80,7 +80,10 @@ class AbyssBot:
             self.ui.ship_ui.update_modules()
             if (
                 self.ui.ship_ui.shield_percent < 0.9
-                or any(m for m in self.ui.ship_ui.medium_modules if m.active_status == ShipModule.ActiveStatus.active)
+                or any(
+                    m for i, m in self.ui.ship_ui.medium_modules.items()
+                    if m.active_status == ShipModule.ActiveStatus.active
+                )
             ):
                 is_prepared = False
                 self.abyss_fighter.manage_shield(0.3)
@@ -320,7 +323,7 @@ class AbyssBot:
     def move_a_bit(self):
         self.ui.ship_ui.full_speed()
         wait_for_truthy(
-            lambda: next((e for e in self.ui.overview.update().entries if "Abyssal Trace" in e.type), None) is None,
+            lambda: not [e for e in self.ui.overview.update().entries if "Abyssal Trace" in e.type],
             60
         )
         time.sleep(3)

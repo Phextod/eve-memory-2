@@ -39,13 +39,16 @@ class AbyssFighter:
         self.circle_in_offset = 0.4
 
     def get_weather_modifiers(self):
-        weather_btn = wait_for_truthy(
-            lambda: next((b for b in self.ui.ship_ui.update().buff_buttons if "weather" in b.attrs["_name"]), None),
-            10
-        )
-        move_cursor(weather_btn.get_center())
-        tooltip_panel = wait_for_truthy(lambda: self.ui_tree.find_node(node_type="TooltipPanel", refresh=True), 5)
-        time.sleep(1)
+        tooltip_panel = None
+        while not tooltip_panel:
+            weather_btn = wait_for_truthy(
+                lambda: next((b for b in self.ui.ship_ui.update().buff_buttons if "weather" in b.attrs["_name"]), None),
+                10
+            )
+            move_cursor(weather_btn.get_center())
+            time.sleep(1)
+            tooltip_panel = wait_for_truthy(lambda: self.ui_tree.find_node(node_type="TooltipPanel", refresh=True), 5)
+
         while True:
             try:
                 percentage_container_1 = self.ui_tree.find_node({"_name": "Row1_Col0"}, root=tooltip_panel)
@@ -140,7 +143,10 @@ class AbyssFighter:
             self.enemy_ship_data.append(AbyssShip.from_json(ship_data, item_data))
 
     def precompute_enemy_ship_attributes(self):
-        far_orbit_distance = 15_000
+        player_range = self.player.missile_range if self.player.missile_rate_of_fire \
+            else self.player.turret_optimal_range if self.player.turret_rate_of_fire \
+            else self.player.drone_range
+        far_orbit_distance = DistancePresets.closest_smaller(player_range)["value"]
         close_orbit_distance = 2_500
 
         for enemy in self.enemies_on_overview():
@@ -228,7 +234,7 @@ class AbyssFighter:
             return
 
         overview_min_tag_entry = min(self.ui.overview.entries, key=lambda x: int(x.tag) if x.tag else 10)
-        if self.tracked_target and self.tracked_target.tag == overview_min_tag_entry:
+        if self.tracked_target and self.tracked_target.tag == overview_min_tag_entry.tag:
             click(self.main_layer, pos_x=self.circle_in_offset, wait_after=0)
             click(self.main_layer, pos_x=self.circle_in_offset, wait_before=0)
             return
@@ -248,8 +254,8 @@ class AbyssFighter:
 
         if not overview_min_tag_entry:
             return
-
         click(overview_min_tag_entry.node, button=MOUSE_RIGHT)
+
         if overview_min_tag_entry.distance_in_meters() <= current_stage.orbit_target.optimal_orbit_range * 1.1:
             self.ui.context_menu.open_submenu("Orbit", contains=True)
             self.ui.context_menu.click_safe(
@@ -257,11 +263,19 @@ class AbyssFighter:
             )
             return
 
-        self.ui.context_menu.click_safe("Track")
-        self.tracked_target = overview_min_tag_entry
-        click(self.main_layer, pos_x=self.circle_in_offset)
-        pyautogui.scroll(3000)
+        # todo maybe remove "Look At My Ship" testing (and simplify the rest)
+        track_btn = None
+        look_at_my_ship_btn = None
+        while not (track_btn or look_at_my_ship_btn):
+            track_btn = self.ui.context_menu.get_menu_btn("Track")
+            look_at_my_ship_btn = self.ui.context_menu.get_menu_btn("Look At My Ship")
 
+        if track_btn:
+            self.ui.context_menu.click_safe("Track")
+            click(self.main_layer, pos_x=self.circle_in_offset)
+            pyautogui.scroll(3000)
+
+        self.tracked_target = overview_min_tag_entry
         click(self.main_layer, pos_x=self.circle_in_offset, wait_after=0)
         click(self.main_layer, pos_x=self.circle_in_offset, wait_before=0)
 
@@ -300,141 +314,6 @@ class AbyssFighter:
             click(target_to_set.node, pos_y=0.3)
             return True
 
-    def target_current_orbit_target(self, current_stage: Stage):
-        if current_stage.orbit_target is None:
-            return True
-
-        tags = [int(e.tag) for e in self.ui.overview.entries if e.tag is not None]
-        if not tags:
-            return False
-        smallest_tag = min(tags)
-        starting_targets = [e for e in self.ui.overview.entries if e.is_targeted_by_me]
-
-        if next((t for t in starting_targets if t.tag == str(smallest_tag)), None) is not None:
-            return True
-
-        self.ui.overview.lock_order()
-        self.ui.overview.update()
-        current_stage_orbit_target_entry = next(t for t in self.ui.overview.entries if t.tag == str(smallest_tag))
-        self.ui.overview.unlock_order()
-        current_stage_orbit_target_entry.target()
-        wait_for_truthy(
-            lambda: next((e for e in self.ui.overview.update().entries if e.is_being_targeted), None) is None,
-            10
-        )
-
-        final_target = next((t for t in self.ui.overview.entries if t.tag == str(smallest_tag)), None)
-        return final_target is not None and final_target.is_targeted_by_me
-
-    def target_current_target(self, current_stage: Stage):
-        if current_stage.target == current_stage.orbit_target:
-            return True
-
-        starting_targets = [e for e in self.ui.overview.entries if e.is_targeted_by_me]
-
-        if current_stage.target.name in [t.name for t in starting_targets if t.tag is None]:
-            return True
-
-        self.ui.overview.lock_order()
-        self.ui.overview.update()
-        current_stage_target_entry = next(
-            (t for t in self.ui.overview.entries if t.type == current_stage.target.name and t.tag is None),
-            None
-        )
-        self.ui.overview.unlock_order()
-        if current_stage_target_entry is None:
-            return False
-        current_stage_target_entry.target()
-        wait_for_truthy(
-            lambda: next((e for e in self.ui.overview.update().entries if e.is_being_targeted), None) is None,
-            10
-        )
-
-        return next(
-            (
-                t for t in self.ui.overview.entries
-                if t.type == current_stage.target.name
-                and t.tag is None
-                and t.is_targeted_by_me
-            ),
-            None
-        ) is not None
-
-    def target_next_orbit_target(self, current_stage: Stage, next_stage: Stage):
-        if (
-            next_stage is None
-            or next_stage.orbit_target is None
-            or next_stage.orbit_target == current_stage.orbit_target
-        ):
-            return True
-
-        tags = [int(e.tag) for e in self.ui.overview.entries if e.tag is not None]
-        if not tags:
-            return False
-        smallest_tag = min(tags)
-        starting_targets = [e for e in self.ui.overview.entries if e.is_targeted_by_me]
-
-        if next((t for t in starting_targets if t.tag == str(smallest_tag + 1)), None) is not None:
-            return True
-
-        self.ui.overview.lock_order()
-        self.ui.overview.update()
-        next_stage_orbit_target_entry = next(t for t in self.ui.overview.entries if t.tag == str(smallest_tag + 1))
-        self.ui.overview.unlock_order()
-        next_stage_orbit_target_entry.target()
-        wait_for_truthy(
-            lambda: next((e for e in self.ui.overview.update().entries if e.is_being_targeted), None) is None,
-            10
-        )
-
-        return next(t for t in self.ui.overview.entries if t.tag == str(smallest_tag + 1)).is_targeted_by_me
-
-    def target_next_target(self, current_stage: Stage, next_stage: Stage):
-        if next_stage is None or next_stage.orbit_target == next_stage.target:
-            return True
-
-        starting_targets = [e for e in self.ui.overview.entries if e.is_targeted_by_me]
-
-        if next_stage.target.name != current_stage.target.name:
-            if next((t for t in starting_targets if t.type == next_stage.target.name), None) is not None:
-                return True
-        else:
-            if current_stage.target == current_stage.orbit_target:
-                if next(
-                    (t for t in starting_targets if t.type == next_stage.target.name and t.tag is None), None
-                ) is not None:
-                    return True
-            else:
-                if len([e for e in starting_targets if e.name == next_stage.target.name]) == 2:
-                    return True
-
-        self.ui.overview.lock_order()
-        self.ui.overview.update()
-        next_stage_target_entry = next(
-            t for t in self.ui.overview.entries
-            if t.type == next_stage.target.name
-            and t.tag is None
-            and not t.is_targeted_by_me
-        )
-        self.ui.overview.unlock_order()
-        next_stage_target_entry.target()
-        wait_for_truthy(
-            lambda: next((e for e in self.ui.overview.update().entries if e.is_being_targeted), None) is None,
-            10
-        )
-
-        desired_len = 2 \
-            if current_stage.target.name == next_stage.target.name \
-            and current_stage.target != current_stage.orbit_target \
-            else 1
-
-        return len([
-            t for t in self.ui.overview.entries
-            if t.type == next_stage.target.name
-            and t.tag is None
-            and t.is_targeted_by_me
-        ]) == desired_len
-
     def manage_targeting(self, current_stage: Stage, next_stage: Stage):
         """
         Returns True if targeting was successful
@@ -444,6 +323,8 @@ class AbyssFighter:
 
         self.ui.overview.update()
         enemy_entries = self.enemy_entries_on_overview()
+        if not enemy_entries:
+            return True
         targets = []  # [(name1, tag1), (name2, tag2)]
         min_tag_entry = min(enemy_entries, key=lambda x: int(x.tag) if x.tag else 10)
         min_tag = min_tag_entry.tag if min_tag_entry.tag else "10"
@@ -454,15 +335,15 @@ class AbyssFighter:
 
         if next_stage:
             if next_stage.orbit_target and next_stage.orbit_target != current_stage.orbit_target:
-                targets.append((next_stage.orbit_target.name, min_tag + 1))
+                targets.append((next_stage.orbit_target.name, str(int(min_tag) + 1)))
             if next_stage.target != next_stage.orbit_target:
                 targets.append((next_stage.target.name, None))
 
-        targeted_entry_count = len([e for e in self.ui.overview.entries if e.is_targeted_by_me])
-        if targeted_entry_count >= len(targets):
+        targeted_entries = [e for e in self.ui.overview.entries if e.is_targeted_by_me]
+        if len(targeted_entries) >= len(targets):
             return True
         being_targeted_entry_count = len([e for e in self.ui.overview.entries if e.is_being_targeted])
-        if targeted_entry_count + being_targeted_entry_count >= len(targets):
+        if len(targeted_entries) + being_targeted_entry_count >= len(targets):
             return False
 
         self.ui.overview.lock_order()
@@ -478,7 +359,12 @@ class AbyssFighter:
                     >= targets.count(target):
                 continue
 
-            entry_to_target = next(e for e in matching_entries if not (e.is_targeted_by_me or e.is_being_targeted))
+            entry_to_target = next(
+                (e for e in matching_entries if not (e.is_targeted_by_me or e.is_being_targeted)),
+                None
+            )
+            if not entry_to_target:
+                return False
             entry_to_target.is_being_targeted = True
             entries_to_target.append(entry_to_target)
 
@@ -486,27 +372,17 @@ class AbyssFighter:
         for entry in entries_to_target:
             entry.target()
 
+        if (
+            [e for e in targeted_entries if e.type == current_stage.target.name]
+            and (
+                current_stage.target != current_stage.orbit_target
+                or [e for e in targeted_entries if e.tag == min_tag]
+            )
+        ):
+            return True
         return False
 
-        # if not self.target_current_orbit_target(current_stage):
-        #     return False
-        #
-        # if not self.target_current_target(current_stage):
-        #     return False
-        #
-        # if not self.target_next_orbit_target(current_stage, next_stage):
-        #     return True
-        #
-        # if not self.target_next_target(current_stage, next_stage):
-        #     return True
-        #
-        # self.select_current_target(current_stage)
-        #
-        # return True
-
     def manage_weapons(self):
-        changed_module_status = False
-
         # Deactivate weapons on non-primary targets
         self.ui.target_bar.update()
         non_active_targets = [t for t in self.ui.target_bar.targets if not t.is_active_target]
@@ -523,7 +399,6 @@ class AbyssFighter:
                 click(weapon_module.node, MOUSE_RIGHT)
                 self.ui.context_menu.click_safe("Reload all")
                 weapon_module.set_state_change_time()
-                changed_module_status = True
 
         self.ui.ship_ui.update_high_slots()
 
@@ -536,24 +411,17 @@ class AbyssFighter:
         ):
             for weapon_module in weapon_modules:
                 if weapon_module.active_status == ShipModule.ActiveStatus.not_active:
-                    if weapon_module.set_active(True):
-                        changed_module_status = True
+                    weapon_module.set_active(True)
 
-        return changed_module_status
-
-    def manage_hardeners(self, capacitor_limit):
-        changed_module_status = False
+    def manage_hardeners(self, capacitor_limit, overheat=False):
+        should_be_active = self.ui.ship_ui.capacitor_percent > capacitor_limit
         for i in config.ABYSSAL_HARDENER_MODULE_INDICES:
-            if self.ui.ship_ui.medium_modules[i].set_active(self.ui.ship_ui.capacitor_percent > capacitor_limit):
-                changed_module_status = True
-        return changed_module_status
+            self.ui.ship_ui.medium_modules[i].set_overload(should_be_active and overheat)
+            self.ui.ship_ui.medium_modules[i].set_active(should_be_active)
 
     def manage_propulsion(self, capacitor_limit):
-        changed_module_status = False
         for i in config.ABYSSAL_SPEED_MODULE_INDICES:
-            if self.ui.ship_ui.medium_modules[i].set_active(self.ui.ship_ui.capacitor_percent > capacitor_limit):
-                changed_module_status = True
-        return changed_module_status
+            self.ui.ship_ui.medium_modules[i].set_active(self.ui.ship_ui.capacitor_percent > capacitor_limit)
 
     def select_orbit_target(self):
         self.ui.overview.update()
@@ -577,60 +445,60 @@ class AbyssFighter:
 
     def manage_webs(self, capacitor_limit, current_stage: Stage):
         if not current_stage or not self.ui.target_bar.targets:
-            return False
+            return
 
         web_module_statuses = [
             self.ui.ship_ui.medium_modules[i].active_status == ShipModule.ActiveStatus.active
             for i in config.ABYSSAL_WEB_MODULE_INDICES
         ]
         if all(web_module_statuses):
-            return False
-
-        changed_module_status = False
+            return
 
         for i in config.ABYSSAL_WEB_MODULE_INDICES:
             if config.ABYSSAL_WEB_RANGE < self.ui.target_bar.targets[0].distance:
                 continue
 
             if self.ui.ship_ui.capacitor_percent < capacitor_limit:
-                if self.ui.ship_ui.medium_modules[i].set_active(False):
-                    changed_module_status = True
+                self.ui.ship_ui.medium_modules[i].set_active(False)
                 continue
 
             if current_stage.orbit_target:
                 if current_stage.target != current_stage.orbit_target:
                     self.select_orbit_target()
-                if self.ui.ship_ui.medium_modules[i].set_active(True):
-                    changed_module_status = True
+                self.ui.ship_ui.medium_modules[i].set_active(True)
                 if current_stage.target != current_stage.orbit_target:
                     self.select_current_target(current_stage)
 
-        return changed_module_status
-
-    def manage_shield(self, capacitor_limit):
+    def manage_shield(self, capacitor_limit, overheat=False):
         missing_shield_hp = (1 - self.ui.ship_ui.shield_percent) * config.ABYSSAL_PLAYER_SHIP.shield_max_hp
-        should_turn_off = (
+        should_be_active = not (
             missing_shield_hp < config.ABYSSAL_SHIELD_BOOSTER_AMOUNT
             or self.ui.ship_ui.capacitor_percent < capacitor_limit
         )
         for i in config.ABYSSAL_SHIELD_BOOSTER_INDICES:
-            self.ui.ship_ui.medium_modules[i].set_active(not should_turn_off)
+            self.ui.ship_ui.medium_modules[i].set_overload(should_be_active and overheat)
+            self.ui.ship_ui.medium_modules[i].set_active(should_be_active)
 
     def manage_modules(self, clear_order, targeting_successful):
         self.ui.ship_ui.update_modules()
         self.ui.ship_ui.update_capacitor_percent()
         self.ui.ship_ui.update_hp()
 
-        current_stage, _ = self.get_current_and_next_stage(clear_order)
-
         if not targeting_successful:
             self.manage_propulsion(0.4)
         else:
+            overheat_defenses = (
+                (config.ABYSSAL_IS_SHIELD_TANK and self.ui.ship_ui.shield_percent < 0.75)
+                or (config.ABYSSAL_IS_ARMOR_TANK and self.ui.ship_ui.armor_percent < 0.75)
+                or (config.ABYSSAL_IS_STRUCTURE_TANK and self.ui.ship_ui.structure_percent < 0.75)
+            )
+            current_stage, _ = self.get_current_and_next_stage(clear_order)
+
             self.manage_weapons()
-            self.manage_hardeners(0.25)
+            self.manage_hardeners(0.25, False)
             self.manage_propulsion(0.4)
             self.manage_webs(0.3, current_stage)
-            self.manage_shield(0.25)
+            self.manage_shield(0.2, False)
 
     def manage_drones(self):
         self.ui.drones.update()
@@ -638,11 +506,12 @@ class AbyssFighter:
         enemies = self.enemies_on_overview()
         enemy_names = [e.name for e in enemies]
         drone_danger = (
-            any([True for x in ["Skybreaker", "Tessera"] if x in enemy_names])
-            or len([e for e in self.ui.overview.entries if e.is_only_targeting]) > 0
+            [x for x in ["Skybreaker", "Tessera"] if x in enemy_names]
+            or [e for e in self.ui.overview.entries if e.is_only_targeting]
         )
-        if drone_danger and self.ui.drones.in_space:
-            self.ui.drones.recall_all()
+        if drone_danger:
+            if self.ui.drones.in_space:
+                self.ui.drones.recall_all()
             return
 
         drones_to_launch = min(

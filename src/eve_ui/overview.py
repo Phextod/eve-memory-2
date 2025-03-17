@@ -229,7 +229,7 @@ class Overview:
 
     def update(self, refresh=True):
         first_iter = True
-        while first_iter or next((e for e in self.entries if e.type is None), None) is not None:
+        while first_iter or [e for e in self.entries if e.type is None]:
             self.entries.clear()
 
             if not self.update_headers(refresh):

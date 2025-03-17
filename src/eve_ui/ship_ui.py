@@ -25,7 +25,7 @@ class ShipModule:
         turning_off = 3
 
     latest_state_change_times = dict()
-    WAIT_TIME_ON_STATE_CHANGE = 1
+    WAIT_TIME_ON_STATE_CHANGE = 1.5
 
     def __init__(self, node: UITreeNode):
         ui_tree: UITree = UITree.instance()
@@ -100,9 +100,8 @@ class ShipModule:
         return False
 
     def set_overload(self, overload: bool):
-        latest_state_change_time = ShipModule.latest_state_change_times.get(self.node.attrs['_name'])
-        if time.time() - latest_state_change_time < ShipModule.WAIT_TIME_ON_STATE_CHANGE:
-            return
+        if time.time() - self.get_latest_state_change_time() < ShipModule.WAIT_TIME_ON_STATE_CHANGE:
+            return False
 
         if (overload and self.overload_status == ShipModule.OverloadStatus.not_overloaded) or \
                 (not overload and self.overload_status == ShipModule.OverloadStatus.overloaded):
