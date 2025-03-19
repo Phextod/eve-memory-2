@@ -487,18 +487,19 @@ class AbyssFighter:
         if not targeting_successful:
             self.manage_propulsion(0.4)
         else:
-            overheat_defenses = (
-                (config.ABYSSAL_IS_SHIELD_TANK and self.ui.ship_ui.shield_percent < 0.75)
-                or (config.ABYSSAL_IS_ARMOR_TANK and self.ui.ship_ui.armor_percent < 0.75)
-                or (config.ABYSSAL_IS_STRUCTURE_TANK and self.ui.ship_ui.structure_percent < 0.75)
+            medium_slot_max_heat_damage = max(m.heat_damage for i, m in self.ui.ship_ui.medium_modules.items())
+            overheat_defenses = medium_slot_max_heat_damage < 0.65 and (
+                (config.ABYSSAL_IS_SHIELD_TANK and self.ui.ship_ui.shield_percent < 0.65)
+                or (config.ABYSSAL_IS_ARMOR_TANK and self.ui.ship_ui.armor_percent < 0.65)
+                or (config.ABYSSAL_IS_STRUCTURE_TANK and self.ui.ship_ui.structure_percent < 0.65)
             )
             current_stage, _ = self.get_current_and_next_stage(clear_order)
 
             self.manage_weapons()
-            self.manage_hardeners(0.25, False)
+            self.manage_hardeners(0.25, overheat_defenses)
             self.manage_propulsion(0.4)
             self.manage_webs(0.3, current_stage)
-            self.manage_shield(0.2, False)
+            self.manage_shield(0.2, overheat_defenses)
 
     def manage_drones(self):
         self.ui.drones.update()
@@ -539,18 +540,21 @@ class AbyssFighter:
             self.ui.drones.attack_target()
 
     def set_orbit_tags(self, clear_order: List[Stage]):
-        orbit_targets = []
-        for stage in clear_order:
-            if stage.orbit_target is not None and stage.orbit_target not in orbit_targets:
-                orbit_targets.append(stage.orbit_target)
-
         if not clear_order:
             return
+
+        orbit_targets = list(set(s.orbit_target for s in clear_order if s.orbit_target))
 
         self.ui.overview.lock_order()
         self.ui.overview.update()
         self.ui.overview.unlock_order()
         for i, target in enumerate(orbit_targets):
+            entry_with_tag = next((e for e in self.ui.overview.entries if e.tag == str(i)), None)
+            if entry_with_tag:
+                if entry_with_tag.type == target.name:
+                    continue
+                else:
+                    entry_with_tag.clear_tag()
             target_entry = next(e for e in self.ui.overview.entries if target.name == e.type and e.tag is None)
             target_entry.set_tag(str(i))
 
@@ -566,10 +570,13 @@ class AbyssFighter:
         for i, m in self.ui.ship_ui.high_modules.items():
             if i in config.ABYSSAL_WEAPON_MODULE_INDICES:
                 continue
+            m.set_overload(False)
             m.set_active(False)
         for _, m in self.ui.ship_ui.medium_modules.items():
+            m.set_overload(False)
             m.set_active(False)
         for _, m in self.ui.ship_ui.low_modules.items():
+            m.set_overload(False)
             m.set_active(False)
 
     def calculate_clear_order(self) -> List[Stage]:

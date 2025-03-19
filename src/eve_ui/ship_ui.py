@@ -25,6 +25,7 @@ class ShipModule:
         turning_off = 3
 
     latest_state_change_times = dict()
+    latest_overload_state_change_times = dict()
     WAIT_TIME_ON_STATE_CHANGE = 1.5
 
     def __init__(self, node: UITreeNode):
@@ -40,17 +41,26 @@ class ShipModule:
             number_containers.sort(key=lambda n: n.x, reverse=True)
             self.ammo_count = int(number_containers[0].attrs.get('_setText', ""))
 
+        damage_state_cont = ui_tree.find_node(node_type="DamageStateCont", root=node, refresh=False)
+        if damage_state_cont:
+            heat_dmg_str = damage_state_cont.attrs['_hint'][:-1].split(" ")[1].replace(",", ".")
+            self.heat_damage = float(heat_dmg_str) / 100
+        else:
+            self.heat_damage = 0.0
+
+        glow = ui_tree.find_node(
+            {"_texturePath": "Glow"},
+            contains=True,
+            root=node,
+            refresh=False,
+        )
+        self.is_repairing = glow is not None and glow.attrs['_color']['rPercent'] == 0
+
         # Cloaks and some other modules are active but not overloadable. If you care about those improve this part
         overload_button = ui_tree.find_node({'_name': 'overloadBtn'}, root=node, refresh=False)
         if "Disabled" not in overload_button.attrs["_texturePath"]:
             module_button = ui_tree.find_node(node_type="ModuleButton", root=node, refresh=False)
             if module_button.attrs.get("ramp_active", None):
-                glow = ui_tree.find_node(
-                    {"_texturePath": "Glow"},
-                    contains=True,
-                    root=node,
-                    refresh=False,
-                )
                 if glow and glow.attrs["_color"]["rPercent"] >= 100:
                     self.active_status = ShipModule.ActiveStatus.turning_off
                 else:
@@ -82,14 +92,14 @@ class ShipModule:
         else:
             self.overload_status = ShipModule.OverloadStatus.turning_off
 
-    def get_latest_state_change_time(self):
-        return ShipModule.latest_state_change_times.get(self.node.attrs['_name'], 0.0)
-
     def set_state_change_time(self):
         ShipModule.latest_state_change_times.update({self.node.attrs['_name']: time.time()})
 
     def set_active(self, activate: bool):
-        if time.time() - self.get_latest_state_change_time() < ShipModule.WAIT_TIME_ON_STATE_CHANGE:
+        if (
+            time.time() - ShipModule.latest_state_change_times.get(self.node.attrs['_name'], 0.0)
+                < ShipModule.WAIT_TIME_ON_STATE_CHANGE
+        ):
             return False
 
         if (activate and self.active_status == ShipModule.ActiveStatus.not_active) or \
@@ -100,7 +110,10 @@ class ShipModule:
         return False
 
     def set_overload(self, overload: bool):
-        if time.time() - self.get_latest_state_change_time() < ShipModule.WAIT_TIME_ON_STATE_CHANGE:
+        if (
+            time.time() - ShipModule.latest_overload_state_change_times.get(self.node.attrs['_name'], 0.0)
+                < ShipModule.WAIT_TIME_ON_STATE_CHANGE
+        ):
             return False
 
         if (overload and self.overload_status == ShipModule.OverloadStatus.not_overloaded) or \
@@ -108,7 +121,7 @@ class ShipModule:
             pyautogui.keyDown("shift")
             click(self.node)
             pyautogui.keyUp("shift")
-            self.set_state_change_time()
+            ShipModule.latest_overload_state_change_times.update({self.node.attrs['_name']: time.time()})
 
 
 class ShipUI:
@@ -215,6 +228,7 @@ class ShipUI:
             # module_index = int(slot.attrs["_name"].replace("inFlightMediumSlot", ""))
             ship_module = ShipModule(slot)
             self.high_modules.update({module_index: ship_module})
+        return self
 
     def update_medium_slots(self, refresh=True):
         self.medium_modules.clear()
@@ -230,6 +244,7 @@ class ShipUI:
             # module_index = int(slot.attrs["_name"].replace("inFlightMediumSlot", ""))
             ship_module = ShipModule(slot)
             self.medium_modules.update({module_index: ship_module})
+        return self
 
     def update_low_slots(self, refresh=True):
         self.low_modules.clear()
@@ -245,6 +260,7 @@ class ShipUI:
             # module_index = int(slot.attrs["_name"].replace("inFlightMediumSlot", ""))
             ship_module = ShipModule(slot)
             self.low_modules.update({module_index: ship_module})
+        return self
 
     def update_modules(self, refresh=True):
         self.update_high_slots(refresh=refresh)
@@ -315,3 +331,21 @@ class ShipUI:
     def full_speed(self):
         btn_full_speed = BubblingQuery(node_type="MaxSpeedButton", parent_query=self.main_container_query).result
         click(btn_full_speed)
+
+    def click_center(self):
+        capacitor_container = BubblingQuery(
+            node_type="CapacitorContainer",
+            parent_query=self.main_container_query
+        ).result
+
+        if not capacitor_container:
+            return
+
+        click(capacitor_container)
+
+    def get_modules(self):
+        return (
+            [m for i, m in self.high_modules.items()]
+            + [m for j, m in self.medium_modules.items()]
+            + [m for k, m in self.low_modules.items()]
+        )

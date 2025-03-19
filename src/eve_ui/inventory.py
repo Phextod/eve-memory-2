@@ -9,7 +9,7 @@ import pyperclip
 from src.eve_ui.context_menu import ContextMenu
 from src.utils.bubbling_query import BubblingQuery
 from src.utils.ui_tree import UITree, UITreeNode
-from src.utils.utils import drag_and_drop, click, MOUSE_RIGHT, get_path
+from src.utils.utils import drag_and_drop, click, MOUSE_RIGHT, get_path, wait_for_truthy
 
 
 @dataclass
@@ -204,7 +204,26 @@ class Inventory:
                 node_type="EveLabelMedium",
                 root=search_field,
             )
-        return True
+        return
+
+    def smart_search(self, item_name):
+        item = next((i for i in self.items if i.name == item_name), None)
+        if not item:
+            search_field = wait_for_truthy(
+                lambda: BubblingQuery(
+                    {'_name': 'quickFilterInputBox'},
+                    parent_query=self.main_window_query
+                ).result,
+                5
+            )
+            if not search_field:
+                return None
+            search_label = self.ui_tree.find_node(node_type="EveLabelMedium", root=search_field, refresh=False)
+            if search_label.attrs["_setText"] != item_name:
+                self.search_for(item_name)
+            self.update_items()
+            item = next((i for i in self.items if i.name == item_name), None)
+        return item
 
     def loot_all(self):
         btn_loot_all = BubblingQuery({'_name': 'invLootAllBtn'}, self.main_window_query).result

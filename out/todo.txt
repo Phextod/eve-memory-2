@@ -42,7 +42,7 @@ apply ewar to enemies(✔ web, neut, painter)
 ✔ prevent ship from going out of bounds
 ✔ "spiral in" navigation instead of straight approach
 
+✔ recalculate clear plan if there are enemies on the overview, but they don't match any stage in the current plan (or after a certain time)
+✔ overheat modules
 ship stuck detection and solution
-prevent ship from outrunning target
-overheat modules
-recalculate clear plan if there are enemies on the overview, but they don't match any stage in the current plan (or after a certain time)
+(prevent ship from outrunning target (or just don't run dark filaments lol))

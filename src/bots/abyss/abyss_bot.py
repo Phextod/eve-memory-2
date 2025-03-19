@@ -74,7 +74,7 @@ class AbyssBot:
                 high_module.set_state_change_time()
                 is_prepared = False
 
-        # repair
+        # repair ship
         if config.ABYSSAL_SHIELD_BOOSTER_INDICES:
             self.ui.ship_ui.update_hp()
             self.ui.ship_ui.update_modules()
@@ -87,6 +87,26 @@ class AbyssBot:
             ):
                 is_prepared = False
                 self.abyss_fighter.manage_shield(0.3)
+
+        # repair modules
+        self.ui.ship_ui.update_modules()
+        modules = self.ui.ship_ui.get_modules()
+        damaged_modules = [m for m in modules if m.heat_damage]
+        if [m for m in modules if m.is_repairing]:
+            is_prepared = False
+        elif damaged_modules:
+            nanite_paste_item = self.ui.inventory.smart_search("Nanite Repair Paste")
+            nanite_paste_remaining = nanite_paste_item.quantity if nanite_paste_item else 0
+            for module in damaged_modules:
+                click(module.node, MOUSE_RIGHT)
+                repair_btn = self.ui.context_menu.get_menu_btn("Repair", contains=True)
+                paste_needed = int(repair_btn.attrs["_setText"].split("[")[1][:-1])
+                if paste_needed > nanite_paste_remaining:
+                    self.ui.ship_ui.click_center()
+                    break
+                click(repair_btn)
+                nanite_paste_remaining -= paste_needed
+                is_prepared = False
 
         # recall drones
         self.ui.drones.update()
@@ -295,14 +315,14 @@ class AbyssBot:
 
         # Ship
         self.ui.ship_ui.update()
-        shield = self.ui.ship_ui.shield_percent
-        armor = self.ui.ship_ui.armor_percent
-        structure = self.ui.ship_ui.structure_percent
         if (
-            (config.ABYSSAL_IS_SHIELD_TANK and (shield < 0.7 or armor < 0.9))
-            or (config.ABYSSAL_IS_ARMOR_TANK and (armor < 0.7 or structure < 0.9))
-            or (config.ABYSSAL_IS_STRUCTURE_TANK and structure < 0.7)
+            (config.ABYSSAL_IS_SHIELD_TANK and self.ui.ship_ui.armor_percent < 0.9)
+            or (config.ABYSSAL_IS_ARMOR_TANK and self.ui.ship_ui.structure_percent < 0.9)
         ):
+            return True
+
+        # Modules
+        if [m for m in self.ui.ship_ui.get_modules() if m.heat_damage]:
             return True
 
         # Inventory
@@ -320,13 +340,33 @@ class AbyssBot:
 
         return False
 
-    def move_a_bit(self):
+    def prepare_for_next_abyss(self):
         self.ui.ship_ui.full_speed()
-        wait_for_truthy(
-            lambda: not [e for e in self.ui.overview.update().entries if "Abyssal Trace" in e.type],
-            60
-        )
-        time.sleep(3)
+        is_prepared = False
+        while not is_prepared:
+            is_prepared = True
+            self.ui.ship_ui.update()
+
+            # HP
+            self.abyss_fighter.manage_shield(0.3)
+            # todo repair armor
+            if (
+                config.ABYSSAL_IS_SHIELD_TANK and self.ui.ship_ui.shield_percent < 0.9
+                or config.ABYSSAL_IS_ARMOR_TANK and self.ui.ship_ui.armor_percent < 0.9
+            ):
+                is_prepared = False
+
+            # Capacitor
+            if self.ui.ship_ui.capacitor_percent < 0.7:
+                is_prepared = False
+
+            # Previous Abyssal Trace
+            if [e for e in self.ui.overview.update().entries if "Abyssal Trace" in e.type]:
+                is_prepared = False
+
+        while [m for m in self.ui.ship_ui.get_modules() if m.active_status == ShipModule.ActiveStatus.active]:
+            self.abyss_fighter.deactivate_modules()
+            self.ui.ship_ui.update_modules()
 
     def init_fleet(self):
         if not self.ui.fleet.is_in_fleet():
@@ -356,7 +396,7 @@ class AbyssBot:
                 self.undock()
                 self.warp_to_safe_spot()
             else:
-                self.move_a_bit()
+                self.prepare_for_next_abyss()
 
 
 if __name__ == "__main__":

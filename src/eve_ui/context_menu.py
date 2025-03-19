@@ -45,8 +45,11 @@ class ContextMenu:
     def __init__(self, refresh_on_init=False):
         self.menu_container_query = BubblingQuery({'_name': 'l_menu'}, refresh_on_init=refresh_on_init)
 
-    def get_menu_btn(self, entry_text, contains=False):
-        return BubblingQuery({'_setText': entry_text}, self.menu_container_query, contains=contains).result
+    def get_menu_btn(self, entry_text, contains=False, timeout=2):
+        return wait_for_truthy(
+            lambda: BubblingQuery({'_setText': entry_text}, self.menu_container_query, contains=contains).result,
+            timeout
+        )
 
     def click(self, entry_text, contains=False):
         target = self.get_menu_btn(entry_text, contains)
