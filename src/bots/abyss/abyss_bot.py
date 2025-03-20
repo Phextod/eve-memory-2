@@ -60,8 +60,18 @@ class AbyssBot:
         for i in config.ABYSSAL_SPEED_MODULE_INDICES:
             self.ui.ship_ui.medium_modules[i].set_active(should_speed)
 
-    def prepare_for_next_room(self, current_room):
+    def prepare_for_next_room(self):
         is_prepared = True
+
+        # recall drones
+        self.ui.drones.update()
+        if self.ui.drones.in_space:
+            is_prepared = False
+            self.ui.drones.recall_all()
+
+        is_last_room = len([e for e in self.ui.overview.entries if "Origin Conduit" in e.name]) > 0
+        if is_last_room:
+            return is_prepared
 
         # reload weapons
         for i, high_module in self.ui.ship_ui.high_modules.items():
@@ -108,15 +118,9 @@ class AbyssBot:
                 nanite_paste_remaining -= paste_needed
                 is_prepared = False
 
-        # recall drones
-        self.ui.drones.update()
-        if self.ui.drones.in_space:
-            is_prepared = False
-            self.ui.drones.recall_all()
-
         # wait for cap
         self.ui.ship_ui.update()
-        if self.ui.ship_ui.capacitor_percent < 0.7 and current_room < 3:
+        if self.ui.ship_ui.capacitor_percent < 0.7:
             is_prepared = False
 
         return is_prepared
@@ -143,12 +147,12 @@ class AbyssBot:
         while current_room <= 3:
             self.abyss_fighter.clear_room()
             while self.loot():
-                self.prepare_for_next_room(current_room)
+                self.prepare_for_next_room()
                 self.ui.ship_ui.update_modules()
                 self.ui.ship_ui.update_capacitor_percent()
                 self.abyss_fighter.manage_propulsion(0.5)
             self.approach_jump_gate()
-            while not self.prepare_for_next_room(current_room) and time.time() - start_timer < 5 * 60:
+            while not self.prepare_for_next_room() and time.time() - start_timer < 5 * 60:
                 self.ui.ship_ui.update_modules()
                 self.ui.ship_ui.update_capacitor_percent()
                 self.abyss_fighter.manage_propulsion(1)
@@ -163,10 +167,8 @@ class AbyssBot:
         wait_for_truthy(lambda: TimerNames.invulnerable in self.ui.timers.update().timers, 10)
 
     def use_filament(self):
-        self.ui.inventory.search_for(f"{config.ABYSSAL_DIFFICULTY} {config.ABYSSAL_WEATHER}")
-        self.ui.inventory.update_items()
-
-        click(self.ui.inventory.items[0].node, MOUSE_RIGHT)
+        filament_item = self.ui.inventory.smart_search(f"{config.ABYSSAL_DIFFICULTY} {config.ABYSSAL_WEATHER} Filament")
+        click(filament_item.node, MOUSE_RIGHT)
         self.context_menu.click_safe(f"Use {config.ABYSSAL_DIFFICULTY} {config.ABYSSAL_WEATHER}", contains=True)
 
         activation_window = self.ui_tree.find_node(node_type="KeyActivationWindow")
@@ -252,11 +254,7 @@ class AbyssBot:
                 continue
             amount_for_min = config.ABYSSAL_SUPPLIES[item_name][0] - amount_in_ship
 
-            self.ui.inventory.search_for(item_name)
-            self.ui.inventory.update()
-
-            item_to_move = next((i for i in self.ui.inventory.items if i.name == item_name), None)
-
+            item_to_move = self.ui.inventory.smart_search(item_name)
             if item_to_move is None:
                 if amount_for_min > 0:
                     raise Exception("Not enough supply")
@@ -289,11 +287,7 @@ class AbyssBot:
             if pick_up_quantity <= 0:
                 continue
 
-            self.ui.inventory.search_for(drone_type)
-            self.ui.inventory.update_items()
-
-            drone_item = next((i for i in self.ui.inventory.items if i.name == drone_type), None)
-
+            drone_item = self.ui.inventory.smart_search(drone_type)
             if not drone_item or drone_item.quantity < pick_up_quantity:
                 raise Exception("Not enough drones")
 
@@ -332,9 +326,7 @@ class AbyssBot:
             return True
 
         for supply_name, supply_amounts in config.ABYSSAL_SUPPLIES.items():
-            self.ui.inventory.search_for(supply_name)
-            self.ui.inventory.update_items()
-            item = next((i for i in self.ui.inventory.items if i.name == supply_name), None)
+            item = self.ui.inventory.smart_search(supply_name)
             if not item or item.quantity < supply_amounts[0]:
                 return True
 
@@ -346,6 +338,17 @@ class AbyssBot:
         while not is_prepared:
             is_prepared = True
             self.ui.ship_ui.update()
+
+            # Reload weapons
+            for i, high_module in self.ui.ship_ui.high_modules.items():
+                if high_module.active_status == ShipModule.ActiveStatus.reloading:
+                    is_prepared = False
+                    continue
+                if high_module.ammo_count < config.ABYSSAL_AMMO_PER_WEAPON[i]:
+                    click(high_module.node, MOUSE_RIGHT)
+                    self.context_menu.click_safe("Reload all")
+                    high_module.set_state_change_time()
+                    is_prepared = False
 
             # HP
             self.abyss_fighter.manage_shield(0.3)

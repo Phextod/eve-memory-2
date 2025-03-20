@@ -44,5 +44,7 @@ apply ewar to enemies(✔ web, neut, painter)
 
 ✔ recalculate clear plan if there are enemies on the overview, but they don't match any stage in the current plan (or after a certain time)
 ✔ overheat modules
+logging
 ship stuck detection and solution
 (prevent ship from outrunning target (or just don't run dark filaments lol))
+(put online burnt out modules after repair)

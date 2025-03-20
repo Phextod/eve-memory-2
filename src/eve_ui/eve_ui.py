@@ -17,7 +17,7 @@ from src.utils.ui_tree import UITree
 
 
 class EveUI:
-    def __init__(self):
+    def __init__(self, do_setup=True):
         start = time.time()
         print("initializing UI tree")
         UITree.instance()
@@ -31,7 +31,7 @@ class EveUI:
         self.drones = Drones()
         self.inventory = Inventory()
         self.context_menu: ContextMenu = ContextMenu.instance()
-        self.locations = Locations()
+        self.locations = Locations(do_setup=do_setup)
         self.station_window = StationWindow()
         self.timers = Timers()
         self.route = Route()

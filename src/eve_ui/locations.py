@@ -6,7 +6,7 @@ from src.utils.utils import click
 
 
 class Locations:
-    def __init__(self, refresh_on_init=False):
+    def __init__(self, refresh_on_init=False, do_setup=True):
         self.ui_tree: UITree = UITree.instance()
 
         self.main_window_query = BubblingQuery(
@@ -19,7 +19,7 @@ class Locations:
             refresh_on_init=False,
         )
 
-        should_close_groups = self.ui_tree.find_node(
+        should_close_groups = do_setup and self.ui_tree.find_node(
             {'texturePath': 'res:/UI/Texture/Icons/38_16_229.png'},
             root=self.main_container_query.result,
             refresh=False,

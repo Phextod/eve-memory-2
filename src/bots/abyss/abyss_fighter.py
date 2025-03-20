@@ -33,7 +33,7 @@ class AbyssFighter:
             get_path(config.ABYSSAL_ITEM_DATA_PATH),
             get_path(config.ABYSSAL_SHIP_CORRECTIONS_DATA_PATH)
         )
-        self.precompute_enemy_ship_attributes()
+        self.precompute_enemy_ship_attributes(self.enemy_ship_data)
         self.main_layer = self.ui_tree.find_node({'_name': 'l_main'})
         self.tracked_target: Optional[OverviewEntry] = None
         self.circle_in_offset = 0.4
@@ -108,7 +108,7 @@ class AbyssFighter:
                 enemy.turret_falloff *= penalty_multiplier
                 enemy.max_velocity *= bonus_multiplier
 
-        self.precompute_enemy_ship_attributes()
+        self.precompute_enemy_ship_attributes(self.enemies_on_overview())
 
     def enemy_entries_on_overview(self):
         enemy_entries = []
@@ -142,14 +142,18 @@ class AbyssFighter:
                     ship_data[name] = value
             self.enemy_ship_data.append(AbyssShip.from_json(ship_data, item_data))
 
-    def precompute_enemy_ship_attributes(self):
+    def precompute_enemy_ship_attributes(self, enemies):
+        self.player: PlayerShip = copy.deepcopy(config.ABYSSAL_PLAYER_SHIP)
+        if [e for e in self.ui.overview.update().entries if "Suppressor" in e.type]:
+            self.player.missile_range *= 0.4
+
         player_range = self.player.missile_range if self.player.missile_rate_of_fire \
             else self.player.turret_optimal_range if self.player.turret_rate_of_fire \
             else self.player.drone_range
         far_orbit_distance = DistancePresets.closest_smaller(player_range)["value"]
         close_orbit_distance = 2_500
 
-        for enemy in self.enemies_on_overview():
+        for enemy in enemies:
             no_orbit_stage = Stage([enemy], enemy, None)
             no_orbit_stage.update_stage_duration(self.player, 0.0, 0.0)
             no_orbit_dmg = no_orbit_stage.get_dmg_taken_by_player(
@@ -304,7 +308,10 @@ class AbyssFighter:
             click(min_tag_target.node, pos_y=0.3)
             return True
         else:
-            target_to_set = next((t for t in self.ui.target_bar.targets if t.tag is None), None)
+            target_to_set = next(
+                (t for t in self.ui.target_bar.targets if t.tag is None and t.name == current_stage.target),
+                None
+            )
             if target_to_set is None:
                 return False
 
@@ -488,7 +495,7 @@ class AbyssFighter:
             self.manage_propulsion(0.4)
         else:
             medium_slot_max_heat_damage = max(m.heat_damage for i, m in self.ui.ship_ui.medium_modules.items())
-            overheat_defenses = medium_slot_max_heat_damage < 0.65 and (
+            overheat_defenses = medium_slot_max_heat_damage < 0.7 and (
                 (config.ABYSSAL_IS_SHIELD_TANK and self.ui.ship_ui.shield_percent < 0.65)
                 or (config.ABYSSAL_IS_ARMOR_TANK and self.ui.ship_ui.armor_percent < 0.65)
                 or (config.ABYSSAL_IS_STRUCTURE_TANK and self.ui.ship_ui.structure_percent < 0.65)
@@ -543,7 +550,11 @@ class AbyssFighter:
         if not clear_order:
             return
 
-        orbit_targets = list(set(s.orbit_target for s in clear_order if s.orbit_target))
+        orbit_targets = []
+        for target in [s.orbit_target for s in clear_order if s.orbit_target]:
+            if target in orbit_targets:
+                continue
+            orbit_targets.append(target)
 
         self.ui.overview.lock_order()
         self.ui.overview.update()
@@ -579,9 +590,8 @@ class AbyssFighter:
             m.set_overload(False)
             m.set_active(False)
 
-    def calculate_clear_order(self) -> List[Stage]:
-        enemies = self.enemies_on_overview()
-
+    @staticmethod
+    def calculate_clear_order(enemies) -> List[Stage]:
         fight_plan = FightPlan(config.ABYSSAL_PLAYER_SHIP, enemies)
         return fight_plan.find_best_plan()
 
@@ -590,6 +600,7 @@ class AbyssFighter:
         self.ui.overview.update()
         potential_caches = [e for e in self.ui.overview.entries if "Cache" in e.type]
         if len(potential_caches) > 1 or "largeCollidableStructure" not in potential_caches[0].icon:
+            self.ui.overview.unlock_order()
             return
 
         bio_cache = potential_caches[0]
@@ -622,7 +633,7 @@ class AbyssFighter:
         self.ui.overview.update()
         self.init_room()
 
-        clear_order = self.calculate_clear_order()
+        clear_order = self.calculate_clear_order(self.enemies_on_overview())
         for stage in clear_order:
             print(f"target:{stage.target.name}({id(stage.target)},"
                   f" orbit: {stage.orbit_target.name if stage.orbit_target else 'None'}"
@@ -636,7 +647,11 @@ class AbyssFighter:
             current_stage, next_stage = self.get_current_and_next_stage(clear_order)
             if current_stage is None:
                 if self.enemies_on_overview():
-                    clear_order = self.calculate_clear_order()
+                    clear_order = self.calculate_clear_order(self.enemies_on_overview())
+                    for stage in clear_order:
+                        print(f"target:{stage.target.name}({id(stage.target)},"
+                              f" orbit: {stage.orbit_target.name if stage.orbit_target else 'None'}"
+                              f"({id(stage.orbit_target) if stage.orbit_target else ''})")
                 else:
                     break
 

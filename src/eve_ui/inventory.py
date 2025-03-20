@@ -219,7 +219,8 @@ class Inventory:
             if not search_field:
                 return None
             search_label = self.ui_tree.find_node(node_type="EveLabelMedium", root=search_field, refresh=False)
-            if search_label.attrs["_setText"] != item_name:
+            search_label_text = search_label.attrs.get("_setText", None)
+            if search_label_text != item_name:
                 self.search_for(item_name)
             self.update_items()
             item = next((i for i in self.items if i.name == item_name), None)
@@ -235,14 +236,19 @@ class Inventory:
     def repair_active_ship(self):
         click(self.active_ship_hangar, MOUSE_RIGHT)
         self.context_menu.click_safe("Get Repair Quote")
-        time.sleep(0.5)
 
-        repair_window = self.ui_tree.find_node(node_type="RepairShopWindow")
+        repair_window = wait_for_truthy(lambda: self.ui_tree.find_node(node_type="RepairShopWindow"), 5)
 
-        no_result = self.ui_tree.find_node({'_name': 'noResultsContainer'}, root=repair_window, refresh=False)
-        if not no_result:
+        no_result = None
+        repair_all_btn = None
+        while not (no_result or repair_all_btn):
+            no_result = self.ui_tree.find_node({'_name': 'noResultsContainer'}, root=repair_window, refresh=False)
             btn_group = self.ui_tree.find_node(node_type="ButtonGroup", root=repair_window, refresh=False)
-            repair_all_btn = btn_group.find_image(get_path("images/repair_all.png"))
+            if not btn_group:
+                continue
+            repair_all_btn = btn_group.find_image(get_path("images/repair_all.png"), confidence=0.8)
+
+        if repair_all_btn:
             click(repair_all_btn)
             pyautogui.press("enter")
 

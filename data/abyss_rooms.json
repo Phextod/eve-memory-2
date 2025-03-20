@@ -1,0 +1,293 @@
+{
+  "0": {
+    "name": "Angel Cartel Expedition",
+    "ship_names": [
+      "Lucifer Cynabal",
+      "Elite Lucifer Cynabal",
+      "Lucifer Ixion",
+      "Lucifer Fury",
+      "Lucifer Echo",
+      "Lucifer Medusa",
+      "Lucifer Burst",
+      "Lucifer Swordspine",
+      "Lucifer Dramiel",
+      "Elite Lucifer Dramiel"
+    ]
+  },
+  "1": {
+    "name": "Concord Fleet",
+    "ship_names": [
+      "Attacker Marshal Disparu Troop",
+      "Arrester Marshal Disparu Troop",
+      "Drainer Marshal Disparu Troop",
+      "Thunderchild Disparu Troop",
+      "Assault Enforcer Disparu Troop",
+      "Drainer Enforcer Disparu Troop",
+      "Marker Enforcer Disparu Troop",
+      "Stormbringer Disparu Troop",
+      "Skybreaker Disparu Troop",
+      "Attacker Pacifier Disparu Troop",
+      "Arrester Pacifier Disparu Troop",
+      "Marker Pacifier Disparu Troop",
+      "Drainer Pacifier Disparu Troop"
+    ]
+  },
+  "2": {
+    "name": "Karybdis Tyrannos + Seekers",
+    "ship_names": [
+      "Karybdis Tyrannos",
+      "Ephialtes Entangler",
+      "Ephialtes Spearfisher",
+      "Ephialtes Illuminator",
+      "Ephialtes Dissipator",
+      "Ephialtes Obfuscator",
+      "Ephialtes Confuser"
+    ]
+  },
+  "3": {
+    "name": "Karybdis Tyrannos + Scylla Tyrannos",
+    "ship_names": [
+      "Karybdis Tyrannos",
+      "Scylla Tyrannos Entanglement",
+      "Scylla Tyrannos Nullwarp",
+      "Scylla Tyrannos Nullcharge",
+      "Ephialtes Lancer"
+    ]
+  },
+  "4": {
+    "name": "Drone Battlecruisers (Tesseras)",
+    "ship_names": [
+      "Sparkgrip Tessera",
+      "Embergrip Tessera",
+      "Strikegrip Tessera",
+      "Blastgrip Tessera",
+      "Snarecaster Tessella",
+      "Fieldweaver Tessella"
+    ]
+  },
+  "5": {
+    "name": "Drone Boss (Overmind)",
+    "ship_names": [
+      "Bathyic Abyssal Overmind",
+      "Snarecaster Tessella",
+      "Spotlighter Tessella",
+      "Plateforger Tessella",
+      "Gazedimmer Tessella",
+      "Sparkneedle Tessella",
+      "Fogcaster Tessella"
+    ]
+  },
+  "6": {
+    "name": "Drone Swarm",
+    "ship_names": [
+      "Fieldweaver Tessella",
+      "Snarecaster Tessella",
+      "Spotlighter Tessella",
+      "Plateforger Tessella",
+      "Gazedimmer Tessella",
+      "Sparkneedle Tessella",
+      "Emberneedle Tessella",
+      "Strikeneedle Tessella",
+      "Blastneedle Tessella",
+      "Sparklance Tessella",
+      "Emberlance Tessella",
+      "Strikelance Tessella",
+      "Blastlance Tessella",
+      "Fogcaster Tessella"
+    ]
+  },
+  "7": {
+    "name": "Rodiva + Kikimoras",
+    "ship_names": [
+      "Renewing Rodiva",
+      "Striking Kikimora",
+      "Ghosting Kikimora",
+      "Tangling Kikimora",
+      "Anchoring Damavik",
+      "Starving Damavik",
+      "Striking Damavik"
+    ]
+  },
+  "8": {
+    "name": "Rodiva + Rouge Drones",
+    "ship_names": [
+      "Renewing Rodiva",
+      "Snarecaster Tessella",
+      "Spotlighter Tessella",
+      "Gazedimmer Tessella",
+      "Sparkneedle Tessella",
+      "Emberneedle Tessella",
+      "Strikeneedle Tessella",
+      "Blastneedle Tessella",
+      "Sparklance Tessella",
+      "Emberlance Tessella",
+      "Strikelance Tessella",
+      "Blastlance Tessella",
+      "Fogcaster Tessella"
+    ]
+  },
+  "9": {
+    "name": "Sansha's Nation",
+    "ship_names": [
+      "Devoted Knight",
+      "Devoted Hunter",
+      "Devoted Fisher",
+      "Devoted Priest",
+      "Devoted Trapper",
+      "Devoted Smith",
+      "Devoted Lookout",
+      "Devoted Herald",
+      "Devoted Torchbearer"
+    ]
+  },
+  "10": {
+    "name": "Seeker + Drifter",
+    "ship_names": [
+      "Scylla Tyrannos Entanglement",
+      "Scylla Tyrannos Nullwarp",
+      "Scylla Tyrannos Nullcharge",
+      "Ephialtes Lancer",
+      "Ephialtes Entangler",
+      "Ephialtes Spearfisher",
+      "Ephialtes Illuminator",
+      "Ephialtes Obfuscator",
+      "Ephialtes Confuser",
+      "Ephialtes Dissipator"
+    ]
+  },
+  "11": {
+    "name": "Seeker + Sleeper Frigate Swarm",
+    "ship_names": [
+      "Ephialtes Lancer",
+      "Ephialtes Entangler",
+      "Ephialtes Spearfisher",
+      "Ephialtes Illuminator",
+      "Ephialtes Dissipator",
+      "Ephialtes Obfuscator",
+      "Ephialtes Confuser",
+      "Lucid Escort",
+      "Lucid Aegis",
+      "Lucid Warden",
+      "Lucid Firewatcher"
+    ]
+  },
+  "12": {
+    "name": "Sleeper Battleships (Deepwatchers)",
+    "ship_names": [
+      "Lucid Deepwatcher",
+      "Ephialtes Lancer",
+      "Ephialtes Spearfisher",
+      "Lucid Escort",
+      "Lucid Warden",
+      "Lucid Firewatcher"
+    ]
+  },
+  "13": {
+    "name": "Sleeper + Drifter Cruisers",
+    "ship_names": [
+      "Scylla Tyrannos Entanglement",
+      "Scylla Tyrannos Nullwarp",
+      "Scylla Tyrannos Nullcharge",
+      "Lucid Watchman",
+      "Lucid Upholder",
+      "Lucid Sentinel",
+      "Ephialtes Lancer",
+      "Ephialtes Entangler",
+      "Ephialtes Obfuscator",
+      "Ephialtes Confuser"
+    ]
+  },
+  "14": {
+    "name": "Sleeper Swarm",
+    "ship_names": [
+      "Lucid Watchman",
+      "Lucid Upholder",
+      "Lucid Sentinel",
+      "Lucid Escort",
+      "Lucid Aegis",
+      "Lucid Warden",
+      "Lucid Firewatcher",
+      "Lucid Preserver"
+    ]
+  },
+  "15": {
+    "name": "Triglavian Drone Fleet (Vila)",
+    "ship_names": [
+      "Harrowing Vila Vedmak",
+      "Striking Vila Damavik",
+      "Tangling Vila Damavik",
+      "Anchoring Vila Damavik",
+      "Shining Vila Damavik",
+      "Blinding Vila Damavik",
+      "Ghosting Vila Damavik"
+    ]
+  },
+  "16": {
+    "name": "Triglavian Battleships (Leshak)",
+    "ship_names": [
+      "Striking Leshak",
+      "Renewing Leshak",
+      "Tangling Leshak",
+      "Starving Leshak",
+      "Blinding Leshak",
+      "Spotlighter Tessella",
+      "Sparkneedle Tessella",
+      "Strikeneedle Tessella",
+      "Fogcaster Tessella"
+    ]
+  },
+  "17": {
+    "name": "Triglavian Gangs",
+    "ship_names": [
+      "Starving Vedmak",
+      "Harrowing Vedmak",
+      "Ghosting Damavik",
+      "Tangling Damavik",
+      "Anchoring Damavik",
+      "Starving Damavik",
+      "Striking Damavik"
+    ]
+  },
+  "18": {
+    "name": "Triglavian Kikimoras (no Rodiva spawn)",
+    "ship_names": [
+      "Renewing Rodiva",
+      "Striking Kikimora",
+      "Ghosting Kikimora",
+      "Tangling Kikimora",
+      "Ghosting Damavik",
+      "Tangling Damavik",
+      "Anchoring Damavik",
+      "Starving Damavik",
+      "Striking Damavik"
+    ]
+  },
+  "19": {
+    "name": "Triglavian + Rogue Drones",
+    "ship_names": [
+      "Starving Vedmak",
+      "Harrowing Vedmak",
+      "Ghosting Damavik",
+      "Tangling Damavik",
+      "Anchoring Damavik",
+      "Starving Damavik",
+      "Striking Damavik",
+      "Sparkneedle Tessella",
+      "Strikeneedle Tessella"
+    ]
+  },
+  "20": {
+    "name": "Triglavian Battlecruiser (Drekavac)",
+    "ship_names": [
+      "Striking Drekavac",
+      "Shining Drekavac",
+      "Striking Kikimora",
+      "Ghosting Kikimora",
+      "Tangling Kikimora",
+      "Ghosting Damavik",
+      "Anchoring Damavik",
+      "Starving Damavik",
+      "Striking Damavik"
+    ]
+  }
+}

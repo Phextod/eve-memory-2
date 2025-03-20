@@ -11,6 +11,7 @@ from line_profiler_pycharm import profile
 
 from src.bots.abyss.abyss_bot import AbyssBot
 from src.bots.abyss.abyss_fighter import AbyssFighter
+from src.bots.abyss.abyss_helper import AbyssHelper
 from src.bots.abyss.abyss_ship import AbyssShip
 from src.bots.abyss.fight_plan import FightPlan, Stage
 from src.bots.abyss.ship import Ship
@@ -21,11 +22,13 @@ from src.utils.utils import *
 
 np.seterr(all='raise')
 
-
-ui = EveUI()
+ui = EveUI(do_setup=False)
 ui_tree: UITree = UITree.instance()
-self = AbyssBot(ui)
+# self = AbyssBot(ui)
+self = AbyssHelper(ui)
 # self = Hauler(ui)
+
+self.run()
 
 # abyss_fighter = AbyssFighter(ui)
 # abyss_fighter.init_room()
