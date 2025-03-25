@@ -57,11 +57,11 @@ class Route:
                 self.update()
                 click(self.route_sprites[0], MOUSE_RIGHT)
                 time.sleep(0.5)
-                is_jumping = context_menu.click("Jump through stargate")
+                is_jumping = context_menu.click("Jump Through Stargate")
                 is_docking = context_menu.click("Dock")
 
             if is_jumping:
-                if wait_for_truthy(lambda: TimerNames.jumpCloak.value in timers.update().timers, 60):
+                if wait_for_truthy(lambda: TimerNames.jumpCloak.value in timers.update().timers, 120):
                     continue
                 else:
                     break

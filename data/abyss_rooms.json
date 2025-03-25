@@ -1,6 +1,7 @@
 {
   "0": {
     "name": "Angel Cartel Expedition",
+    "tactic": "Can't outrun. (elite cynabal -> cynabal -> neuts -> dramiel",
     "ship_names": [
       "Lucifer Cynabal",
       "Elite Lucifer Cynabal",
@@ -16,6 +17,7 @@
   },
   "1": {
     "name": "Concord Fleet",
+    "tactic": "None yet?",
     "ship_names": [
       "Attacker Marshal Disparu Troop",
       "Arrester Marshal Disparu Troop",
@@ -34,6 +36,7 @@
   },
   "2": {
     "name": "Karybdis Tyrannos + Seekers",
+    "tactic": "Close orbit Karybdis ASAP!",
     "ship_names": [
       "Karybdis Tyrannos",
       "Ephialtes Entangler",
@@ -46,6 +49,7 @@
   },
   "3": {
     "name": "Karybdis Tyrannos + Scylla Tyrannos",
+    "tactic": "None yet?",
     "ship_names": [
       "Karybdis Tyrannos",
       "Scylla Tyrannos Entanglement",
@@ -56,6 +60,7 @@
   },
   "4": {
     "name": "Drone Battlecruisers (Tesseras)",
+    "tactic": "8k range, just kite, they like to kill drones",
     "ship_names": [
       "Sparkgrip Tessera",
       "Embergrip Tessera",
@@ -67,6 +72,7 @@
   },
   "5": {
     "name": "Drone Boss (Overmind)",
+    "tactic": "None yet?",
     "ship_names": [
       "Bathyic Abyssal Overmind",
       "Snarecaster Tessella",
@@ -79,6 +85,7 @@
   },
   "6": {
     "name": "Drone Swarm",
+    "tactic": "Can't outrun, balanced damage",
     "ship_names": [
       "Fieldweaver Tessella",
       "Snarecaster Tessella",
@@ -98,6 +105,7 @@
   },
   "7": {
     "name": "Rodiva + Kikimoras",
+    "tactic": "Kikis first (starving -> renewing -> tangling)",
     "ship_names": [
       "Renewing Rodiva",
       "Striking Kikimora",
@@ -110,6 +118,7 @@
   },
   "8": {
     "name": "Rodiva + Rouge Drones",
+    "tactic": "None yet?",
     "ship_names": [
       "Renewing Rodiva",
       "Snarecaster Tessella",
@@ -128,6 +137,7 @@
   },
   "9": {
     "name": "Sansha's Nation",
+    "tactic": "None yet?",
     "ship_names": [
       "Devoted Knight",
       "Devoted Hunter",
@@ -142,6 +152,7 @@
   },
   "10": {
     "name": "Seeker + Drifter",
+    "tactic": "None yet?",
     "ship_names": [
       "Scylla Tyrannos Entanglement",
       "Scylla Tyrannos Nullwarp",
@@ -157,6 +168,7 @@
   },
   "11": {
     "name": "Seeker + Sleeper Frigate Swarm",
+    "tactic": "Lucid Aegis -> Lucid Warden",
     "ship_names": [
       "Ephialtes Lancer",
       "Ephialtes Entangler",
@@ -173,6 +185,7 @@
   },
   "12": {
     "name": "Sleeper Battleships (Deepwatchers)",
+    "tactic": "None yet?",
     "ship_names": [
       "Lucid Deepwatcher",
       "Ephialtes Lancer",
@@ -184,6 +197,7 @@
   },
   "13": {
     "name": "Sleeper + Drifter Cruisers",
+    "tactic": "None yet?",
     "ship_names": [
       "Scylla Tyrannos Entanglement",
       "Scylla Tyrannos Nullwarp",
@@ -199,6 +213,7 @@
   },
   "14": {
     "name": "Sleeper Swarm",
+    "tactic": "None yet?",
     "ship_names": [
       "Lucid Watchman",
       "Lucid Upholder",
@@ -212,6 +227,7 @@
   },
   "15": {
     "name": "Triglavian Drone Fleet (Vila)",
+    "tactic": "None yet?",
     "ship_names": [
       "Harrowing Vila Vedmak",
       "Striking Vila Damavik",
@@ -224,6 +240,7 @@
   },
   "16": {
     "name": "Triglavian Battleships (Leshak)",
+    "tactic": "Leshaks 63k range but bad tracking, the rest are easy",
     "ship_names": [
       "Striking Leshak",
       "Renewing Leshak",
@@ -238,6 +255,7 @@
   },
   "17": {
     "name": "Triglavian Gangs",
+    "tactic": "None yet?",
     "ship_names": [
       "Starving Vedmak",
       "Harrowing Vedmak",
@@ -250,6 +268,7 @@
   },
   "18": {
     "name": "Triglavian Kikimoras (no Rodiva spawn)",
+    "tactic": "None yet?",
     "ship_names": [
       "Renewing Rodiva",
       "Striking Kikimora",
@@ -264,6 +283,7 @@
   },
   "19": {
     "name": "Triglavian + Rogue Drones",
+    "tactic": "Can't outrun, insta shield (vedmak -> damavik -> tessella)",
     "ship_names": [
       "Starving Vedmak",
       "Harrowing Vedmak",
@@ -278,6 +298,7 @@
   },
   "20": {
     "name": "Triglavian Battlecruiser (Drekavac)",
+    "tactic": "None yet?",
     "ship_names": [
       "Striking Drekavac",
       "Shining Drekavac",

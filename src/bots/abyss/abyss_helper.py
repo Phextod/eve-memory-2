@@ -29,7 +29,7 @@ class AbyssHelper:
                 if ship not in room_ships:
                     break
             else:
-                return room["name"]
+                return room
         return None
 
     def run(self):
@@ -55,7 +55,10 @@ class AbyssHelper:
         enemies_on_overview = self.abyss_fighter.enemies_on_overview()
         self.abyss_fighter.precompute_enemy_ship_attributes(enemies_on_overview)
 
-        print(f"Room: {self.get_current_room()}")
+        room = self.get_current_room()
+        if room is not None:
+            print(f"Room: {room['name']}")
+            print(f"Room: {room['tactic']}")
 
         enemy_types: List[AbyssShip] = []
         for enemy in enemies_on_overview:

@@ -10,5 +10,5 @@ class Autopilot:
 
 
 if __name__ == '__main__':
-    autopilot = Autopilot(EveUI())
+    autopilot = Autopilot(EveUI(do_setup=False))
     autopilot.run()

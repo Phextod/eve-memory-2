@@ -34,6 +34,6 @@ self.run()
 # abyss_fighter.init_room()
 # abyss_fighter.clear_room()
 
-self.run()
+# self.run()
 # self.use_filament()
 # self.do_abyss()
