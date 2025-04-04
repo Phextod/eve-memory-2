@@ -144,17 +144,28 @@ def get_type_of(_address):
 
 def get_value_of_str(_address):
     size_bytes = read_memory(_address, size=8, offset=2)
-    str_size = int(format_search_data(size_bytes, True), 16)
+    _size = int(format_search_data(size_bytes, True), 16)
 
-    _value_bytes = read_memory(_address, size=str_size, offset=4)
+    _value_bytes = read_memory(_address, size=_size, offset=4)
     str_value = bytes.fromhex(_value_bytes).decode("utf-8", errors="replace")
     return str_value
+
+
+def get_value_of_unicode(_address):
+    size_bytes = read_memory(_address, size=8, offset=2)
+    _size = int(format_search_data(size_bytes, True), 16)
+    start_address = pointer(read_memory(_address, size=8, offset=3))
+
+    data_bytes = read_memory(start_address, size=2 * _size)
+    return bytes.fromhex(data_bytes).decode("utf-16", errors="replace")
 
 
 def get_value_of(_address):
     type_name = get_type_of(_address)
     if type_name == "str":
         return get_value_of_str(_address)
+    if type_name == "unicode":
+        return get_value_of_unicode(_address)
     else:
         return f"{type_name} at: {hex(_address)[2:].upper()}"
 
@@ -163,6 +174,7 @@ def is_dict_data_pointer(dict_data_pointer_address):
     int_data_pointer = int(dict_data_pointer_address, 16)
     int_data_pointer -= 5 * 8
     type_name = get_type_of(int_data_pointer)
+    print(type_name)
     return type_name == "dict"
 
 
@@ -212,18 +224,40 @@ def read_dict(_dict_address):
 
 
 def read_list(_address):
-    list_bytes = read_memory(int(_address, 16), size=4*8)
+    list_bytes = read_memory(int(_address, 16), size=4 * 8)
 
     length_bytes = list_bytes[32:48]
     length = int(format_search_data(length_bytes, True), 16)
 
-    entry_address = pointer(list_bytes[48:64])
+    first_entry_address = pointer(list_bytes[48:64])
     for _ in range(length):
-        entry_bytes = read_memory(entry_address, size=8)
-        entry_pointer = pointer(entry_bytes)
+        entry_address = read_memory(first_entry_address, size=8)
+        entry_pointer = pointer(entry_address)
         entry_type = get_type_of(entry_pointer)
         entry_value = get_value_of(entry_pointer)
+
+        first_entry_address += 8
         print(f"{entry_type:20} : {entry_value}")
+
+        # read_tuple(hex(pointer(entry_address))[2:].upper())
+
+
+def read_tuple(_address):
+    tuple_size_bytes = read_memory(int(_address, 16), size=8, offset=2)
+    tuple_size = int(format_search_data(tuple_size_bytes, True), 16)
+
+    tuple_entry_bytes = read_memory(int(_address, 16), size=8 * tuple_size, offset=3)
+    for i in range(0, len(tuple_entry_bytes), 16):
+        entry_pointer = pointer(tuple_entry_bytes[i:i+16])
+        entry_type = get_type_of(entry_pointer)
+        entry_value = get_value_of(entry_pointer)
+
+        print(f"{entry_type:20} : {entry_value}")
+
+
+def read_bunch(_address):
+    read_dict(_address)
+
 
 
 
@@ -243,9 +277,33 @@ search_value = format_search_data("24452080A50", True)
 # print(search_address)
 # print(get_type_of(process_handle, int("1170B769630", 16)))
 
-# dict_address = find_dict_root("24452080A50")
-read_dict("2983B8A4798")
-# read_list("244A86F2DC8")
+
+# dict_address = find_dict_root("28EBB1479C0")
+# read_dict("28EBCB98990")
+# read_list("28F26BE6F08")
+
+# edit -> textbuffers -> tuple -> list -> bunch(same as dict) -> letters(unicode)
+# edit dict
+read_dict("28F29448618")
+print("-------------")
+# textbuffers
+read_list("28F26BE6F08")
+print("-------------")
+# tuple[2]
+read_tuple("28EBCB25888")
+print("-------------")
+# list
+read_list("28EBCB2BA48")
+print("-------------")
+# Bunch
+read_dict("28EBCD73428")
+print("-------------")
+# letters(Unicode)
+print(get_value_of(int("28EBB0E74B0", 16)))
+
+# read_list("28F26BE6F08")
+
+# read_list("28EBCB2B808")
 
 # key_value = read_memory(format_search_data(key_bytes, True))
 # p = format_search_data("2309D0F61E0", True)
