@@ -1,25 +1,22 @@
 import os
 import time
 from datetime import timedelta, datetime
-from typing import Union, Tuple
 
 import psutil
 import pyautogui
 import pyscreeze
-import win32api
 import win32con
 import win32gui
 import win32process
 
 from src import config
-from src.utils.ui_tree import UITreeNode, UITree
 
 pyscreeze.USE_IMAGE_NOT_FOUND_EXCEPTION = False
 UTIL_DIR = os.path.dirname(os.path.abspath(__file__))
 
 PROCNAME = "exefile.exe"
-MOUSE_LEFT = False
-MOUSE_RIGHT = True
+MOUSE_LEFT = pyautogui.LEFT
+MOUSE_RIGHT = pyautogui.RIGHT
 
 previousCursorLocation = (0, 0)
 failsafeTimers = dict()
@@ -33,16 +30,28 @@ def get_path(filepath):
 
 
 def log_console(*args, **kwargs):
+    """
+    Deprecated, use log() instead
+    """
     t = time.localtime()
     time_string = time.strftime("%Y/%m/%d %H:%M:%S: ", t)
     print(time_string + " ".join(map(str, args)), **kwargs)
 
 
-def log(log_message):
+def init_logger(log_file_path):
+    config.LOG_FILENAME = log_file_path
+    log("---------------------------------- Logging Initialized ----------------------------------", gap=1)
+
+
+def log(log_message, log_to_console=True, gap=0):
     t = time.localtime()
     time_string = time.strftime("%Y/%m/%d %H:%M:%S: ", t)
+
+    if log_to_console:
+        print(time_string + log_message)
+
     with open(get_path(config.LOG_FILENAME), "a") as f:
-        f.write("\n" + time_string + log_message)
+        f.write("\n" * (gap + 1) + time_string + log_message)
 
 
 def move_cursor(coordinates: (int, int)):
@@ -51,38 +60,34 @@ def move_cursor(coordinates: (int, int)):
         previousCursorLocation = win32gui.GetCursorPos()
         time.sleep(2)
 
-    win32api.SetCursorPos(coordinates)
+    pyautogui.moveTo(coordinates[0], coordinates[1])
 
     previousCursorLocation = win32gui.GetCursorPos()
 
 
-def click(target: "UITreeNode", button=MOUSE_LEFT, pos_x=0.5, pos_y=0.5, wait_before=0.1, wait_after=0.1):
-    down_event, up_event = (win32con.MOUSEEVENTF_RIGHTDOWN, win32con.MOUSEEVENTF_RIGHTUP) \
-        if button \
-        else (win32con.MOUSEEVENTF_LEFTDOWN, win32con.MOUSEEVENTF_LEFTUP)
-
+def click(target, button=pyautogui.LEFT, pos_x=0.5, pos_y=0.5, wait_before=0.1, wait_after=0.1):
     move_cursor(target.get_center(pos_x, pos_y))
     time.sleep(wait_before)
-    win32api.mouse_event(down_event, 0, 0)
+    pyautogui.mouseDown(button=button, _pause=False)
     time.sleep(0.05)
-    win32api.mouse_event(up_event, 0, 0)
+    pyautogui.mouseUp(button=button, _pause=False)
     time.sleep(wait_after)
 
 
-def left_click(target: Union[Tuple[int, int], 'UITreeNode']):
+def left_click(target):
     """
     deprecated use click() instead
     """
-    if type(target) == UITreeNode:
+    if type(target).__name__ == "UITreeNode":
         target = target.get_center()
     click_coordinate(target, left_button=True)
 
 
-def right_click(target: Union[Tuple[int, int], 'UITreeNode']):
+def right_click(target):
     """
     deprecated use click() instead
     """
-    if type(target) == UITreeNode:
+    if type(target).__name__ == "UITreeNode":
         target = target.get_center()
     click_coordinate(target, left_button=False)
 
@@ -91,18 +96,13 @@ def click_coordinate(coordinates: (int, int), left_button=True):
     """
     deprecated use click() instead
     """
-    down_evnt = win32con.MOUSEEVENTF_LEFTDOWN \
-        if left_button \
-        else win32con.MOUSEEVENTF_RIGHTDOWN
-    up_evnt = win32con.MOUSEEVENTF_LEFTUP \
-        if left_button \
-        else win32con.MOUSEEVENTF_RIGHTUP
+    button = pyautogui.LEFT if left_button else pyautogui.RIGHT
 
     move_cursor(coordinates)
     time.sleep(0.2)
-    win32api.mouse_event(down_evnt, 0, 0)
+    pyautogui.mouseDown(button=button)
     time.sleep(0.1)
-    win32api.mouse_event(up_evnt, 0, 0)
+    pyautogui.mouseUp(button=button)
     time.sleep(0.5)
 
 
@@ -111,20 +111,15 @@ def drag_and_drop(
         end_coordinates: (int, int),
         left_button=True
 ):
-    down_evnt = win32con.MOUSEEVENTF_LEFTDOWN \
-        if left_button \
-        else win32con.MOUSEEVENTF_RIGHTDOWN
-    up_evnt = win32con.MOUSEEVENTF_LEFTUP \
-        if left_button \
-        else win32con.MOUSEEVENTF_RIGHTUP
+    button = pyautogui.LEFT if left_button else pyautogui.RIGHT
 
     move_cursor(start_coordinates)
     time.sleep(0.2)
-    win32api.mouse_event(down_evnt, 0, 0)
+    pyautogui.mouseDown(button=button)
     time.sleep(0.2)
     move_cursor(end_coordinates)
     time.sleep(0.2)
-    win32api.mouse_event(up_evnt, 0, 0)
+    pyautogui.mouseUp(button=button)
     time.sleep(0.2)
 
 
@@ -172,7 +167,7 @@ def close_client():
             win32gui.PostMessage(eve, win32con.WM_CLOSE, 0, 0)
 
 
-def start_game():
+def start_game(ui_tree):
     log_console("Starting client")
     start_failsafe()
     btn_play_now = pyautogui.locateOnScreen(get_path("images/btn_play_now.png"), grayscale=True, confidence=0.7)
@@ -202,7 +197,7 @@ def start_game():
         pyautogui.press('enter')
         time.sleep(9)
         failsafe(60)
-    while not UITree.instance().find_node({'_name': 'EVEMenuIcon'}, refresh=True):
+    while not ui_tree.find_node({'_name': 'EVEMenuIcon'}, refresh=True):
         log_console(f"Waiting for neo-com {trial_count}")
         trial_count += 1
         if trial_count > 10:
@@ -216,7 +211,9 @@ def start_game():
 
 def wait_for_truthy(func, timeout, check_interval=0.5):
     start = time.time()
-    while time.time() - start < timeout:
+    first_iter = True
+    while time.time() - start < timeout or first_iter:
+        first_iter = False
         func_start = time.time()
         return_value = func()
         if return_value:

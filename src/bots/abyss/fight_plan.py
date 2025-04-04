@@ -9,6 +9,7 @@ from line_profiler_pycharm import profile
 
 from src.bots.abyss.abyss_ship import AbyssShip
 from src.bots.abyss.player_ship import PlayerShip
+from src.utils.utils import log
 
 
 class Stage:
@@ -189,7 +190,7 @@ class FightPlan:
 
     def print(self):
         for i, stage in enumerate(self.stages):
-            print(f"stage {i:{' '}>2}: {str(stage)}")
+            log(f"stage {i:{' '}>2}: {str(stage)}")
 
     def _evaluate_stage_order(self, stages: List[Stage]):
         total_dmg_taken = 0

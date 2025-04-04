@@ -18,7 +18,7 @@ from src.eve_ui.eve_ui import EveUI
 from src.eve_ui.overview import OverviewEntry
 from src.eve_ui.ship_ui import ShipModule
 from src.utils.ui_tree import UITree
-from src.utils.utils import get_path, wait_for_truthy, move_cursor, click, MOUSE_RIGHT
+from src.utils.utils import get_path, wait_for_truthy, move_cursor, click, MOUSE_RIGHT, log
 
 
 class AbyssFighter:
@@ -635,9 +635,9 @@ class AbyssFighter:
 
         clear_order = self.calculate_clear_order(self.enemies_on_overview())
         for stage in clear_order:
-            print(f"target:{stage.target.name}({id(stage.target)},"
-                  f" orbit: {stage.orbit_target.name if stage.orbit_target else 'None'}"
-                  f"({id(stage.orbit_target) if stage.orbit_target else ''})")
+            log(f"target:{stage.target.name}({id(stage.target)},"
+                f" orbit: {stage.orbit_target.name if stage.orbit_target else 'None'}"
+                f"({id(stage.orbit_target) if stage.orbit_target else ''})")
 
         self.set_orbit_tags(clear_order)
 
@@ -649,9 +649,9 @@ class AbyssFighter:
                 if self.enemies_on_overview():
                     clear_order = self.calculate_clear_order(self.enemies_on_overview())
                     for stage in clear_order:
-                        print(f"target:{stage.target.name}({id(stage.target)},"
-                              f" orbit: {stage.orbit_target.name if stage.orbit_target else 'None'}"
-                              f"({id(stage.orbit_target) if stage.orbit_target else ''})")
+                        log(f"target:{stage.target.name}({id(stage.target)},"
+                            f" orbit: {stage.orbit_target.name if stage.orbit_target else 'None'}"
+                            f"({id(stage.orbit_target) if stage.orbit_target else ''})")
                 else:
                     break
 

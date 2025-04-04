@@ -94,7 +94,11 @@ class Hauler:
                 decline_count += 1
                 dialog_window = UITree.instance().find_node(node_type="AgentDialogueWindow", refresh=True)
                 btn_group = UITree.instance().find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
-                btn_decline = btn_group.find_image(get_path("images/btn_decline.png"))
+                btn_decline = UITree.instance().find_node(
+                    {'_setText': "Decline"},
+                    node_type="EveLabelMedium",
+                    root=btn_group
+                )
                 left_click(btn_decline.get_center())
                 time.sleep(5)
                 log("Mission decline: jumps: " + str(route_length))
@@ -103,7 +107,11 @@ class Hauler:
                 while not self.can_accept():
                     dialog_window = UITree.instance().find_node(node_type="AgentDialogueWindow", refresh=True)
                     btn_group = UITree.instance().find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
-                    btn_request = btn_group.find_image(get_path('images/btn_request_mission.png'), confidence=0.99)
+                    btn_request = UITree.instance().find_node(
+                        {'_setText': "Request Mission"},
+                        node_type="EveLabelMedium",
+                        root=btn_group
+                    )
                     left_click(btn_request.get_center())
                     time.sleep(2)
                     failsafe(30)
@@ -118,7 +126,7 @@ class Hauler:
 
         dialog_window = UITree.instance().find_node(node_type="AgentDialogueWindow", refresh=True)
         btn_group = UITree.instance().find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
-        btn_accept = btn_group.find_image(get_path('images/btn_accept.png'), confidence=0.7)
+        btn_accept = UITree.instance().find_node({'_setText': "Accept"}, node_type="EveLabelMedium", root=btn_group)
         left_click(btn_accept)
 
         start_failsafe("waypoint_update")
@@ -133,7 +141,11 @@ class Hauler:
     def can_find_complete_button():
         dialog_window = UITree.instance().find_node(node_type="AgentDialogueWindow", refresh=True)
         btn_group = UITree.instance().find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
-        btn_complete = btn_group.find_image(get_path('images/btn_complete_mission.png'))
+        btn_complete = UITree.instance().find_node(
+            {'_setText': "Complete Mission"},
+            node_type="EveLabelMedium",
+            root=btn_group
+        )
 
         return btn_complete is not None
 
@@ -149,7 +161,7 @@ class Hauler:
     def can_accept():
         dialog_window = UITree.instance().find_node(node_type="AgentDialogueWindow", refresh=True)
         btn_group = UITree.instance().find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
-        btn_accept = btn_group.find_image(get_path('images/btn_accept.png'), confidence=0.7)
+        btn_accept = UITree.instance().find_node({'_setText': "Accept"}, node_type="EveLabelMedium", root=btn_group)
 
         return btn_accept is not None
 
@@ -161,8 +173,8 @@ class Hauler:
             btn_group = UITree.instance().find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
             btn_view_request = wait_for_truthy(
                 lambda:
-                btn_group.find_image(get_path('images/btn_request_mission.png'), confidence=0.95)
-                or btn_group.find_image(get_path('images/btn_view_mission.png'), confidence=0.95),
+                UITree.instance().find_node({'_setText': "Request Mission"}, node_type="EveLabelMedium", root=btn_group)
+                or UITree.instance().find_node({'_setText': "View Mission"}, node_type="EveLabelMedium", root=btn_group),
                 10
             )
             if btn_view_request:
@@ -223,7 +235,11 @@ class Hauler:
                 log_console("stage 5: completing mission")
                 dialog_window = UITree.instance().find_node(node_type="AgentDialogueWindow", refresh=True)
                 btn_group = UITree.instance().find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
-                btn_complete = btn_group.find_image(get_path('images/btn_complete_mission.png'))
+                btn_complete = UITree.instance().find_node(
+                    {'_setText': "Complete Mission"},
+                    node_type="EveLabelMedium",
+                    root=btn_group
+                )
                 left_click(btn_complete.get_center())
                 self.missionCounter += 1
                 minute = (datetime.now() - self.missionStart).seconds // 60

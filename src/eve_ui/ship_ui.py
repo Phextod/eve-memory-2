@@ -6,6 +6,7 @@ from typing import Dict, List
 import pyautogui
 
 from src.utils.bubbling_query import BubblingQuery
+from src.utils.singleton import Singleton
 from src.utils.ui_tree import UITree, UITreeNode
 from src.utils.utils import click
 
@@ -124,6 +125,7 @@ class ShipModule:
             ShipModule.latest_overload_state_change_times.update({self.node.attrs['_name']: time.time()})
 
 
+@Singleton
 class ShipUI:
     def __init__(self, refresh_on_init=False):
         self.ui_tree: UITree = UITree.instance()
@@ -311,10 +313,12 @@ class ShipUI:
         if not speed_label_node:
             return
 
-        if "Warping" in speed_label_node.attrs["_setText"]:
-            self.is_warping = True
-        else:
-            self.speed = float(speed_label_node.attrs["_setText"].split(" ")[0])
+        speed_text = speed_label_node.attrs.get("_setText", None)
+        if speed_text:
+            if "Warping" in speed_text:
+                self.is_warping = True
+            else:
+                self.speed = float(speed_text.split(" ")[0])
 
         return self
 

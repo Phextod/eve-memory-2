@@ -8,6 +8,7 @@ import win32gui
 
 from src import config
 from src.utils.singleton import Singleton
+from src.utils.utils import log
 
 pyscreeze.USE_IMAGE_NOT_FOUND_EXCEPTION = False
 
@@ -45,39 +46,6 @@ class UITreeNode(object):
         height = self.attrs.get("_displayHeight") + add_size * 2
         return left, top, width, height
 
-    def find_image(self, img_file_path, region_size_offset=50, confidence=0.9):
-        img = None
-
-        error_counter = 0
-        while True:
-            try:
-                img = pyautogui.locateOnScreen(
-                    img_file_path,
-                    region=self.get_region(region_size_offset),
-                    grayscale=True,
-                    confidence=confidence
-                )
-            except ValueError as ve:
-                # if img is larger than region
-                if error_counter >= 5:
-                    raise ve
-                error_counter += 1
-
-                time.sleep(1)
-                continue
-            break
-
-        if not img:
-            return None
-
-        new_node = UITreeNode()
-        new_node.x = img.left.item()
-        new_node.y = img.top.item()
-        new_node.attrs.update({"_displayWidth": img.width})
-        new_node.attrs.update({"_displayHeight": img.height})
-
-        return new_node
-
 
 @Singleton
 class UITree(object):
@@ -86,9 +54,23 @@ class UITree(object):
         self.hwnd = win32gui.FindWindow(None, f"EVE - {config.CHARACTER_NAME}")
         self.window_position_offset = (0, 0)
         self.nodes: dict[int, UITreeNode] = dict()
-        # self.width_ratio = 0
-        # self.height_ratio = 0
 
+        self.eve_memory_reader = ctypes.WinDLL(config.MEMORY_READER_DLL_PATH)
+        self.eve_memory_reader.initialize.argtypes = []
+        self.eve_memory_reader.initialize.restype = ctypes.c_int
+        self.eve_memory_reader.read_ui_trees.argtypes = []
+        self.eve_memory_reader.read_ui_trees.restype = None
+        self.eve_memory_reader.get_ui_json.argtypes = []
+        self.eve_memory_reader.get_ui_json.restype = ctypes.c_char_p
+        self.eve_memory_reader.free_ui_json.argtypes = []
+        self.eve_memory_reader.free_ui_json.restype = None
+        self.eve_memory_reader.cleanup.argtypes = []
+        self.eve_memory_reader.cleanup.restype = None
+
+        self.initialize_reader()
+        self.refresh()
+
+    def initialize_reader(self):
         self.eve_memory_reader = ctypes.WinDLL(config.MEMORY_READER_DLL_PATH)
         self.eve_memory_reader.initialize.argtypes = []
         self.eve_memory_reader.initialize.restype = ctypes.c_int
@@ -104,7 +86,6 @@ class UITree(object):
         ret = self.eve_memory_reader.initialize()
         if ret != 0:
             raise Exception(f"Failed to initialize: {ret}")
-        self.refresh()
 
     def cleanup(self):
         self.eve_memory_reader.cleanup()
@@ -162,17 +143,23 @@ class UITree(object):
 
     def refresh(self, root_address=None):
         while True:
-            if root_address:
-                if not self.nodes.get(root_address):
-                    return False
+            try:
+                if root_address:
+                    if not self.nodes.get(root_address):
+                        return False
+                    else:
+                        self.eve_memory_reader.read_ui_trees_from_address(ctypes.c_ulonglong(root_address))
                 else:
-                    self.eve_memory_reader.read_ui_trees_from_address(ctypes.c_ulonglong(root_address))
-            else:
-                self.eve_memory_reader.read_ui_trees()
+                    self.eve_memory_reader.read_ui_trees()
+            except Exception as e:
+                log(f"I don't even know: {e}")
+                self.initialize_reader()
+                continue
+
             tree_bytes = self.eve_memory_reader.get_ui_json()
             self.eve_memory_reader.free_ui_json()
             if not tree_bytes:
-                print("no ui trees found")
+                log("no ui trees found")
                 return False
             try:
                 tree_str = tree_bytes.decode("utf-8", errors="ignore")
@@ -183,9 +170,15 @@ class UITree(object):
                 tree = json.loads(tree_str)
                 self.load(tree, root_address)
             except UnicodeDecodeError as e:
-                print(f"error reading ui trees: {e}")
+                log(f"error reading ui trees: {e}")
+                # with open(f"error_{time.time()}_tree_bytes.txt", "w") as f:
+                #     f.write(str(tree_bytes))
+                #     f.write(str(e))
             except ValueError as e:
-                print(f"error reading ui trees: {e}")
+                log(f"error reading ui trees: {e}")
+                # with open(f"error_{time.time()}_tree_bytes.txt", "w") as f:
+                #     f.write(str(tree_bytes))
+                #     f.write(str(e))
 
             return True
 
@@ -205,7 +198,7 @@ class UITree(object):
         if refresh:
             if root:
                 if not self.refresh(root.address):
-                    return None
+                    return [] if select_many else None
                 root = self.nodes.get(root.address)
             else:
                 self.refresh()

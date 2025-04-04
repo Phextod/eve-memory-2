@@ -18,12 +18,13 @@ class AgentWindow:
             parent_query=self.main_window_query,
         )
 
-    def get_button(self, btn_img_path, confidence=0.9):
-        btn_node = self.button_group_query.result.find_image(btn_img_path, confidence=confidence)
-        if btn_node is None:
-            self.button_group_query.run()
-            btn_node = self.button_group_query.result.find_image(btn_img_path, confidence=confidence)
-        return btn_node
+    def get_button(self, btn_text):
+        self.button_group_query.run(True)
+        return BubblingQuery(
+            {'_setText': btn_text},
+            node_type="EveLabelMedium",
+            parent_query=self.button_group_query,
+        ).result
 
     def add_drop_off_waypoint(self):
         location_link_1 = BubblingQuery(

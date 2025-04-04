@@ -44,15 +44,30 @@ class DistancePresets:
 class ContextMenu:
     def __init__(self, refresh_on_init=False):
         self.menu_container_query = BubblingQuery({'_name': 'l_menu'}, refresh_on_init=refresh_on_init)
+        self.menu_entries_query = BubblingQuery(
+            node_type="TextBody",
+            parent_query=self.menu_container_query,
+            select_many=True
+        )
 
-    def get_menu_btn(self, entry_text, contains=False, timeout=2):
+    def get_menu_btn(self, entry_text, contains=False, timeout=2, refresh=True):
         return wait_for_truthy(
-            lambda: BubblingQuery({'_setText': entry_text}, self.menu_container_query, contains=contains).result,
+            lambda: next(
+                (
+                    e for e in self.menu_entries_query.run(refresh)
+                    if (
+                        (entry_text in e.attrs.get("_setText", ""))
+                        if contains else
+                        (entry_text == e.attrs.get("_setText", ""))
+                    )
+                ),
+                None
+            ),
             timeout
         )
 
-    def click(self, entry_text, contains=False):
-        target = self.get_menu_btn(entry_text, contains)
+    def click(self, entry_text, contains=False, refresh=True):
+        target = self.get_menu_btn(entry_text, contains, timeout=0, refresh=refresh)
 
         if not target:
             return False
@@ -61,11 +76,7 @@ class ContextMenu:
         return True
 
     def open_submenu(self, entry_text, contains=False):
-        target = BubblingQuery(
-            {'_setText': entry_text},
-            self.menu_container_query,
-            contains=contains,
-        ).result
+        target = self.get_menu_btn(entry_text, contains, timeout=0)
 
         if target:
             move_cursor(target.get_center())

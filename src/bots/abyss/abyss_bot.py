@@ -10,7 +10,7 @@ from src.eve_ui.overview import OverviewEntry
 from src.eve_ui.ship_ui import ShipModule
 from src.eve_ui.timers import TimerNames
 from src.utils.ui_tree import UITree
-from src.utils.utils import wait_for_truthy, click, MOUSE_RIGHT
+from src.utils.utils import wait_for_truthy, click, MOUSE_RIGHT, log, init_logger
 
 
 class AbyssBot:
@@ -23,14 +23,14 @@ class AbyssBot:
         self.abyss_run_counter = 1
 
     def log_abyss_start(self):
-        print(f"Abyss run {self.abyss_run_counter} start")
-        print(f"downtime: {time.time() - self.start_finish_timer}")
+        log(f"Abyss run {self.abyss_run_counter} start")
+        log(f"downtime: {time.time() - self.start_finish_timer}")
         self.start_finish_timer = time.time()
 
     def log_abyss_finish(self):
-        print(f"runtime: {time.time() - self.start_finish_timer}")
+        log(f"runtime: {time.time() - self.start_finish_timer}")
         self.start_finish_timer = time.time()
-        print(f"Abyss run {self.abyss_run_counter} finish")
+        log(f"Abyss run {self.abyss_run_counter} finish")
         self.abyss_run_counter += 1
 
     def loot(self):
@@ -403,7 +403,8 @@ class AbyssBot:
 
 
 if __name__ == "__main__":
+    init_logger(config.ABYSSAL_LOG_FILE_PATH)
     eve_ui = EveUI()
     bot = AbyssBot(eve_ui)
-    print("ready")
+    log("ready")
     bot.run()

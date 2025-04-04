@@ -21,7 +21,7 @@ class InventoryItem:
 
 
 class Inventory:
-    def __init__(self, refresh_on_init=False):
+    def __init__(self, refresh_on_init=False, do_setup=True):
         self.ui_tree: UITree = UITree.instance()
         self.context_menu: ContextMenu = ContextMenu.instance()
 
@@ -45,9 +45,12 @@ class Inventory:
         self.main_station_hangar = None
         self.station_containers = []
 
+        if do_setup:
+            self.setup(refresh_on_init)
+
         self.update(refresh_on_init)
 
-    def update_hangars(self, refresh=True):
+    def setup(self, refresh):
         active_ship_container = BubblingQuery(
             node_type="TreeViewEntryInventoryCargo",
             parent_query=self.main_window_query,
@@ -71,11 +74,27 @@ class Inventory:
             click(self.active_ship_hangar, MOUSE_RIGHT)
             if not self.context_menu.click_safe("Open Drone Bay"):
                 click(self.active_ship_hangar)
-            self.active_ship_drone_bay = self.ui_tree.find_node(
-                {'_name': 'topCont_ShipDroneBay'},
-                root=active_ship_container,
-                refresh=False,
-            )
+
+    def update_hangars(self, refresh=True):
+        active_ship_container = BubblingQuery(
+            node_type="TreeViewEntryInventoryCargo",
+            parent_query=self.main_window_query,
+            refresh_on_init=refresh,
+        ).result
+        if not active_ship_container:
+            return
+
+        self.active_ship_hangar = self.ui_tree.find_node(
+            {'_name': 'topCont_ShipHangar'},
+            root=active_ship_container,
+            refresh=False,
+        )
+
+        self.active_ship_drone_bay = self.ui_tree.find_node(
+            {'_name': 'topCont_ShipDroneBay'},
+            root=active_ship_container,
+            refresh=False,
+        )
 
         self.main_station_hangar = self.ui_tree.find_node(
             {'_name': 'topCont_ItemHangar'},
@@ -105,7 +124,7 @@ class Inventory:
         if capacity_container is None:
             self.capacity_filled = 0
             self.capacity_max = 0
-            return
+            return self
 
         capacity_text = capacity_container.attrs["_setText"]
         split = capacity_text.split(")")[-1].split("/")
@@ -119,6 +138,8 @@ class Inventory:
         self.capacity_filled = float(fill_text.replace(" ", "").strip().replace(",", "."))
         self.capacity_max = float(max_text.replace(" ", "")[:-1].replace(",", "."))
 
+        return self
+
     def update_items(self, refresh=True):
         self.items.clear()
         self.item_components_query.run(refresh)
@@ -131,6 +152,8 @@ class Inventory:
                 continue
 
             name_node = self.ui_tree.find_node({'_name': 'itemNameLabel'}, root=item_node, refresh=False)
+            if not name_node:
+                continue
             name = name_node.attrs["_setText"].split(">")[-1]
 
             quantity = 1
@@ -243,10 +266,12 @@ class Inventory:
         repair_all_btn = None
         while not (no_result or repair_all_btn):
             no_result = self.ui_tree.find_node({'_name': 'noResultsContainer'}, root=repair_window, refresh=False)
-            btn_group = self.ui_tree.find_node(node_type="ButtonGroup", root=repair_window, refresh=False)
-            if not btn_group:
-                continue
-            repair_all_btn = btn_group.find_image(get_path("images/repair_all.png"), confidence=0.8)
+            repair_all_btn = self.ui_tree.find_node(
+                {'_setText': "Repair All"},
+                node_type="EveLabelMedium",
+                root=repair_window,
+                refresh=False
+            )
 
         if repair_all_btn:
             click(repair_all_btn)

@@ -1,7 +1,7 @@
 {
   "0": {
     "name": "Angel Cartel Expedition",
-    "tactic": "Can't outrun. (elite cynabal -> cynabal -> neuts -> dramiel",
+    "tactic": "Loot and shoot. (elites first)(cynabal -> swordspine -> neuts -> dramiel -> others -> ixion",
     "ship_names": [
       "Lucifer Cynabal",
       "Elite Lucifer Cynabal",
@@ -17,7 +17,7 @@
   },
   "1": {
     "name": "Concord Fleet",
-    "tactic": "None yet?",
+    "tactic": "Kite battleships from 76k, overheat hardeners",
     "ship_names": [
       "Attacker Marshal Disparu Troop",
       "Arrester Marshal Disparu Troop",
@@ -72,7 +72,7 @@
   },
   "5": {
     "name": "Drone Boss (Overmind)",
-    "tactic": "None yet?",
+    "tactic": "Orbit Overmind ASAP! (snarecaster -> spotlighter -> other tessellas -> overmind",
     "ship_names": [
       "Bathyic Abyssal Overmind",
       "Snarecaster Tessella",
@@ -85,7 +85,7 @@
   },
   "6": {
     "name": "Drone Swarm",
-    "tactic": "Can't outrun, balanced damage",
+    "tactic": "Loot and shoot, balanced damage",
     "ship_names": [
       "Fieldweaver Tessella",
       "Snarecaster Tessella",
@@ -105,7 +105,7 @@
   },
   "7": {
     "name": "Rodiva + Kikimoras",
-    "tactic": "Kikis first (starving -> renewing -> tangling)",
+    "tactic": "Kite kikis at 26k (starving -> tangling/anchoring -> renewing)",
     "ship_names": [
       "Renewing Rodiva",
       "Striking Kikimora",
@@ -152,7 +152,7 @@
   },
   "10": {
     "name": "Seeker + Drifter",
-    "tactic": "None yet?",
+    "tactic": "Scylla range: 16k, Ephilates range: 22k (nullcharge -> dissipator -> other scallas -> other ephilates)",
     "ship_names": [
       "Scylla Tyrannos Entanglement",
       "Scylla Tyrannos Nullwarp",
@@ -185,7 +185,7 @@
   },
   "12": {
     "name": "Sleeper Battleships (Deepwatchers)",
-    "tactic": "None yet?",
+    "tactic": "Orbit deepwatcher ASAP!",
     "ship_names": [
       "Lucid Deepwatcher",
       "Ephialtes Lancer",
@@ -197,7 +197,7 @@
   },
   "13": {
     "name": "Sleeper + Drifter Cruisers",
-    "tactic": "None yet?",
+    "tactic": "Loot and shoot (watchmen -> lancer)",
     "ship_names": [
       "Scylla Tyrannos Entanglement",
       "Scylla Tyrannos Nullwarp",
@@ -227,7 +227,7 @@
   },
   "15": {
     "name": "Triglavian Drone Fleet (Vila)",
-    "tactic": "None yet?",
+    "tactic": "Loot and shoot (vedmak -> anchoring/tangling -> others",
     "ship_names": [
       "Harrowing Vila Vedmak",
       "Striking Vila Damavik",
@@ -240,7 +240,7 @@
   },
   "16": {
     "name": "Triglavian Battleships (Leshak)",
-    "tactic": "Leshaks 63k range but bad tracking, the rest are easy",
+    "tactic": "Leshaks dead in a few shots. Leshaks 63k range but bad tracking. (starving -> tangling -> other leshaks -> everything else",
     "ship_names": [
       "Striking Leshak",
       "Renewing Leshak",
@@ -283,7 +283,7 @@
   },
   "19": {
     "name": "Triglavian + Rogue Drones",
-    "tactic": "Can't outrun, insta shield (vedmak -> damavik -> tessella)",
+    "tactic": "Loot and shoot, insta shield (vedmak -> damavik -> tessella)",
     "ship_names": [
       "Starving Vedmak",
       "Harrowing Vedmak",

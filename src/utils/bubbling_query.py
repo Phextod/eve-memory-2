@@ -20,7 +20,7 @@ class BubblingQuery:
         self.contains: bool = contains
         self.parent_query: "BubblingQuery" = parent_query
 
-        self.result: Union[Optional[UITreeNode], List[UITreeNode]] = None
+        self.result: Union[Optional[UITreeNode], List[UITreeNode]] = [] if self.select_many else None
 
         self.run(refresh_on_init)
 

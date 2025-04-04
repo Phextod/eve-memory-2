@@ -2,12 +2,13 @@ import json
 import time
 from typing import List
 
+from src import config
 from src.bots.abyss.abyss_fighter import AbyssFighter
 from src.bots.abyss.abyss_ship import AbyssShip
 from src.eve_ui.eve_ui import EveUI
 from src.eve_ui.timers import TimerNames
 from src.utils.ui_tree import UITree
-from src.utils.utils import get_path
+from src.utils.utils import get_path, log, init_logger
 
 
 class AbyssHelper:
@@ -21,8 +22,8 @@ class AbyssHelper:
 
     def get_current_room(self):
         ship_names = [e.name for e in self.abyss_fighter.enemy_entries_on_overview()]
-        print(ship_names)
-        print([e.type for e in self.abyss_fighter.enemy_entries_on_overview()])
+        log(ship_names)
+        log([e.type for e in self.abyss_fighter.enemy_entries_on_overview()])
         for _, room in self.abyss_rooms.items():
             room_ships = room["ship_names"]
             for ship in ship_names:
@@ -33,21 +34,20 @@ class AbyssHelper:
         return None
 
     def run(self):
-        while True:
-            print("Waiting for abyss")
-            self.wait_for_abyss()
-            while TimerNames.abyssal.value in self.ui.timers.update().timers:
-                print("Analyzing room")
-                self.analyze_current_room()
-                print("Waiting for next room")
-                self.wait_for_next_room()
+        log("Waiting for abyss")
+        self.wait_for_abyss()
+        while TimerNames.abyssal.value in self.ui.timers.update().timers:
+            log("Analyzing room")
+            self.analyze_current_room()
+            log("Waiting for next room")
+            self.wait_for_next_room()
 
     def wait_for_abyss(self):
         while (
             TimerNames.abyssal.value not in self.ui.timers.timers
             or not self.abyss_fighter.enemies_on_overview()
         ):
-            time.sleep(5)
+            time.sleep(2)
             self.ui.overview.update()
             self.ui.timers.update()
 
@@ -57,8 +57,10 @@ class AbyssHelper:
 
         room = self.get_current_room()
         if room is not None:
-            print(f"Room: {room['name']}")
-            print(f"Room: {room['tactic']}")
+            log(f"Room: {room['name']}")
+            log(f"Room: {room['tactic']}")
+        else:
+            log("Room: Unknown")
 
         enemy_types: List[AbyssShip] = []
         for enemy in enemies_on_overview:
@@ -70,7 +72,7 @@ class AbyssHelper:
             weapon_range = enemy.missile_range if enemy.missile_rate_of_fire \
                 else enemy.turret_optimal_range + enemy.turret_falloff if enemy.turret_rate_of_fire \
                 else 0
-            print(
+            log(
                 f"{enemy.name:{' '}<30}: "
                 f"tracking:{enemy.turret_tracking:5.0f}, "
                 f"range:{weapon_range:7.0f}, "
@@ -80,11 +82,11 @@ class AbyssHelper:
             )
 
         clear_order = self.abyss_fighter.calculate_clear_order(enemies_on_overview)
-        print("Recommended clear order:")
+        log("Recommended clear order:")
         for stage in clear_order:
-            print(f"target:{stage.target.name}({id(stage.target)},"
-                  f" orbit: {stage.orbit_target.name if stage.orbit_target else 'Bio Cache'}"
-                  f"{f'({id(stage.orbit_target)})' if stage.orbit_target else ''}")
+            log(f"target:{stage.target.name}({id(stage.target)},"
+                f" orbit: {stage.orbit_target.name if stage.orbit_target else 'Bio Cache'}"
+                f"{f'({id(stage.orbit_target)})' if stage.orbit_target else ''}")
 
     def wait_for_next_room(self):
         self.ui.overview.update()
@@ -95,3 +97,10 @@ class AbyssHelper:
         while not self.abyss_fighter.enemies_on_overview():
             time.sleep(5)
             self.ui.overview.update()
+
+
+if __name__ == "__main__":
+    init_logger(config.ABYSSAL_LOG_FILE_PATH)
+    abyssHelper = AbyssHelper(EveUI(do_setup=False))
+    while True:
+        abyssHelper.run()

@@ -14,22 +14,23 @@ from src.eve_ui.station_window import StationWindow
 from src.eve_ui.target_bar import TargetBar
 from src.eve_ui.timers import Timers
 from src.utils.ui_tree import UITree
+from src.utils.utils import log
 
 
 class EveUI:
     def __init__(self, do_setup=True):
         start = time.time()
-        print("initializing UI tree")
+        log("initializing UI tree")
         UITree.instance()
-        print(f"UI tree initialized in {time.time() - start}")
+        log(f"UI tree initialized in {time.time() - start}")
 
         start = time.time()
-        print("initializing UI components")
+        log("initializing UI components")
         self.overview = Overview()
         self.target_bar = TargetBar()
-        self.ship_ui = ShipUI()
+        self.ship_ui: ShipUI = ShipUI.instance()
         self.drones = Drones()
-        self.inventory = Inventory()
+        self.inventory = Inventory(do_setup=do_setup)
         self.context_menu: ContextMenu = ContextMenu.instance()
         self.locations = Locations(do_setup=do_setup)
         self.station_window = StationWindow()
@@ -38,4 +39,4 @@ class EveUI:
         self.agent_window = AgentWindow()
         self.fleet = Fleet()
         self.neocom: Neocom = Neocom.instance()
-        print(f"UI components initialized in {time.time() - start}")
+        log(f"UI components initialized in {time.time() - start}")

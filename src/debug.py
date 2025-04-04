@@ -22,13 +22,15 @@ from src.utils.utils import *
 
 np.seterr(all='raise')
 
+init_logger(config.ABYSSAL_LOG_FILE_PATH)
 ui = EveUI(do_setup=False)
 ui_tree: UITree = UITree.instance()
 # self = AbyssBot(ui)
 self = AbyssHelper(ui)
 # self = Hauler(ui)
 
-self.run()
+while True:
+    self.run()
 
 # abyss_fighter = AbyssFighter(ui)
 # abyss_fighter.init_room()
