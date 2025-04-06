@@ -3,6 +3,12 @@ import numpy as np
 from src.bots.abyss.player_ship import PlayerShip
 
 
+#######################################
+# DO NOT ADD PERSONAL DATA HERE!!!    #
+# COPY THIS AND RENAME TO "config.py" #
+#######################################
+
+
 # General:
 LOG_FILENAME = "out/log_default.txt"
 CHARACTER_NAME = "Character Name"
