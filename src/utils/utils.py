@@ -1,10 +1,12 @@
 import os
 import time
 from datetime import timedelta, datetime
+from threading import Thread, Lock
 
 import psutil
 import pyautogui
 import pyscreeze
+import requests
 import win32con
 import win32gui
 import win32process
@@ -220,3 +222,45 @@ def wait_for_truthy(func, timeout, check_interval=0.5):
             return return_value
         time.sleep(max(0.0, check_interval - (time.time() - func_start)))
     return None
+
+
+def inactivity_watchdog(timer_dict, lock, max_inactivity_time, check_interval=60):
+    log("Inactivity watchdog started")
+    requests.post(
+        config.DISCORD_NOTIFICATION_WEBHOOK_URL,
+        json={"content": f"<@&{config.DISCORD_NOTIFICATION_ROLE_ID}> Inactivity watchdog started"}
+    )
+    notification_sent = False
+    while True:
+        time.sleep(check_interval)
+        with lock:
+            elapsed = time.time() - timer_dict["timer"]
+        if elapsed >= max_inactivity_time:
+            if notification_sent:
+                continue
+
+            log(f"Inactivity time limit of {max_inactivity_time} seconds exceeded! Sending HTTP notification...")
+            requests.post(
+                config.DISCORD_NOTIFICATION_WEBHOOK_URL,
+                json={
+                    "content": f"<@&{config.DISCORD_NOTIFICATION_ROLE_ID}> "
+                               f"Inactivity time limit of {max_inactivity_time} seconds exceeded!"
+                }
+            )
+            notification_sent = True
+        else:
+            notification_sent = False
+
+
+def start_inactivity_watchdog(max_inactivity_time):
+    timer_dict = {"timer": time.time()}
+    lock = Lock()
+
+    Thread(target=inactivity_watchdog, args=(timer_dict, lock, max_inactivity_time), daemon=True).start()
+
+    return timer_dict, lock
+
+
+def reset_inactivity_timer(timer_dict, lock):
+    with lock:
+        timer_dict["timer"] = time.time()

@@ -282,27 +282,47 @@ search_value = format_search_data("24452080A50", True)
 # read_dict("28EBCB98990")
 # read_list("28F26BE6F08")
 
+# 2707156363696 - 2764F17E9B0 - 27604BCFC08
+# 2707156502120 - 2764F1A0668 - 27604BD0628
 # edit -> textbuffers -> tuple -> list -> bunch(same as dict) -> letters(unicode)
 # edit dict
-read_dict("28F29448618")
+read_dict("2763173B3B8")
 print("-------------")
 # textbuffers
-read_list("28F26BE6F08")
+read_list("2764EE39348")
 print("-------------")
 # tuple[2]
-read_tuple("28EBCB25888")
+read_tuple("2764F183C48")
+read_tuple("2764F184088")
+read_tuple("2764F1840C8")
+read_tuple("2764F183F48")
+read_tuple("2764F184148")
 print("-------------")
 # list
-read_list("28EBCB2BA48")
+read_list("2764F17C588")
+read_list("2764F18F388")
+read_list("2764F18F148")
+read_list("2764F18F5C8")
+read_list("2764F18F448")
 print("-------------")
 # Bunch
-read_dict("28EBCD73428")
+read_dict("2764F108428")
+print("++++++")
+read_dict("27604BC60C8")
+print("------")
+read_dict("2764F108558")
+print("------")
+read_dict("2764F108688")
+print("------")
+read_dict("2764F10C0B8")
+print("------")
+read_dict("2764F10AA28")
 print("-------------")
 # letters(Unicode)
-print(get_value_of(int("28EBB0E74B0", 16)))
 
-# read_list("28F26BE6F08")
-
+# 2707153001776
+# 2707156321112
+read_dict("2764F12B838")
 # read_list("28EBCB2B808")
 
 # key_value = read_memory(format_search_data(key_bytes, True))

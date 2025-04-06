@@ -1,7 +1,3 @@
-### Example user template template
-### Example user template
-
-# IntelliJ project files
 .idea
 *.iml
 gen
@@ -10,3 +6,4 @@ out/*
 /data/dogma_attributes.json
 /data/types.json
 /src/debug.py.pclprof
+!/src/config.py

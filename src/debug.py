@@ -18,6 +18,7 @@ from src.bots.abyss.ship import Ship
 from src.bots.hauler.eve_hauler_v3 import Hauler
 from src.eve_ui.eve_ui import EveUI
 from src.eve_ui.fleet import Fleet
+from src.utils.ui_tree import UITree
 from src.utils.utils import *
 
 np.seterr(all='raise')
