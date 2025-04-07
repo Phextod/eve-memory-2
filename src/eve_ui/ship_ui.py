@@ -34,7 +34,7 @@ class ShipModule:
         self.node = node
 
         icon = ui_tree.find_node(node_type="Icon", root=node, refresh=False)
-        self.module_type = icon.attrs["_texturePath"].split("/")[-1].split(".")[0]
+        self.module_type = icon.attrs["_texturePath"].split("/")[-1].split(".")[0] if icon else ""
         self.ammo_count = 0
         ammo_parent = ui_tree.find_node({'_name': 'quantityParent'}, root=node, refresh=False)
         if ammo_parent:
@@ -59,7 +59,7 @@ class ShipModule:
 
         # Cloaks and some other modules are active but not overloadable. If you care about those improve this part
         overload_button = ui_tree.find_node({'_name': 'overloadBtn'}, root=node, refresh=False)
-        if "Disabled" not in overload_button.attrs["_texturePath"]:
+        if overload_button and "Disabled" not in overload_button.attrs["_texturePath"]:
             module_button = ui_tree.find_node(node_type="ModuleButton", root=node, refresh=False)
             if module_button.attrs.get("ramp_active", None):
                 if glow and glow.attrs["_color"]["rPercent"] >= 100:
@@ -84,7 +84,7 @@ class ShipModule:
         else:
             self.active_status = ShipModule.ActiveStatus.not_activatable
 
-        if "Disabled" in overload_button.attrs["_texturePath"]:
+        if not overload_button or "Disabled" in overload_button.attrs["_texturePath"]:
             self.overload_status = ShipModule.OverloadStatus.not_overloadable
         elif "OverloadOff" in overload_button.attrs["_texturePath"]:
             self.overload_status = ShipModule.OverloadStatus.not_overloaded
@@ -299,6 +299,8 @@ class ShipUI:
             self.indication_text = f"{caption.attrs['_setText']} - {line2.attrs['_setText'].split('>')[-1]}"
         else:
             self.indication_text = ""
+
+        return self
 
     def update_speed(self, refresh=True):
         speed_label_node = BubblingQuery(

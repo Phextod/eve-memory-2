@@ -35,7 +35,7 @@ class OverviewEntry:
     is_only_targeting = False
 
     node: UITreeNode = None
-    context_menu: ContextMenu = ContextMenu.instance()
+    context_menu: ContextMenu = ContextMenu.instance(refresh_on_init=True)
 
     class Action(Enum):
         unlock_target = "Unlock Target"

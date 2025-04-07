@@ -18,20 +18,22 @@ class Hauler:
     def get_mission(self):
         btn_request = None
         btn_view = None
-        while not (btn_request or btn_view):
+        btn_accept = None
+        while not (btn_request or btn_view or btn_accept):
             self.ui.agent_window.update_buttons()
             if btn_request := self.ui.agent_window.get_button("Request Mission"):
                 continue
-            btn_view = self.ui.agent_window.get_button("View Mission")
+            if btn_view := self.ui.agent_window.get_button("View Mission"):
+                continue
+            btn_accept = self.ui.agent_window.get_button("Accept")
 
-        while not self.ui.agent_window.update_buttons().get_button("Accept"):
+        while not (btn_accept or self.ui.agent_window.update_buttons().get_button("Accept")):
             if btn_request:
                 click(btn_request)
             else:
                 click(btn_view)
 
         while True:
-            self.ui.route.update()
             self.ui.route.clear()
             while len(self.ui.route.update().route_sprites) == 0:
                 self.ui.agent_window.add_drop_off_waypoint()
@@ -68,6 +70,8 @@ class Hauler:
             click(self.ui.inventory.main_station_hangar, wait_after=0.5)
             self.ui.inventory.update_items()
             is_mission_accepted = len(self.ui.inventory.items) > 0
+
+        return self.ui.agent_window.get_mission_rewards()
 
     def is_item_in_ship(self):
         is_ship_hangar_open = self.ui.inventory.update_capacity().capacity_max == config.HAULER_SHIP_MAX_CAPACITY
@@ -113,10 +117,12 @@ class Hauler:
         self.ui.route.autopilot(self.ui.station_window, self.ui.timers)
 
     def run(self):
-        self.get_mission()
+        rewards = self.get_mission()
         self.move_item_to_ship()
         self.do_mission()
         self.return_to_origin()
+
+        return rewards
 
 
 if __name__ == "__main__":
@@ -124,11 +130,24 @@ if __name__ == "__main__":
     hauler = Hauler(EveUI(do_setup=False))
     timer_dict, lock = start_inactivity_watchdog(max_inactivity_time=60 * 10)
     mission_counter = 0
+    total_mission_time = 0
+    total_reward_value = 0
+
     while True:
         reset_inactivity_timer(timer_dict, lock)
         mission_counter += 1
         start = time.time()
 
-        hauler.run()
+        reward_isk, reward_loyalty_points = hauler.run()
 
-        log(f"Mission {mission_counter} completed in {time.time() - start:.0f}s")
+        reward_isk_value = reward_isk + reward_loyalty_points * config.HAULER_ISK_PER_LP
+        mission_time = time.time() - start
+        log(f"Mission {mission_counter} completed in {mission_time:.0f}s, "
+            f"for {'{:,}'.format(reward_isk_value).replace(',', ' ')} ISK reward value")
+
+        total_reward_value += reward_isk_value
+        total_mission_time += mission_time
+        isk_per_hour = int(total_reward_value / (total_mission_time / (60 * 60)))
+        log(f"Current total rewards: {'{:,}'.format(total_reward_value).replace(',', ' ')} ISK")
+        log(f"Current ISK/Hour: {'{:,}'.format(isk_per_hour).replace(',', ' ')}")
+

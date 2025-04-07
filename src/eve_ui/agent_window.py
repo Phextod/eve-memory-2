@@ -87,10 +87,37 @@ class AgentWindow:
         end = self.left_pane_html_content.find(" ", start)
         return float(self.left_pane_html_content[start:end].replace(",", '.'))
 
-    def get_rewards(self):
+    def get_mission_rewards(self):
+        if not self.right_pane_html_content:
+            return 0, 0
+
         key_string_isk = " ISK"
-        start_isk = self.right_pane_html_content.find(key_string_isk)
+        end1 = self.right_pane_html_content.find(key_string_isk)
+        if end1 == -1:
+            isk_1 = 0
+            isk_2 = 0
+        else:
+            end1 = self.right_pane_html_content.find(key_string_isk)
+            start1 = self.right_pane_html_content[:end1].rfind(">") + 1
+            isk_1 = int(self.right_pane_html_content[start1:end1].replace(" ", ""))
+
+            end2 = self.right_pane_html_content[end1 + len(key_string_isk):].find(key_string_isk)
+            if end2 == -1:
+                isk_2 = 0
+            else:
+                end2 += end1 + len(key_string_isk)
+                start2 = self.right_pane_html_content[:end2].rfind(">") + 1
+                isk_2 = int(self.right_pane_html_content[start2:end2].replace(" ", ""))
+
         key_string_lp = " Loyalty Points"
+        end = self.right_pane_html_content.find(key_string_lp)
+        if end == -1:
+            loyalty_points = 0
+        else:
+            start = self.right_pane_html_content[:end].rfind(">") + 1
+            loyalty_points = int(self.right_pane_html_content[start:end].replace(" ", ""))
+
+        return isk_1 + isk_2, loyalty_points
 
     def get_button(self, btn_text):
         for button_label in self.button_labels:

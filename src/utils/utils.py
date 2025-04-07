@@ -46,6 +46,7 @@ def init_logger(log_file_path):
 
 
 def log(log_message, log_to_console=True, gap=0):
+    log_message = str(log_message)
     t = time.localtime()
     time_string = time.strftime("%Y/%m/%d %H:%M:%S: ", t)
 

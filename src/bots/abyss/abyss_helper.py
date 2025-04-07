@@ -100,7 +100,7 @@ class AbyssHelper:
 
 
 if __name__ == "__main__":
-    init_logger(config.ABYSSAL_LOG_FILE_PATH)
+    init_logger(config.ABYSSAL_HELPER_LOG_FILE_PATH)
     abyssHelper = AbyssHelper(EveUI(do_setup=False))
     while True:
         abyssHelper.run()

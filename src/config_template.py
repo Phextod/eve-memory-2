@@ -21,6 +21,9 @@ MEMORY_READER_DLL_PATH = r"D:\Projects\Python\eve-memory-2\src\utils\eve-memory-
 WINDOW_HEADER_OFFSET = 32
 HORIZONTAL_OFFSET = 8  # don't know where it comes from
 
+# Autopilot config:
+AUTOPILOT_MODULES_TO_ACTIVATE_BEFORE_WARP = [(1, 1), (1, 2)]  # [(row, slot), ...] (row: high:0, mid:1, low:2)
+AUTOPILOT_MODULES_TO_ACTIVATE_BEFORE_DOCK = [(1, 0)]  # [(row, slot), ...] (row: high:0, mid:1, low:2)
 
 # Hauler config:
 HAULER_LOG_FILE_PATH = "out/log_hauler.txt"
@@ -32,6 +35,7 @@ HAULER_MAX_ROUTE_LENGTHS = [
     (8, 1)
 ]
 HAULER_SHIP_MAX_CAPACITY = 4095
+HAULER_ISK_PER_LP = 1300
 
 
 # Abyssal config:
