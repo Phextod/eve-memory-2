@@ -35,17 +35,28 @@ class Hauler:
 
         while True:
             self.ui.route.clear()
-            while len(self.ui.route.update().route_sprites) == 0:
-                self.ui.agent_window.add_drop_off_waypoint()
 
-            mission_route_length = len(self.ui.route.route_sprites)
+            self.ui.agent_window.update_html_content()
+            mission_title = self.ui.agent_window.get_mission_title()
+            while not mission_title:
+                self.ui.agent_window.update_html_content()
+                mission_title = self.ui.agent_window.get_mission_title()
 
-            standing = self.ui.agent_window.update_html_content().get_effective_standing()
-            min_standing = min(config.HAULER_MAX_ROUTE_LENGTHS, key=lambda x: x[0])[0]
-            max_route_length = max(
-                [(s, l) for s, l in config.HAULER_MAX_ROUTE_LENGTHS if s <= max(min_standing, standing)],
-                key=lambda x: x[0]
-            )[1]
+            mission_route_length = 0
+            max_route_length = -1
+
+            if mission_title not in config.HAULER_EXCLUDED_MISSION_TITLES:
+                while len(self.ui.route.update().route_sprites) == 0:
+                    self.ui.agent_window.add_drop_off_waypoint()
+
+                mission_route_length = len(self.ui.route.route_sprites)
+
+                standing = self.ui.agent_window.update_html_content().get_effective_standing()
+                min_standing = min(config.HAULER_MAX_ROUTE_LENGTHS, key=lambda x: x[0])[0]
+                max_route_length = max(
+                    [(s, l) for s, l in config.HAULER_MAX_ROUTE_LENGTHS if s <= max(min_standing, standing)],
+                    key=lambda x: x[0]
+                )[1]
 
             if mission_route_length > max_route_length:
                 click(self.ui.agent_window.update_buttons().get_button("Decline"))
@@ -62,14 +73,14 @@ class Hauler:
 
         log(f"Mission length: {len(self.ui.route.route_sprites)}")
 
-        is_mission_accepted = False
-        while not is_mission_accepted:
-            btn_accept = self.ui.agent_window.update_buttons().get_button("Accept")
+        self.ui.agent_window.update_buttons()
+        while not self.ui.inventory.items or not self.ui.agent_window.get_button("Complete Mission"):
+            btn_accept = self.ui.agent_window.get_button("Accept")
             if btn_accept:
                 click(btn_accept, wait_after=0.5)
             click(self.ui.inventory.main_station_hangar, wait_after=0.5)
-            self.ui.inventory.update_items()
-            is_mission_accepted = len(self.ui.inventory.items) > 0
+            self.ui.inventory.update()
+            self.ui.agent_window.update_buttons()
 
         return self.ui.agent_window.get_mission_rewards()
 

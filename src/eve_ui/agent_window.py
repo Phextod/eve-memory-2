@@ -85,7 +85,9 @@ class AgentWindow:
             return 0
         start += len(key_string)
         end = self.left_pane_html_content.find(" ", start)
-        return float(self.left_pane_html_content[start:end].replace(",", '.'))
+        standing_text = self.left_pane_html_content[start:end]
+        standing_text = standing_text.replace("<b>", "").replace("</b>", "")
+        return float(standing_text.replace(",", '.'))
 
     def get_mission_rewards(self):
         if not self.right_pane_html_content:
@@ -118,6 +120,18 @@ class AgentWindow:
             loyalty_points = int(self.right_pane_html_content[start:end].replace(" ", ""))
 
         return isk_1 + isk_2, loyalty_points
+
+    def get_mission_title(self):
+        if not self.left_pane_html_content:
+            return ""
+
+        key_string = "<span id=subheader>"
+        start = self.left_pane_html_content.find(key_string) + len(key_string)
+        end = start + self.left_pane_html_content[start:].find("<")
+        if start == -1 or end == -1:
+            return ""
+
+        return self.left_pane_html_content[start:end]
 
     def get_button(self, btn_text):
         for button_label in self.button_labels:
