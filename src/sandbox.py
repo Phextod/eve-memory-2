@@ -278,55 +278,13 @@ search_value = format_search_data("24452080A50", True)
 # print(get_type_of(process_handle, int("1170B769630", 16)))
 
 
-# dict_address = find_dict_root("28EBB1479C0")
-# read_dict("28EBCB98990")
-# read_list("28F26BE6F08")
-
-# 2707156363696 - 2764F17E9B0 - 27604BCFC08
-# 2707156502120 - 2764F1A0668 - 27604BD0628
-# edit -> textbuffers -> tuple -> list -> bunch(same as dict) -> letters(unicode)
-# edit dict
-read_dict("2763173B3B8")
-print("-------------")
-# textbuffers
-read_list("2764EE39348")
-print("-------------")
-# tuple[2]
-read_tuple("2764F183C48")
-read_tuple("2764F184088")
-read_tuple("2764F1840C8")
-read_tuple("2764F183F48")
-read_tuple("2764F184148")
-print("-------------")
-# list
-read_list("2764F17C588")
-read_list("2764F18F388")
-read_list("2764F18F148")
-read_list("2764F18F5C8")
-read_list("2764F18F448")
-print("-------------")
-# Bunch
-read_dict("2764F108428")
-print("++++++")
-read_dict("27604BC60C8")
-print("------")
-read_dict("2764F108558")
-print("------")
-read_dict("2764F108688")
-print("------")
-read_dict("2764F10C0B8")
-print("------")
-read_dict("2764F10AA28")
-print("-------------")
-# letters(Unicode)
-
-# 2707153001776
-# 2707156321112
-read_dict("2764F12B838")
-# read_list("28EBCB2B808")
-
+# read_dict("1F6EE70F068")
+read_dict("1F6971A9728")
+# read_bunch("1F75DCB5248")
 # key_value = read_memory(format_search_data(key_bytes, True))
-# p = format_search_data("2309D0F61E0", True)
+# p = format_search_data("2309D0F6
+#
+# 1E0", True)
 # a = scan_memory(process_handle, p)
 # if a:
 #     print(a)

@@ -75,8 +75,8 @@ highlight_window: Optional[RectangleWindow] = None
 def dfs(parent_node: UITreeNode, _cursor_loc: (int, int), depth=0):
     for children_index in parent_node.children:
         children_node = UITree.instance().nodes[children_index]
-        width = children_node.attrs["_displayWidth"]
-        height = children_node.attrs["_displayHeight"]
+        width = children_node.attrs.get("_displayWidth", 0)
+        height = children_node.attrs.get("_displayHeight", 0)
         if width and height:
             if (children_node.x <= _cursor_loc[0] <= children_node.x + width
                     and children_node.y <= _cursor_loc[1] <= children_node.y + height):

@@ -22,8 +22,11 @@ WINDOW_HEADER_OFFSET = 32
 HORIZONTAL_OFFSET = 8  # don't know where it comes from
 
 # Autopilot config:
-AUTOPILOT_MODULES_TO_ACTIVATE_BEFORE_WARP = [(1, 1), (1, 2)]  # [(row, slot), ...] (row: high:0, mid:1, low:2)
-AUTOPILOT_MODULES_TO_ACTIVATE_BEFORE_DOCK = [(1, 0)]  # [(row, slot), ...] (row: high:0, mid:1, low:2)
+# define modules like so: [(row, slot), ...] (row: high:0, mid:1, low:2)
+AUTOPILOT_WARP_STABILIZER_MODULES = [(2, 0)]
+AUTOPILOT_INTERDICTION_NULLIFIER_MODULES = [(0, 0)]
+AUTOPILOT_MODULES_TO_ACTIVATE_BEFORE_WARP = [(1, 1), (1, 2)]  # eg.: hardeners
+AUTOPILOT_MODULES_TO_ACTIVATE_BEFORE_DOCK = [(1, 0), (1, 1), (1, 2)]  # eg.: mwd, afterburner, hardeners
 
 # Hauler config:
 HAULER_LOG_FILE_PATH = "out/log_hauler.txt"

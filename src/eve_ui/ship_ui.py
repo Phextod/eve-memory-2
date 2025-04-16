@@ -11,9 +11,17 @@ from src.utils.ui_tree import UITree, UITreeNode
 from src.utils.utils import click
 
 
+class BuffNames(Enum):
+    web = "webify"
+    warp_scramble = "warpScramblerMWD"
+    warp_disrupt = "warpScrambler"
+    energy_neut = "ewEnergyNeut"
+    energy_nosferatu = "ewEnergyVampire"
+
+
 class ShipModule:
     class ActiveStatus(Enum):
-        not_activatable = 0
+        offline = 0
         not_active = 1
         active = 2
         turning_off = 3
@@ -58,9 +66,9 @@ class ShipModule:
         self.is_repairing = glow is not None and glow.attrs['_color']['rPercent'] == 0
 
         # Cloaks and some other modules are active but not overloadable. If you care about those improve this part
-        overload_button = ui_tree.find_node({'_name': 'overloadBtn'}, root=node, refresh=False)
-        if overload_button and "Disabled" not in overload_button.attrs["_texturePath"]:
-            module_button = ui_tree.find_node(node_type="ModuleButton", root=node, refresh=False)
+
+        module_button = ui_tree.find_node(node_type="ModuleButton", root=node, refresh=False)
+        if module_button and module_button.attrs.get("online", False):
             if module_button.attrs.get("ramp_active", None):
                 if glow and glow.attrs["_color"]["rPercent"] >= 100:
                     self.active_status = ShipModule.ActiveStatus.turning_off
@@ -82,8 +90,9 @@ class ShipModule:
                 else:
                     self.active_status = ShipModule.ActiveStatus.not_active
         else:
-            self.active_status = ShipModule.ActiveStatus.not_activatable
+            self.active_status = ShipModule.ActiveStatus.offline
 
+        overload_button = ui_tree.find_node({'_name': 'overloadBtn'}, root=node, refresh=False)
         if not overload_button or "Disabled" in overload_button.attrs["_texturePath"]:
             self.overload_status = ShipModule.OverloadStatus.not_overloadable
         elif "OverloadOff" in overload_button.attrs["_texturePath"]:
@@ -134,6 +143,7 @@ class ShipUI:
         self.high_modules: Dict[int, ShipModule] = dict()
         self.medium_modules: Dict[int, ShipModule] = dict()
         self.low_modules: Dict[int, ShipModule] = dict()
+        self.module_rows = [self.high_modules, self.medium_modules, self.low_modules]
         self.capacitor_percent = 0.0
         self.buff_buttons: List[UITreeNode] = []
 

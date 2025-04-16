@@ -5,7 +5,7 @@ import pyautogui
 
 from src import config
 from src.eve_ui.context_menu import ContextMenu
-from src.eve_ui.ship_ui import ShipUI
+from src.eve_ui.ship_ui import ShipUI, BuffNames
 from src.eve_ui.station_window import StationWindow
 from src.eve_ui.timers import Timers, TimerNames
 from src.utils.bubbling_query import BubblingQuery
@@ -63,22 +63,32 @@ class Route:
 
             click(clear_waypoints_btn)
 
-    def handle_modules_before_warp(self):
+    def handle_modules_before_warp(self, activate_interdiction_nullifiers=False):
         self.ship_ui.update_modules()
+        self.ship_ui.update_buffs()
+
+        buff_names = [b.attrs.get("_name", "") for b in self.ship_ui.buff_buttons]
+        if BuffNames.warp_disrupt.value in buff_names or BuffNames.warp_scramble.value in buff_names:
+            for row, slot in config.AUTOPILOT_WARP_STABILIZER_MODULES:
+                module_row = self.ship_ui.module_rows[row]
+                if len(module_row) >= slot + 1:
+                    module_row[slot].set_active(True)
+
         for row, slot in config.AUTOPILOT_MODULES_TO_ACTIVATE_BEFORE_WARP:
-            module_row = self.ship_ui.high_modules if row == 0 \
-                else self.ship_ui.medium_modules if row == 1 \
-                else self.ship_ui.low_modules
-            if len(module_row) < slot + 1:
-                continue
-            module_row[slot].set_active(True)
+            module_row = self.ship_ui.module_rows[row]
+            if len(module_row) >= slot + 1:
+                module_row[slot].set_active(True)
+
+        if activate_interdiction_nullifiers:
+            for row, slot in config.AUTOPILOT_INTERDICTION_NULLIFIER_MODULES:
+                module_row = self.ship_ui.module_rows[row]
+                if len(module_row) >= slot + 1:
+                    module_row[slot].set_active(True)
 
     def handle_modules_in_warp(self):
         self.ship_ui.update_modules()
         for row, slot in config.AUTOPILOT_MODULES_TO_ACTIVATE_BEFORE_WARP:
-            module_row = self.ship_ui.high_modules if row == 0 \
-                else self.ship_ui.medium_modules if row == 1 \
-                else self.ship_ui.low_modules
+            module_row = self.ship_ui.module_rows[row]
             if len(module_row) < slot + 1:
                 continue
             module_row[slot].set_active(False)
@@ -86,9 +96,7 @@ class Route:
     def handle_modules_before_dock(self):
         self.ship_ui.update_modules()
         for row, slot in config.AUTOPILOT_MODULES_TO_ACTIVATE_BEFORE_DOCK:
-            module_row = self.ship_ui.high_modules if row == 0 \
-                else self.ship_ui.medium_modules if row == 1 \
-                else self.ship_ui.low_modules
+            module_row = self.ship_ui.module_rows[row]
             if len(module_row) < slot + 1:
                 continue
             module_row[slot].set_active(True)
@@ -99,6 +107,7 @@ class Route:
         while True:
             is_docking = False
             clicked_command = False
+            first_warp_attempt_time = None
             while not clicked_command or not self.ship_ui.update_speed().is_warping:
                 self.update()
                 if not self.route_sprites:
@@ -116,7 +125,12 @@ class Route:
                         clicked_command = is_docking
                     should_refresh = True
                 if clicked_command:
-                    self.handle_modules_before_warp()
+                    if not first_warp_attempt_time:
+                        first_warp_attempt_time = time.time()
+                    activate_interdiction_nullifiers = (
+                            time.time() - first_warp_attempt_time > 10 and self.ship_ui.speed == 0
+                    )
+                    self.handle_modules_before_warp(activate_interdiction_nullifiers)
             self.ship_ui.click_center()
 
             wait_for_truthy(
