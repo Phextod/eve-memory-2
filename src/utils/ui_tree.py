@@ -1,10 +1,9 @@
 import ctypes
 import json
-import time
 
-import pyautogui
 import pyscreeze
 import win32gui
+import win32process
 
 from src import config
 from src.utils.singleton import Singleton
@@ -52,19 +51,22 @@ class UITree(object):
 
     def __init__(self):
         self.hwnd = win32gui.FindWindow(None, f"EVE - {config.CHARACTER_NAME}")
+        _, self.pid = win32process.GetWindowThreadProcessId(self.hwnd)
         self.window_position_offset = (0, 0)
         self.nodes: dict[int, UITreeNode] = dict()
 
         self.eve_memory_reader = ctypes.WinDLL(config.MEMORY_READER_DLL_PATH)
-        self.eve_memory_reader.initialize.argtypes = []
-        self.eve_memory_reader.initialize.restype = ctypes.c_int
-        self.eve_memory_reader.read_ui_trees.argtypes = []
+        self.eve_memory_reader.initialize.argtypes = None
+        self.eve_memory_reader.initialize.restype = None
+        self.eve_memory_reader.read_ui_trees.argtypes = None
         self.eve_memory_reader.read_ui_trees.restype = None
-        self.eve_memory_reader.get_ui_json.argtypes = []
-        self.eve_memory_reader.get_ui_json.restype = ctypes.c_char_p
-        self.eve_memory_reader.free_ui_json.argtypes = []
+        self.eve_memory_reader.read_ui_trees_from_address.argtypes = None
+        self.eve_memory_reader.read_ui_trees_from_address.restype = None
+        self.eve_memory_reader.get_ui_json.argtypes = None
+        self.eve_memory_reader.get_ui_json.restype = None
+        self.eve_memory_reader.free_ui_json.argtypes = None
         self.eve_memory_reader.free_ui_json.restype = None
-        self.eve_memory_reader.cleanup.argtypes = []
+        self.eve_memory_reader.cleanup.argtypes = None
         self.eve_memory_reader.cleanup.restype = None
 
         self.initialize_reader()
@@ -72,10 +74,12 @@ class UITree(object):
 
     def initialize_reader(self):
         self.eve_memory_reader = ctypes.WinDLL(config.MEMORY_READER_DLL_PATH)
-        self.eve_memory_reader.initialize.argtypes = []
+        self.eve_memory_reader.initialize.argtypes = [ctypes.c_ulong]
         self.eve_memory_reader.initialize.restype = ctypes.c_int
         self.eve_memory_reader.read_ui_trees.argtypes = []
         self.eve_memory_reader.read_ui_trees.restype = None
+        self.eve_memory_reader.read_ui_trees_from_address.argtypes = [ctypes.c_ulonglong]
+        self.eve_memory_reader.read_ui_trees_from_address.restype = None
         self.eve_memory_reader.get_ui_json.argtypes = []
         self.eve_memory_reader.get_ui_json.restype = ctypes.c_char_p
         self.eve_memory_reader.free_ui_json.argtypes = []
@@ -83,7 +87,7 @@ class UITree(object):
         self.eve_memory_reader.cleanup.argtypes = []
         self.eve_memory_reader.cleanup.restype = None
 
-        ret = self.eve_memory_reader.initialize()
+        ret = self.eve_memory_reader.initialize(ctypes.c_ulong(self.pid))
         if ret != 0:
             raise Exception(f"Failed to initialize: {ret}")
 
