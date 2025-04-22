@@ -42,6 +42,10 @@ HAULER_ISK_PER_LP = 1300
 HAULER_EXCLUDED_MISSION_TITLES = []
 
 
+# Abyss helper config:
+ABYSSAL_HELPER_LOG_FILE_PATH = "out/log_abyss_helper.txt"
+
+
 # Abyssal config:
 ABYSSAL_LOG_FILE_PATH = "out/log_abyssal.txt"
 ABYSSAL_ITEM_DATA_PATH = "data/item_data.json"

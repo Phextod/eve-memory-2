@@ -154,7 +154,7 @@ class Inventory:
             name_node = self.ui_tree.find_node({'_name': 'itemNameLabel'}, root=item_node, refresh=False)
             if not name_node:
                 continue
-            name = name_node.attrs["_setText"].split(">")[-1]
+            name = name_node.attrs.get("_setText","").split(">")[-1]
 
             quantity = 1
             quantity_node_container = self.ui_tree.find_node({'_name': 'qtypar'}, root=item_node, refresh=False)

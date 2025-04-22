@@ -279,7 +279,7 @@ search_value = format_search_data("24452080A50", True)
 
 
 # read_dict("1F6EE70F068")
-read_dict("1F6971A9728")
+# read_dict("1F6971A9728")
 # read_bunch("1F75DCB5248")
 # key_value = read_memory(format_search_data(key_bytes, True))
 # p = format_search_data("2309D0F6

@@ -226,11 +226,17 @@ def wait_for_truthy(func, timeout, check_interval=0.5):
 
 
 def inactivity_watchdog(timer_dict, lock, max_inactivity_time, check_interval=60):
+    log("Starting inactivity watchdog...")
+    try:
+        requests.post(
+            config.DISCORD_NOTIFICATION_WEBHOOK_URL,
+            json={"content": f"<@&{config.DISCORD_NOTIFICATION_ROLE_ID}> Inactivity watchdog started"}
+        )
+    except Exception as e:
+        log(f"Failed to start inactivity watchdog: {e}")
+        return
     log("Inactivity watchdog started")
-    requests.post(
-        config.DISCORD_NOTIFICATION_WEBHOOK_URL,
-        json={"content": f"<@&{config.DISCORD_NOTIFICATION_ROLE_ID}> Inactivity watchdog started"}
-    )
+
     notification_sent = False
     while True:
         time.sleep(check_interval)

@@ -60,11 +60,16 @@ class Hauler:
 
             if mission_route_length > max_route_length:
                 click(self.ui.agent_window.update_buttons().get_button("Decline"))
-                time.sleep(1)
-                while self.ui_tree.find_node(node_type="MessageBox"):
-                    pyautogui.press("enter")
-                    time.sleep(1)
-                click(self.ui.agent_window.update_buttons().get_button("Request Mission"))
+
+                while not self.ui.agent_window.update_buttons().get_button("Request Mission"):
+                    message_box = self.ui_tree.find_node(node_type="MessageBox")
+                    if message_box:
+                        checkbox = self.ui_tree.find_node(node_type="Checkbox", root=message_box, refresh=False)
+                        if checkbox:
+                            click(checkbox)
+                        pyautogui.press("enter")
+
+                click(self.ui.agent_window.get_button("Request Mission"))
                 continue
 
             while len(self.ui.route.update().route_sprites) != mission_route_length * 2:
@@ -113,7 +118,6 @@ class Hauler:
     def do_mission(self):
         while self.ui.station_window.is_docked():
             self.ui.station_window.undock()
-            time.sleep(1)
         wait_for_truthy(lambda: TimerNames.invulnerable.value in self.ui.timers.update().timers, 30)
         self.ui.route.autopilot(self.ui.station_window, self.ui.timers)
         while self.is_item_in_ship():
@@ -123,7 +127,8 @@ class Hauler:
             time.sleep(1)
 
     def return_to_origin(self):
-        self.ui.station_window.undock()
+        while self.ui.station_window.is_docked():
+            self.ui.station_window.undock()
         wait_for_truthy(lambda: TimerNames.invulnerable.value in self.ui.timers.update().timers, 30)
         self.ui.route.autopilot(self.ui.station_window, self.ui.timers)
 
