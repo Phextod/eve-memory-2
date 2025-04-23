@@ -69,7 +69,14 @@ class Hauler:
                             click(checkbox)
                         pyautogui.press("enter")
 
-                click(self.ui.agent_window.get_button("Request Mission"))
+                while not self.ui.agent_window.update_buttons().get_button("Request Mission"):
+                    time.sleep(0.5)
+
+                while not self.ui.agent_window.update_buttons().get_button("Accept"):
+                    btn_request = self.ui.agent_window.get_button("Request Mission")
+                    if btn_request:
+                        click(btn_request)
+
                 continue
 
             while len(self.ui.route.update().route_sprites) != mission_route_length * 2:

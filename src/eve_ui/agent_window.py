@@ -3,7 +3,7 @@ from typing import List
 from src.eve_ui.context_menu import ContextMenu
 from src.utils.bubbling_query import BubblingQuery
 from src.utils.ui_tree import UITree, UITreeNode
-from src.utils.utils import get_path, click, MOUSE_RIGHT
+from src.utils.utils import click, MOUSE_RIGHT
 
 
 class AgentWindow:
@@ -62,6 +62,7 @@ class AgentWindow:
             node_type="EveLabelMedium",
             parent_query=self.button_group_query,
             select_many=True,
+            refresh_on_init=refresh,
         ).result
         return self
 

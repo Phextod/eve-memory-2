@@ -7,3 +7,4 @@ out/*
 /data/types.json
 /src/debug.py.pclprof
 /src/config.py
+/src/eve_ui/eve_ui.py.pclprof

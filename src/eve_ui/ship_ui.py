@@ -178,7 +178,7 @@ class ShipUI:
 
     def update_hp(self, refresh=True):
         if not self.is_readout_open:
-            if self.hud_readout_query.run():
+            if self.hud_readout_query.run(refresh):
                 self.is_readout_open = True
             elif self.main_container_query.result:
                 self.display_readouts()

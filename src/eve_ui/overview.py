@@ -210,7 +210,7 @@ class Overview:
         self.headers.clear()
         self.header_centers.clear()
 
-        headers = self.header_component_query.run()
+        headers = self.header_component_query.run(refresh)
         if not headers:
             return
 

@@ -1,5 +1,8 @@
+from typing import Dict, Tuple, List
+
 from src.utils.bubbling_query import BubblingQuery
 from src.utils.singleton import Singleton
+from src.utils.ui_tree import UITreeNode
 from src.utils.utils import click, wait_for_truthy, move_cursor
 
 
@@ -50,16 +53,25 @@ class ContextMenu:
             select_many=True
         )
 
+        self.entries_list: List[Tuple[str, UITreeNode]] = []  # (entry_text, entry_node)
+
+    def update(self, refresh=True):
+        self.menu_entries_query.run(refresh)
+
+        self.entries_list.clear()
+        for entry_node in self.menu_entries_query.result:
+            entry_text = entry_node.attrs.get("_setText", "")
+            if entry_text:
+                self.entries_list.append((entry_text, entry_node))
+
+        return self
+
     def get_menu_btn(self, entry_text, contains=False, timeout=2, refresh=True):
         return wait_for_truthy(
             lambda: next(
                 (
-                    e for e in self.menu_entries_query.run(refresh)
-                    if (
-                        (entry_text in e.attrs.get("_setText", ""))
-                        if contains else
-                        (entry_text == e.attrs.get("_setText", ""))
-                    )
+                    e[1] for e in self.update(refresh).entries_list
+                    if (entry_text in e[0] if contains else entry_text == e[0])
                 ),
                 None
             ),
@@ -67,16 +79,24 @@ class ContextMenu:
         )
 
     def click(self, entry_text, contains=False, refresh=True):
-        target = self.get_menu_btn(entry_text, contains, timeout=0, refresh=refresh)
+        if refresh:
+            self.update()
 
-        if not target:
-            return False
+        target = next(
+            (e[1] for e in self.entries_list if (entry_text in e[0] if contains else entry_text == e[0])),
+            None
+        )
 
-        click(target)
-        return True
+        if target:
+            click(target)
+            return True
+        return False
 
     def open_submenu(self, entry_text, contains=False):
-        target = self.get_menu_btn(entry_text, contains, timeout=0)
+        target = next(
+            (e[1] for e in self.entries_list if (entry_text in e[0] if contains else entry_text == e[0])),
+            None
+        )
 
         if target:
             move_cursor(target.get_center())

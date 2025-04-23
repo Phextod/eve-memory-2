@@ -41,7 +41,7 @@ class BubblingQuery:
             )
 
         if not self.result and self.parent_query:
-            if self.parent_query.run():
+            if self.parent_query.run(refresh=refresh):
                 self.result = UITree.instance().find_node(
                     query=self.query,
                     node_type=self.node_type,

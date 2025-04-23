@@ -101,6 +101,27 @@ class Route:
                 continue
             module_row[slot].set_active(True)
 
+    def first_sprite_dock_or_jump(self, timeout=0.75):
+        self.update()
+        if not self.route_sprites:
+            return False, False
+
+        click(self.route_sprites[0], MOUSE_RIGHT)
+
+        clicked_command = False
+        is_docking = False
+        wait_start = time.time()
+        while not clicked_command:
+            clicked_command = self.context_menu.click("Jump Through Stargate")
+            if not clicked_command:
+                is_docking = self.context_menu.click("Dock")
+                clicked_command = is_docking
+
+            if time.time() - wait_start > timeout:
+                break
+
+        return clicked_command, is_docking
+
     def autopilot(self, station_window: StationWindow, timers: Timers, accept_popups=True):
         # todo autopilot for routes not ending with docking
         self.handle_modules_before_warp()
@@ -109,28 +130,17 @@ class Route:
             clicked_command = False
             first_warp_attempt_time = None
             while not clicked_command or not self.ship_ui.update_speed().is_warping:
-                self.update()
-                if not self.route_sprites:
-                    continue
-                click(self.route_sprites[0], MOUSE_RIGHT)
-                if self.context_menu.get_menu_btn("Approach", timeout=0):
-                    continue
-                wait_start = time.time()
                 clicked_command = False
-                should_refresh = False
-                while not clicked_command and time.time() - wait_start < 0.75:
-                    clicked_command = self.context_menu.click("Jump Through Stargate", refresh=should_refresh)
-                    if not clicked_command:
-                        is_docking = self.context_menu.click("Dock", refresh=False)
-                        clicked_command = is_docking
-                    should_refresh = True
-                if clicked_command:
-                    if not first_warp_attempt_time:
-                        first_warp_attempt_time = time.time()
-                    activate_interdiction_nullifiers = (
-                            time.time() - first_warp_attempt_time > 10 and self.ship_ui.speed == 0
-                    )
-                    self.handle_modules_before_warp(activate_interdiction_nullifiers)
+                while not clicked_command:
+                    clicked_command, is_docking = self.first_sprite_dock_or_jump(timeout=0.75)
+
+                if not first_warp_attempt_time:
+                    first_warp_attempt_time = time.time()
+                activate_interdiction_nullifiers = (
+                    time.time() - first_warp_attempt_time > 10 and self.ship_ui.speed == 0
+                )
+                self.handle_modules_before_warp(activate_interdiction_nullifiers)
+
             self.ship_ui.click_center()
 
             wait_for_truthy(
@@ -142,9 +152,12 @@ class Route:
                 self.handle_modules_in_warp()
 
             if is_docking:
-                self.handle_modules_before_dock()
+                while not station_window.is_docked():
+                    self.handle_modules_before_dock()
+                    self.first_sprite_dock_or_jump(timeout=0.75)
+                return True
 
-            while not (TimerNames.jumpCloak.value in timers.update().timers or station_window.is_docked()):
+            while TimerNames.jumpCloak.value not in timers.update().timers:
                 if not accept_popups:
                     continue
                 message_box = self.ui_tree.find_node(node_type="MessageBox")
@@ -153,6 +166,3 @@ class Route:
                     if checkbox:
                         click(checkbox)
                     pyautogui.press("enter")
-
-            if station_window.is_docked():
-                return True
