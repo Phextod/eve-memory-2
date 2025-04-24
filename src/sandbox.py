@@ -259,14 +259,26 @@ def read_bunch(_address):
     read_dict(_address)
 
 
-
-
 # process_name = input("Enter process name (e.g., notepad.exe): ").strip()
-
 # address = int(input("Enter memory address (hex): "), 16)  # Convert hex input
-address = int("1170B762CD8", 16)
 
-search_value = format_search_data("24452080A50", True)
+
+address = int("1744AE609B8", 16)
+for i in range(100):
+    a = pointer(read_memory(address + 8 * i, size=8))
+    print(i, get_type_of(a))
+print("------------")
+read_list("17452ECF448")
+
+# address = int("17452EC0958", 16)
+# for i in range(100):
+#     a = pointer(read_memory(address + 8 * i, size=8))
+#     print(i, get_type_of(a))
+
+# address = int("1744AE609B8", 16) + 8 * 46
+# asd = read_memory(address, size=8)
+# print(asd)
+# print(format_search_data(asd, True))
 
 # ----------------------------------------
 

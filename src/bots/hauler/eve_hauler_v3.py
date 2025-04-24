@@ -69,13 +69,13 @@ class Hauler:
                             click(checkbox)
                         pyautogui.press("enter")
 
-                while not self.ui.agent_window.update_buttons().get_button("Request Mission"):
-                    time.sleep(0.5)
+                wait_for_truthy(lambda: not self.ui.agent_window.update_buttons().get_button("Request Mission"), 10)
 
                 while not self.ui.agent_window.update_buttons().get_button("Accept"):
                     btn_request = self.ui.agent_window.get_button("Request Mission")
                     if btn_request:
                         click(btn_request)
+                        wait_for_truthy(lambda: self.ui.agent_window.update_buttons().get_button("Accept"), 1)
 
                 continue
 
@@ -131,7 +131,7 @@ class Hauler:
             btn_complete = self.ui.agent_window.update_buttons().get_button("Complete Mission")
             if btn_complete:
                 click(btn_complete)
-            time.sleep(1)
+            wait_for_truthy(lambda: not self.is_item_in_ship(), 1)
 
     def return_to_origin(self):
         while self.ui.station_window.is_docked():
