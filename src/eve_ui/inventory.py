@@ -22,6 +22,8 @@ class InventoryItem:
 
 class Inventory:
     def __init__(self, refresh_on_init=False, do_setup=True):
+        self.currently_selected_tab_text = ""
+        self.currently_selected_tab_index = -1
         self.ui_tree: UITree = UITree.instance()
         self.context_menu: ContextMenu = ContextMenu.instance()
 
@@ -82,7 +84,7 @@ class Inventory:
             refresh_on_init=refresh,
         ).result
         if not active_ship_container:
-            return
+            return self
 
         self.active_ship_hangar = self.ui_tree.find_node(
             {'_name': 'topCont_ShipHangar'},
@@ -108,11 +110,25 @@ class Inventory:
             root=self.main_window_query.result,
             refresh=False
         )
-
         self.station_containers.clear()
         for container_container in station_containers_containers:
             container = self.ui_tree.find_node(node_type="TextBody", root=container_container)
             self.station_containers.append(container)
+
+        inventory_tabs_text_bodies = self.ui_tree.find_node(
+            node_type='TextBody',
+            root=self.main_window_query.result,
+            select_many=True,
+            refresh=False,
+        )
+        inventory_tabs_text_bodies.sort(key=lambda x: x.y)
+        self.currently_selected_tab_index, self.currently_selected_tab_text = next(
+            ((i, x.attrs.get('_setText', "")) for i, x in enumerate(inventory_tabs_text_bodies)
+             if x.attrs.get('_color') and x.attrs['_color'].get('aPercent', 0) == 90),
+            (-1, "")
+        )
+
+        return self
 
     def update_capacity(self, refresh=True):
         capacity_container = BubblingQuery(

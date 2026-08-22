@@ -63,14 +63,18 @@ class ShipModule:
             root=node,
             refresh=False,
         )
-        self.is_repairing = glow is not None and glow.attrs['_color']['rPercent'] == 0
+        self.is_repairing = (
+                glow is not None
+                and glow.attrs.get('_color', None) is not None
+                and glow.attrs['_color']['rPercent'] == 0
+        )
 
         # Cloaks and some other modules are active but not overloadable. If you care about those improve this part
 
         module_button = ui_tree.find_node(node_type="ModuleButton", root=node, refresh=False)
         if module_button and module_button.attrs.get("online", False):
             if module_button.attrs.get("ramp_active", None):
-                if glow and glow.attrs["_color"]["rPercent"] >= 100:
+                if glow and glow.attrs.get('_color') and glow.attrs["_color"].get("rPercent", 0) >= 100:
                     self.active_status = ShipModule.ActiveStatus.turning_off
                 else:
                     self.active_status = ShipModule.ActiveStatus.active
@@ -97,7 +101,7 @@ class ShipModule:
             self.overload_status = ShipModule.OverloadStatus.not_overloadable
         elif "OverloadOff" in overload_button.attrs["_texturePath"]:
             self.overload_status = ShipModule.OverloadStatus.not_overloaded
-        elif overload_button.attrs['_color']['aPercent'] >= 100:
+        elif overload_button.attrs.get('_color') and overload_button.attrs['_color'].get('aPercent', 0) >= 100:
             self.overload_status = ShipModule.OverloadStatus.overloaded
         else:
             self.overload_status = ShipModule.OverloadStatus.turning_off
@@ -126,12 +130,15 @@ class ShipModule:
         ):
             return False
 
-        if (overload and self.overload_status == ShipModule.OverloadStatus.not_overloaded) or \
-                (not overload and self.overload_status == ShipModule.OverloadStatus.overloaded):
+        if (
+            (overload and self.overload_status == ShipModule.OverloadStatus.not_overloaded)
+            or (not overload and self.overload_status == ShipModule.OverloadStatus.overloaded)
+        ):
             pyautogui.keyDown("shift")
             click(self.node)
             pyautogui.keyUp("shift")
             ShipModule.latest_overload_state_change_times.update({self.node.attrs['_name']: time.time()})
+        return None
 
 
 @Singleton
@@ -303,10 +310,10 @@ class ShipUI:
             refresh_on_init=refresh
         ).result
 
-        caption = self.ui_tree.find_node(node_type="CaptionLabel", root=indication_container, refresh=False)
-        line2 = self.ui_tree.find_node({'_name': 'indicationtext2'}, root=indication_container, refresh=False)
+        caption = self.ui_tree.find_node({'_name': 'indication_caption'}, root=indication_container, refresh=False)
+        line2 = self.ui_tree.find_node({'_name': 'indication_text'}, root=indication_container, refresh=False)
         if caption and line2:
-            self.indication_text = f"{caption.attrs['_setText']} - {line2.attrs['_setText'].split('>')[-1]}"
+            self.indication_text = f"{caption.attrs.get('_setText', "")} - {line2.attrs.get('_setText', "").split('>')[-1]}"
         else:
             self.indication_text = ""
 

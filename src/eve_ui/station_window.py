@@ -26,3 +26,14 @@ class StationWindow:
         if label.attrs.get("_setText") == "Abort Undock":
             return
         click(self.undock_btn_query.result)
+
+    def click_logo(self):
+        logo_icon = BubblingQuery(
+            node_type="LogoIcon",
+            parent_query=self.main_window_query,
+        ).result
+
+        if not logo_icon:
+            return
+
+        click(logo_icon)

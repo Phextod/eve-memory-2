@@ -12,6 +12,7 @@ from src.eve_ui.ship_ui import ShipUI
 from src.eve_ui.station_window import StationWindow
 from src.eve_ui.target_bar import TargetBar
 from src.eve_ui.timers import Timers
+from src.eve_ui.view_3d import View3d
 from src.utils.ui_tree import UITree
 from src.utils.utils import log
 from src.eve_ui.overview import Overview
@@ -39,4 +40,5 @@ class EveUI:
         self.agent_window = AgentWindow()
         self.fleet = Fleet()
         self.neocom: Neocom = Neocom.instance()
+        self.view_3d: View3d = View3d()
         log(f"UI components initialized in {time.time() - start}")

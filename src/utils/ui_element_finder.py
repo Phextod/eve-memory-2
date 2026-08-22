@@ -5,15 +5,20 @@ from typing import Optional
 
 import keyboard
 import win32gui
-from PyQt5 import QtCore
-from PyQt5.QtCore import QRect
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPainter, QColor, QPen
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtWidgets import QMainWindow
+from PyQt6 import QtCore
+from PyQt6.QtCore import QRect, Qt, pyqtSignal, QObject
+from PyQt6.QtGui import QPainter, QColor, QPen
+from PyQt6.QtWidgets import QApplication, QMainWindow
 from screeninfo import get_monitors
 
 from src.utils.ui_tree import UITreeNode, UITree
+
+
+# 1. Create a Signal Bridge to safely communicate between threads
+class SignalBridge(QObject):
+    clear_signal = pyqtSignal()
+    add_rect_signal = pyqtSignal(int, int, int, int)
+    close_signal = pyqtSignal()
 
 
 class RectangleWindow(QMainWindow):
@@ -41,8 +46,11 @@ class RectangleWindow(QMainWindow):
 
     def init_ui(self):
         self.setGeometry(self.x, self.y, self.window_width + self.pen_size, self.window_height + self.pen_size)
-        self.setWindowFlag(Qt.FramelessWindowHint)
-        self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+
+        self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        # Allows clicking through the transparent window to interact with the game/app behind it
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
 
         self._add_frame_rectangle()
         self.show()
@@ -57,7 +65,7 @@ class RectangleWindow(QMainWindow):
             painter.drawRect(rect)
 
     def clear_rectangles(self):
-        self.rectangles = []
+        self.rectangles.clear()
         self._add_frame_rectangle()
         self.update()
 
@@ -69,71 +77,80 @@ class RectangleWindow(QMainWindow):
         self.update()
 
 
-highlight_window: Optional[RectangleWindow] = None
-
-
-def dfs(parent_node: UITreeNode, _cursor_loc: (int, int), depth=0):
+def dfs(parent_node: UITreeNode, _cursor_loc: tuple, bridge: SignalBridge, depth=0):
     for children_index in parent_node.children:
         children_node = UITree.instance().nodes[children_index]
         width = children_node.attrs.get("_displayWidth", 0)
         height = children_node.attrs.get("_displayHeight", 0)
+
         if width and height:
             if (children_node.x <= _cursor_loc[0] <= children_node.x + width
                     and children_node.y <= _cursor_loc[1] <= children_node.y + height):
                 print(depth * " " + str(children_index) + ": " + children_node.type + str(children_node.attrs))
-                highlight_window.add_rectangle(
+
+                # Emit signal instead of directly calling the window method
+                bridge.add_rect_signal.emit(
                     children_node.x,
                     children_node.y,
                     width,
-                    height)
+                    height
+                )
 
-        dfs(children_node, _cursor_loc, depth=depth + 1)
-
-
-def start_qt():
-    global highlight_window
-    qt_app = QApplication(sys.argv)
-    highlight_window = RectangleWindow()
-    highlight_window.show()
-    qt_app.exec()
+        dfs(children_node, _cursor_loc, bridge, depth=depth + 1)
 
 
-def start_qt_thread():
-    _qt_thread = threading.Thread(target=start_qt, daemon=True)
-    _qt_thread.start()
-    return _qt_thread
+# 2. This is your background logic running in a separate thread
+def keyboard_listener(bridge: SignalBridge):
+    UITree.instance()
+    UITree.instance().refresh()
+
+    while True:
+        try:
+            # Using is_pressed is safer in loops than read_key()
+            if keyboard.is_pressed("enter"):
+                print("----------------------")
+                bridge.clear_signal.emit()  # Safely tell GUI to clear
+                cursor_loc = win32gui.GetCursorPos()
+
+                root = next(iter(UITree.instance().nodes.values()))
+                dfs(root, cursor_loc, bridge)
+
+                time.sleep(0.3)  # Debounce to prevent multiple triggers from a single press
+
+            elif keyboard.is_pressed("r"):
+                print("----------------------")
+                print("refresh")
+                UITree.instance().refresh()
+                time.sleep(0.3)  # Debounce
+
+            elif keyboard.is_pressed("esc"):
+                bridge.close_signal.emit()  # Safely tell GUI to close
+                break
+
+        except Exception as e:
+            print(f"Error in keyboard listener: {e}")
+
+        time.sleep(0.01)  # Prevent the loop from maxing out CPU core
+
+
+def main():
+    # 3. GUI initializes and runs on the MAIN thread
+    app = QApplication(sys.argv)
+    window = RectangleWindow()
+
+    # 4. Set up the signal bridge
+    bridge = SignalBridge()
+    bridge.clear_signal.connect(window.clear_rectangles)
+    bridge.add_rect_signal.connect(window.add_rectangle)
+    bridge.close_signal.connect(window.close)
+
+    # 5. Start the background logic thread, passing it the bridge
+    listener_thread = threading.Thread(target=keyboard_listener, args=(bridge,), daemon=True)
+    listener_thread.start()
+
+    # 6. Start the blocking GUI event loop
+    sys.exit(app.exec())
 
 
 if __name__ == "__main__":
-    UITree.instance()
-    UITree.instance().refresh()  # No idea why but without this the first positions are incorrect
-
-    qt_thread = start_qt_thread()
-    time.sleep(1)
-
-    while True:
-        if keyboard.read_key() == "enter":
-            print("----------------------")
-            highlight_window.clear_rectangles()
-            cursor_loc = win32gui.GetCursorPos()
-            cursor_local_location = (
-                cursor_loc[0],
-                cursor_loc[1]
-            )
-
-            root = next(iter(UITree.instance().nodes.values()))
-            dfs(root, cursor_local_location)
-        elif keyboard.read_key() == "r":
-            print("----------------------")
-            print("refresh")
-            UITree.instance().refresh()
-        elif keyboard.read_key() == "esc":
-            highlight_window.close()
-            qt_thread.join()
-            break
-
-# for _, node in tree.nodes.items():
-#     height = node.attrs["_displayHeight"]
-#     width = node.attrs["_displayWidth"]
-#     if not height or not width or not node.x or not node.y:
-#         print(node.type)
+    main()

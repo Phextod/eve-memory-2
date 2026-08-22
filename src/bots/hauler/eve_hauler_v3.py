@@ -97,13 +97,13 @@ class Hauler:
         return self.ui.agent_window.get_mission_rewards()
 
     def is_item_in_ship(self):
-        is_ship_hangar_open = self.ui.inventory.update_capacity().capacity_max == config.HAULER_SHIP_MAX_CAPACITY
+        is_ship_hangar_open = self.ui.inventory.update_hangars().currently_selected_tab_index == 0
         while not is_ship_hangar_open:
             click(self.ui.inventory.active_ship_hangar)
-            is_ship_hangar_open = self.ui.inventory.update_capacity().capacity_max == config.HAULER_SHIP_MAX_CAPACITY
+            is_ship_hangar_open = self.ui.inventory.update_hangars().currently_selected_tab_index == 0
 
         self.ui.inventory.update_items()
-        return len(self.ui.inventory.items) > 0 and self.ui.inventory.capacity_filled != 0
+        return len(self.ui.inventory.items) > 0
 
     def move_item_to_ship(self):
         should_move = True
@@ -139,7 +139,12 @@ class Hauler:
         wait_for_truthy(lambda: TimerNames.invulnerable.value in self.ui.timers.update().timers, 30)
         self.ui.route.autopilot(self.ui.station_window, self.ui.timers)
 
-    def run(self):
+    def setup(self):
+        while self.ui.view_3d.is_3d_view_enabled():
+            self.ui.station_window.click_logo()
+            self.ui.view_3d.toggle_3d_view()
+
+    def do_one_mission(self):
         rewards = self.get_mission()
         self.move_item_to_ship()
         self.do_mission()
@@ -147,30 +152,33 @@ class Hauler:
 
         return rewards
 
+    @staticmethod
+    def run():
+        timer_dict, lock = start_inactivity_watchdog(max_inactivity_time=60 * 10)
+        mission_counter = 0
+        total_mission_time = 0
+        total_reward_value = 0
+        while True:
+            reset_inactivity_timer(timer_dict, lock)
+            mission_counter += 1
+            start = time.time()
+
+            reward_isk, reward_loyalty_points = hauler.do_one_mission()
+
+            reward_isk_value = reward_isk + reward_loyalty_points * config.HAULER_ISK_PER_LP
+            mission_time = time.time() - start
+            log(f"Mission {mission_counter} completed in {mission_time:.0f}s, "
+                f"for {'{:,}'.format(reward_isk_value).replace(',', ' ')} ISK reward value")
+
+            total_reward_value += reward_isk_value
+            total_mission_time += mission_time
+            isk_per_hour = int(total_reward_value / (total_mission_time / (60 * 60)))
+            log(f"Current total rewards: {'{:,}'.format(total_reward_value).replace(',', ' ')} ISK")
+            log(f"Current ISK/Hour: {'{:,}'.format(isk_per_hour).replace(',', ' ')}")
+
 
 if __name__ == "__main__":
     init_logger(config.HAULER_LOG_FILE_PATH)
     hauler = Hauler(EveUI(do_setup=False))
-    timer_dict, lock = start_inactivity_watchdog(max_inactivity_time=60 * 10)
-    mission_counter = 0
-    total_mission_time = 0
-    total_reward_value = 0
-
-    while True:
-        reset_inactivity_timer(timer_dict, lock)
-        mission_counter += 1
-        start = time.time()
-
-        reward_isk, reward_loyalty_points = hauler.run()
-
-        reward_isk_value = reward_isk + reward_loyalty_points * config.HAULER_ISK_PER_LP
-        mission_time = time.time() - start
-        log(f"Mission {mission_counter} completed in {mission_time:.0f}s, "
-            f"for {'{:,}'.format(reward_isk_value).replace(',', ' ')} ISK reward value")
-
-        total_reward_value += reward_isk_value
-        total_mission_time += mission_time
-        isk_per_hour = int(total_reward_value / (total_mission_time / (60 * 60)))
-        log(f"Current total rewards: {'{:,}'.format(total_reward_value).replace(',', ' ')} ISK")
-        log(f"Current ISK/Hour: {'{:,}'.format(isk_per_hour).replace(',', ' ')}")
-
+    hauler.setup()
+    hauler.run()

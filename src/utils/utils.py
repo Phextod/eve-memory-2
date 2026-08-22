@@ -161,13 +161,17 @@ def find_window_for_pid(pid):
 
 def close_client():
     log_console("Closing client")
-    eve = win32gui.FindWindow(None, fr"EVE - {config.CHARACTER_NAME}")
-    if eve != 0:
-        win32gui.PostMessage(eve, win32con.WM_CLOSE, 0, 0)
+    eve_window = win32gui.FindWindow(None, fr"EVE - {config.CHARACTER_NAME}")
+    if eve_window != 0:
+        win32gui.PostMessage(eve_window, win32con.WM_CLOSE, 0, 0)
+        close_time = time.time()
+        while eve_window != 0 and (time.time() - close_time < 2):
+            eve_window = win32gui.FindWindow(None, fr"EVE - {config.CHARACTER_NAME}")
+            pyautogui.press('enter')
     else:
-        eve = win32gui.FindWindow("trinityWindow", "EVE")
-        if eve != 0:
-            win32gui.PostMessage(eve, win32con.WM_CLOSE, 0, 0)
+        eve_window = win32gui.FindWindow("trinityWindow", "EVE")
+        if eve_window != 0:
+            win32gui.PostMessage(eve_window, win32con.WM_CLOSE, 0, 0)
 
 
 def start_game(ui_tree):
@@ -271,3 +275,16 @@ def start_inactivity_watchdog(max_inactivity_time):
 def reset_inactivity_timer(timer_dict, lock):
     with lock:
         timer_dict["timer"] = time.time()
+
+
+def hold_and_release_keys(keys: list[str], hold_duration: float = 0.1) -> None:
+    """Holds all keys in the list down simultaneously, waits, then releases them in reverse order."""
+    # Press all keys down
+    for key in keys:
+        pyautogui.keyDown(key)
+
+    time.sleep(hold_duration)
+
+    # Release all keys in reverse order
+    for key in reversed(keys):
+        pyautogui.keyUp(key)
