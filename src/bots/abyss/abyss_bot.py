@@ -4,7 +4,6 @@ import pyautogui
 
 from src import config
 from src.bots.abyss.abyss_fighter import AbyssFighter
-from src.eve_ui.context_menu import ContextMenu
 from src.eve_ui.eve_ui import EveUI
 from src.eve_ui.overview import OverviewEntry
 from src.eve_ui.ship_ui import ShipModule
@@ -14,11 +13,9 @@ from src.utils.utils import wait_for_truthy, click, MOUSE_RIGHT, log, init_logge
 
 
 class AbyssBot:
-    def __init__(self, ui: EveUI):
-        self.ui = ui
-        self.context_menu: ContextMenu = ContextMenu.instance()
-        self.ui_tree: UITree = UITree.instance()
-        self.abyss_fighter = AbyssFighter(ui)
+    def __init__(self, eve_ui: EveUI):
+        self.eve_ui = eve_ui
+        self.abyss_fighter = AbyssFighter(eve_ui)
         self.start_finish_timer = time.time()
         self.abyss_run_counter = 1
 
@@ -39,8 +36,8 @@ class AbyssBot:
         """
         potential_caches = None
         while not potential_caches:
-            self.ui.overview.update()
-            potential_caches = [e for e in self.ui.overview.entries if "Cache" in e.type]
+            self.eve_ui.overview.update()
+            potential_caches = [e for e in self.eve_ui.overview.entries if "Cache" in e.type]
 
         if len(potential_caches) != 1:
             return True
@@ -49,49 +46,49 @@ class AbyssBot:
             return False
 
         potential_caches[0].generic_action(OverviewEntry.Action.open_cargo)
-        return not self.ui.inventory.loot_all()
+        return not self.eve_ui.inventory.loot_all()
 
     def approach_jump_gate(self):
-        jump_gate_entry = next(e for e in self.ui.overview.entries if "Conduit" in e.type)
+        jump_gate_entry = next(e for e in self.eve_ui.overview.entries if "Conduit" in e.type)
         jump_gate_entry.generic_action(OverviewEntry.Action.approach)
 
-        self.ui.ship_ui.update()
-        should_speed = self.ui.ship_ui.capacitor_percent > 0.8
+        self.eve_ui.ship_ui.update()
+        should_speed = self.eve_ui.ship_ui.capacitor_percent > 0.8
         for i in config.ABYSSAL_SPEED_MODULE_INDICES:
-            self.ui.ship_ui.medium_modules[i].set_active(should_speed)
+            self.eve_ui.ship_ui.medium_modules[i].set_active(should_speed)
 
     def prepare_for_next_room(self):
         is_prepared = True
 
         # recall drones
-        self.ui.drones.update()
-        if self.ui.drones.in_space:
+        self.eve_ui.drones.update()
+        if self.eve_ui.drones.in_space:
             is_prepared = False
-            self.ui.drones.recall_all()
+            self.eve_ui.drones.recall_all()
 
-        is_last_room = len([e for e in self.ui.overview.entries if "Origin Conduit" in e.name]) > 0
+        is_last_room = len([e for e in self.eve_ui.overview.entries if "Origin Conduit" in e.name]) > 0
         if is_last_room:
             return is_prepared
 
         # reload weapons
-        for i, high_module in self.ui.ship_ui.high_modules.items():
+        for i, high_module in self.eve_ui.ship_ui.high_modules.items():
             if high_module.active_status == ShipModule.ActiveStatus.reloading:
                 is_prepared = False
                 continue
             if high_module.ammo_count < config.ABYSSAL_AMMO_PER_WEAPON[i]:
                 click(high_module.node, MOUSE_RIGHT)
-                self.context_menu.click_safe("Reload all")
+                self.eve_ui.context_menu.click_safe("Reload all")
                 high_module.set_state_change_time()
                 is_prepared = False
 
         # repair ship
         if config.ABYSSAL_SHIELD_BOOSTER_INDICES:
-            self.ui.ship_ui.update_hp()
-            self.ui.ship_ui.update_modules()
+            self.eve_ui.ship_ui.update_hp()
+            self.eve_ui.ship_ui.update_modules()
             if (
-                self.ui.ship_ui.shield_percent < 0.9
+                self.eve_ui.ship_ui.shield_percent < 0.9
                 or any(
-                    m for i, m in self.ui.ship_ui.medium_modules.items()
+                    m for i, m in self.eve_ui.ship_ui.medium_modules.items()
                     if m.active_status == ShipModule.ActiveStatus.active
                 )
             ):
@@ -99,43 +96,43 @@ class AbyssBot:
                 self.abyss_fighter.manage_shield(0.3)
 
         # repair modules
-        self.ui.ship_ui.update_modules()
-        modules = self.ui.ship_ui.get_modules()
+        self.eve_ui.ship_ui.update_modules()
+        modules = self.eve_ui.ship_ui.get_modules()
         damaged_modules = [m for m in modules if m.heat_damage]
         if [m for m in modules if m.is_repairing]:
             is_prepared = False
         elif damaged_modules:
-            nanite_paste_item = self.ui.inventory.smart_search("Nanite Repair Paste")
+            nanite_paste_item = self.eve_ui.inventory.smart_search("Nanite Repair Paste")
             nanite_paste_remaining = nanite_paste_item.quantity if nanite_paste_item else 0
             for module in damaged_modules:
                 click(module.node, MOUSE_RIGHT)
-                repair_btn = self.ui.context_menu.get_menu_btn("Repair", contains=True)
+                repair_btn = self.eve_ui.context_menu.get_menu_btn("Repair", contains=True)
                 paste_needed = int(repair_btn.attrs["_setText"].split("[")[1][:-1])
                 if paste_needed > nanite_paste_remaining:
-                    self.ui.ship_ui.click_center()
+                    self.eve_ui.ship_ui.click_center()
                     break
                 click(repair_btn)
                 nanite_paste_remaining -= paste_needed
                 is_prepared = False
 
         # wait for cap
-        self.ui.ship_ui.update()
-        if self.ui.ship_ui.capacitor_percent < 0.7:
+        self.eve_ui.ship_ui.update()
+        if self.eve_ui.ship_ui.capacitor_percent < 0.7:
             is_prepared = False
 
         return is_prepared
 
     def jump_to_next_room(self):
-        self.ui.overview.lock_order()
-        self.ui.overview.update()
-        jump_gate_entry = next(e for e in self.ui.overview.entries if "Conduit" in e.type)
-        self.ui.overview.unlock_order()
+        self.eve_ui.overview.lock_order()
+        self.eve_ui.overview.update()
+        jump_gate_entry = next(e for e in self.eve_ui.overview.entries if "Conduit" in e.type)
+        self.eve_ui.overview.unlock_order()
         jump_gate_entry.generic_action(OverviewEntry.Action.activate_gate)
 
         wait_for_truthy(
             lambda: (
-                (self.ui.overview.update() and self.abyss_fighter.enemies_on_overview())
-                or TimerNames.abyssal.value not in self.ui.timers.update().timers
+                (self.eve_ui.overview.update() and self.abyss_fighter.enemies_on_overview())
+                or TimerNames.abyssal.value not in self.eve_ui.timers.update().timers
             ),
             60
         )
@@ -148,13 +145,13 @@ class AbyssBot:
             self.abyss_fighter.clear_room()
             while self.loot():
                 self.prepare_for_next_room()
-                self.ui.ship_ui.update_modules()
-                self.ui.ship_ui.update_capacitor_percent()
+                self.eve_ui.ship_ui.update_modules()
+                self.eve_ui.ship_ui.update_capacitor_percent()
                 self.abyss_fighter.manage_propulsion(0.5)
             self.approach_jump_gate()
             while not self.prepare_for_next_room() and time.time() - start_timer < 5 * 60:
-                self.ui.ship_ui.update_modules()
-                self.ui.ship_ui.update_capacitor_percent()
+                self.eve_ui.ship_ui.update_modules()
+                self.eve_ui.ship_ui.update_capacitor_percent()
                 self.abyss_fighter.manage_propulsion(1)
             self.abyss_fighter.deactivate_modules()
             self.jump_to_next_room()
@@ -163,55 +160,55 @@ class AbyssBot:
         time.sleep(5)
 
     def undock(self):
-        self.ui.station_window.undock()
-        wait_for_truthy(lambda: TimerNames.invulnerable in self.ui.timers.update().timers, 10)
+        self.eve_ui.station_window.undock()
+        wait_for_truthy(lambda: TimerNames.invulnerable in self.eve_ui.timers.update().timers, 10)
 
     def use_filament(self):
-        filament_item = self.ui.inventory.smart_search(f"{config.ABYSSAL_DIFFICULTY} {config.ABYSSAL_WEATHER} Filament")
+        filament_item = self.eve_ui.inventory.smart_search(f"{config.ABYSSAL_DIFFICULTY} {config.ABYSSAL_WEATHER} Filament")
         click(filament_item.node, MOUSE_RIGHT)
-        self.context_menu.click_safe(f"Use {config.ABYSSAL_DIFFICULTY} {config.ABYSSAL_WEATHER}", contains=True)
+        self.eve_ui.context_menu.click_safe(f"Use {config.ABYSSAL_DIFFICULTY} {config.ABYSSAL_WEATHER}", contains=True)
 
-        activation_window = self.ui_tree.find_node(node_type="KeyActivationWindow")
+        activation_window = self.eve_ui.ui_tree.find_node(node_type="KeyActivationWindow")
         while activation_window:
-            activate_btn = self.ui_tree.find_node(node_type="ActivateButton", root=activation_window)
+            activate_btn = self.eve_ui.ui_tree.find_node(node_type="ActivateButton", root=activation_window)
             if activate_btn:
                 click(activate_btn)
-            activation_window = self.ui_tree.find_node(node_type="KeyActivationWindow")
+            activation_window = self.eve_ui.ui_tree.find_node(node_type="KeyActivationWindow")
 
-        wait_for_truthy(lambda: TimerNames.abyssal.value in self.ui.timers.update().timers, 30)
-        wait_for_truthy(lambda: (self.ui.overview.update() and self.abyss_fighter.enemies_on_overview()), 30)
+        wait_for_truthy(lambda: TimerNames.abyssal.value in self.eve_ui.timers.update().timers, 30)
+        wait_for_truthy(lambda: (self.eve_ui.overview.update() and self.abyss_fighter.enemies_on_overview()), 30)
 
     def warp_to_safe_spot(self):
-        safe_spot_entry = self.ui.locations.get_entry(config.ABYSSAL_SAFE_SPOT_LOCATION)
+        safe_spot_entry = self.eve_ui.locations.get_entry(config.ABYSSAL_SAFE_SPOT_LOCATION)
         click(safe_spot_entry, MOUSE_RIGHT)
 
         destination_set = False
         warping = False
         while not destination_set and not warping:
-            destination_set = self.context_menu.click("Set Destination")
-            warping = self.context_menu.click("Warp to Within", contains=True)
+            destination_set = self.eve_ui.context_menu.click("Set Destination")
+            warping = self.eve_ui.context_menu.click("Warp to Within", contains=True)
 
         if destination_set:
-            self.ui.route.autopilot(self.ui.station_window, self.ui.timers)
+            self.eve_ui.route.autopilot(self.eve_ui.station_window, self.eve_ui.timers)
             click(safe_spot_entry, MOUSE_RIGHT)
-            self.context_menu.click_safe("Warp to Within", contains=True)
+            self.eve_ui.context_menu.click_safe("Warp to Within", contains=True)
 
-        wait_for_truthy(lambda: not self.ui.ship_ui.update().is_warping and self.ui.ship_ui.speed < 10, 60)
+        wait_for_truthy(lambda: not self.eve_ui.ship_ui.update().is_warping and self.eve_ui.ship_ui.speed < 10, 60)
 
     def dock_home_base(self):
-        base_entry = self.ui.locations.get_entry(config.ABYSSAL_BASE_LOCATION)
+        base_entry = self.eve_ui.locations.get_entry(config.ABYSSAL_BASE_LOCATION)
         click(base_entry, MOUSE_RIGHT)
-        if self.context_menu.click_safe("Set Destination"):
-            self.ui.route.autopilot(self.ui.station_window, self.ui.timers)
+        if self.eve_ui.context_menu.click_safe("Set Destination"):
+            self.eve_ui.route.autopilot(self.eve_ui.station_window, self.eve_ui.timers)
 
     def drop_off_loot(self):
-        click(self.ui.inventory.active_ship_hangar)
-        self.ui.inventory.stack_all()
-        self.ui.inventory.update()
+        click(self.eve_ui.inventory.active_ship_hangar)
+        self.eve_ui.inventory.stack_all()
+        self.eve_ui.inventory.update()
 
         pyautogui.keyDown("ctrl")
         item_to_move = None
-        for item in self.ui.inventory.items:
+        for item in self.eve_ui.inventory.items:
             if item.name in config.ABYSSAL_SUPPLIES.keys():
                 continue
             click(item.node, pos_y=0.1)
@@ -220,11 +217,11 @@ class AbyssBot:
         pyautogui.keyUp("ctrl")
 
         if item_to_move:
-            target_hangar = self.ui.inventory.main_station_hangar
-            self.ui.inventory.move_item(item_to_move, target_hangar)
+            target_hangar = self.eve_ui.inventory.main_station_hangar
+            self.eve_ui.inventory.move_item(item_to_move, target_hangar)
 
         for item_name in config.ABYSSAL_SUPPLIES.keys():
-            item_in_ship = next((i for i in self.ui.inventory.items if i.name == item_name), None)
+            item_in_ship = next((i for i in self.eve_ui.inventory.items if i.name == item_name), None)
             if not item_in_ship:
                 continue
 
@@ -232,21 +229,21 @@ class AbyssBot:
             if amount_to_drop_off <= 0:
                 continue
 
-            target_hangar = self.ui.inventory.main_station_hangar
-            self.ui.inventory.move_item(item_in_ship.node, target_hangar, amount_to_drop_off)
+            target_hangar = self.eve_ui.inventory.main_station_hangar
+            self.eve_ui.inventory.move_item(item_in_ship.node, target_hangar, amount_to_drop_off)
 
     def pick_up_supplies(self):
-        click(self.ui.inventory.active_ship_hangar)
-        self.ui.inventory.stack_all()
-        self.ui.inventory.update()
+        click(self.eve_ui.inventory.active_ship_hangar)
+        self.eve_ui.inventory.stack_all()
+        self.eve_ui.inventory.update()
 
         supplies_in_ship = dict()
         for item_name in config.ABYSSAL_SUPPLIES.keys():
-            amount_in_ship = next((i.quantity for i in self.ui.inventory.items if i.name == item_name), 0)
+            amount_in_ship = next((i.quantity for i in self.eve_ui.inventory.items if i.name == item_name), 0)
             supplies_in_ship.update({item_name: amount_in_ship})
 
-        click(self.ui.inventory.main_station_hangar)
-        self.ui.inventory.stack_all()
+        click(self.eve_ui.inventory.main_station_hangar)
+        self.eve_ui.inventory.stack_all()
 
         for item_name, amount_in_ship in supplies_in_ship.items():
             amount_for_max = config.ABYSSAL_SUPPLIES[item_name][1] - amount_in_ship
@@ -254,7 +251,7 @@ class AbyssBot:
                 continue
             amount_for_min = config.ABYSSAL_SUPPLIES[item_name][0] - amount_in_ship
 
-            item_to_move = self.ui.inventory.smart_search(item_name)
+            item_to_move = self.eve_ui.inventory.smart_search(item_name)
             if item_to_move is None:
                 if amount_for_min > 0:
                     raise Exception("Not enough supply")
@@ -265,88 +262,88 @@ class AbyssBot:
 
             amount_to_move = min(amount_for_max, item_to_move.quantity)
             if amount_to_move > 0:
-                self.ui.inventory.move_item(
+                self.eve_ui.inventory.move_item(
                     item_to_move.node,
-                    self.ui.inventory.active_ship_hangar,
+                    self.eve_ui.inventory.active_ship_hangar,
                     amount_to_move,
                 )
 
     def pick_up_drones(self):
-        click(self.ui.inventory.active_ship_drone_bay)
-        self.ui.inventory.update_items()
+        click(self.eve_ui.inventory.active_ship_drone_bay)
+        self.eve_ui.inventory.update_items()
 
         drones_to_pick_up = dict()
         for drone_type, required_quantity in config.ABYSSAL_DRONES.items():
-            quantity_in_bay = sum([i.quantity for i in self.ui.inventory.items if i.name == drone_type])
+            quantity_in_bay = sum([i.quantity for i in self.eve_ui.inventory.items if i.name == drone_type])
             drones_to_pick_up.update({drone_type: required_quantity - quantity_in_bay})
 
-        click(self.ui.inventory.main_station_hangar)
-        self.ui.inventory.stack_all()
+        click(self.eve_ui.inventory.main_station_hangar)
+        self.eve_ui.inventory.stack_all()
 
         for drone_type, pick_up_quantity in drones_to_pick_up.items():
             if pick_up_quantity <= 0:
                 continue
 
-            drone_item = self.ui.inventory.smart_search(drone_type)
+            drone_item = self.eve_ui.inventory.smart_search(drone_type)
             if not drone_item or drone_item.quantity < pick_up_quantity:
                 raise Exception("Not enough drones")
 
-            self.ui.inventory.move_item(drone_item.node, self.ui.inventory.active_ship_drone_bay, pick_up_quantity)
+            self.eve_ui.inventory.move_item(drone_item.node, self.eve_ui.inventory.active_ship_drone_bay, pick_up_quantity)
 
     def repair(self):
-        self.ui.inventory.repair_active_ship()
+        self.eve_ui.inventory.repair_active_ship()
 
     def is_reset_needed(self):
         # Drones
-        self.ui.drones.update()
+        self.eve_ui.drones.update()
         for drone_name, drone_amount in config.ABYSSAL_DRONES.items():
-            drone_amount_in_bay = sum(1 for d in self.ui.drones.in_bay if d.name == drone_name)
+            drone_amount_in_bay = sum(1 for d in self.eve_ui.drones.in_bay if d.name == drone_name)
             if drone_amount_in_bay < drone_amount:
                 return True
-        for drone in self.ui.drones.in_bay:
+        for drone in self.eve_ui.drones.in_bay:
             if drone.armor_percent < 0.9 or drone.structure_percent < 1:
                 return True
 
         # Ship
-        self.ui.ship_ui.update()
+        self.eve_ui.ship_ui.update()
         if (
-            (config.ABYSSAL_IS_SHIELD_TANK and self.ui.ship_ui.armor_percent < 0.9)
-            or (config.ABYSSAL_IS_ARMOR_TANK and self.ui.ship_ui.structure_percent < 0.9)
+            (config.ABYSSAL_IS_SHIELD_TANK and self.eve_ui.ship_ui.armor_percent < 0.9)
+            or (config.ABYSSAL_IS_ARMOR_TANK and self.eve_ui.ship_ui.structure_percent < 0.9)
         ):
             return True
 
         # Modules
-        if [m for m in self.ui.ship_ui.get_modules() if m.heat_damage]:
+        if [m for m in self.eve_ui.ship_ui.get_modules() if m.heat_damage]:
             return True
 
         # Inventory
-        self.ui.inventory.stack_all()
-        self.ui.inventory.update()
-        if self.ui.inventory.capacity_filled / self.ui.inventory.capacity_max > 0.8:
+        self.eve_ui.inventory.stack_all()
+        self.eve_ui.inventory.update()
+        if self.eve_ui.inventory.capacity_filled / self.eve_ui.inventory.capacity_max > 0.8:
             return True
 
         for supply_name, supply_amounts in config.ABYSSAL_SUPPLIES.items():
-            item = self.ui.inventory.smart_search(supply_name)
+            item = self.eve_ui.inventory.smart_search(supply_name)
             if not item or item.quantity < supply_amounts[0]:
                 return True
 
         return False
 
     def prepare_for_next_abyss(self):
-        self.ui.ship_ui.full_speed()
+        self.eve_ui.ship_ui.full_speed()
         is_prepared = False
         while not is_prepared:
             is_prepared = True
-            self.ui.ship_ui.update()
+            self.eve_ui.ship_ui.update()
 
             # Reload weapons
-            for i, high_module in self.ui.ship_ui.high_modules.items():
+            for i, high_module in self.eve_ui.ship_ui.high_modules.items():
                 if high_module.active_status == ShipModule.ActiveStatus.reloading:
                     is_prepared = False
                     continue
                 if high_module.ammo_count < config.ABYSSAL_AMMO_PER_WEAPON[i]:
                     click(high_module.node, MOUSE_RIGHT)
-                    self.context_menu.click_safe("Reload all")
+                    self.eve_ui.context_menu.click_safe("Reload all")
                     high_module.set_state_change_time()
                     is_prepared = False
 
@@ -354,28 +351,28 @@ class AbyssBot:
             self.abyss_fighter.manage_shield(0.3)
             # todo repair armor
             if (
-                config.ABYSSAL_IS_SHIELD_TANK and self.ui.ship_ui.shield_percent < 0.9
-                or config.ABYSSAL_IS_ARMOR_TANK and self.ui.ship_ui.armor_percent < 0.9
+                config.ABYSSAL_IS_SHIELD_TANK and self.eve_ui.ship_ui.shield_percent < 0.9
+                or config.ABYSSAL_IS_ARMOR_TANK and self.eve_ui.ship_ui.armor_percent < 0.9
             ):
                 is_prepared = False
 
             # Capacitor
-            if self.ui.ship_ui.capacitor_percent < 0.7:
+            if self.eve_ui.ship_ui.capacitor_percent < 0.7:
                 is_prepared = False
 
             # Previous Abyssal Trace
-            if [e for e in self.ui.overview.update().entries if "Abyssal Trace" in e.type]:
+            if [e for e in self.eve_ui.overview.update().entries if "Abyssal Trace" in e.type]:
                 is_prepared = False
 
-        while [m for m in self.ui.ship_ui.get_modules() if m.active_status == ShipModule.ActiveStatus.active]:
+        while [m for m in self.eve_ui.ship_ui.get_modules() if m.active_status == ShipModule.ActiveStatus.active]:
             self.abyss_fighter.deactivate_modules()
-            self.ui.ship_ui.update_modules()
+            self.eve_ui.ship_ui.update_modules()
 
     def init_fleet(self):
-        if not self.ui.fleet.is_in_fleet():
-            self.ui.fleet.form_fleet()
+        if not self.eve_ui.fleet.is_in_fleet():
+            self.eve_ui.fleet.form_fleet()
             time.sleep(1)  # todo remove constant sleep
-        self.ui.fleet.close_fleet_window()
+        self.eve_ui.fleet.close_fleet_window()
 
     def run(self):
         self.init_fleet()
@@ -404,7 +401,6 @@ class AbyssBot:
 
 if __name__ == "__main__":
     init_logger(config.ABYSSAL_LOG_FILE_PATH)
-    eve_ui = EveUI()
-    bot = AbyssBot(eve_ui)
+    bot = AbyssBot(EveUI(UITree()))
     log("ready")
     bot.run()

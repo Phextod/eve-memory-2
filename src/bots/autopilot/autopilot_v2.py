@@ -1,4 +1,5 @@
 from src.eve_ui.eve_ui import EveUI
+from src.utils.ui_tree import UITree
 
 
 class Autopilot:
@@ -10,5 +11,5 @@ class Autopilot:
 
 
 if __name__ == '__main__':
-    autopilot = Autopilot(EveUI(do_setup=False))
+    autopilot = Autopilot(EveUI(UITree(), do_setup=False))
     autopilot.run()

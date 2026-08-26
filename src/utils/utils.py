@@ -142,6 +142,7 @@ def get_pid():
     for proc in psutil.process_iter():
         if proc.name() == PROCNAME:
             return proc.pid
+    return None
 
 
 def find_window_for_pid(pid):

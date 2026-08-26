@@ -1,14 +1,17 @@
 import math
 import time
 from enum import Enum
-from typing import Dict, List
+from typing import Dict, List, TYPE_CHECKING
 
 import pyautogui
 
 from src.utils.bubbling_query import BubblingQuery
-from src.utils.singleton import Singleton
-from src.utils.ui_tree import UITree, UITreeNode
+from src.utils.ui_tree import UITreeNode
 from src.utils.utils import click
+
+if TYPE_CHECKING:
+    # Only imported during static type checking, ignored at runtime
+    from src.eve_ui.eve_ui import EveUI
 
 
 class BuffNames(Enum):
@@ -37,27 +40,27 @@ class ShipModule:
     latest_overload_state_change_times = dict()
     WAIT_TIME_ON_STATE_CHANGE = 1.5
 
-    def __init__(self, node: UITreeNode):
-        ui_tree: UITree = UITree.instance()
+    def __init__(self, eve_ui: 'EveUI', node: UITreeNode):
+        self.eve_ui: EveUI = eve_ui
         self.node = node
 
-        icon = ui_tree.find_node(node_type="Icon", root=node, refresh=False)
+        icon = self.eve_ui.ui_tree.find_node(node_type="Icon", root=node, refresh=False)
         self.module_type = icon.attrs["_texturePath"].split("/")[-1].split(".")[0] if icon else ""
         self.ammo_count = 0
-        ammo_parent = ui_tree.find_node({'_name': 'quantityParent'}, root=node, refresh=False)
+        ammo_parent = self.eve_ui.ui_tree.find_node({'_name': 'quantityParent'}, root=node, refresh=False)
         if ammo_parent:
-            number_containers = ui_tree.find_node(node_type="Label", root=ammo_parent, refresh=False, select_many=True)
+            number_containers = self.eve_ui.ui_tree.find_node(node_type="Label", root=ammo_parent, refresh=False, select_many=True)
             number_containers.sort(key=lambda n: n.x, reverse=True)
             self.ammo_count = int(number_containers[0].attrs.get('_setText', ""))
 
-        damage_state_cont = ui_tree.find_node(node_type="DamageStateCont", root=node, refresh=False)
+        damage_state_cont = self.eve_ui.ui_tree.find_node(node_type="DamageStateCont", root=node, refresh=False)
         if damage_state_cont:
             heat_dmg_str = damage_state_cont.attrs['_hint'][:-1].split(" ")[1].replace(",", ".")
             self.heat_damage = float(heat_dmg_str) / 100
         else:
             self.heat_damage = 0.0
 
-        glow = ui_tree.find_node(
+        glow = self.eve_ui.ui_tree.find_node(
             {"_texturePath": "Glow"},
             contains=True,
             root=node,
@@ -71,7 +74,7 @@ class ShipModule:
 
         # Cloaks and some other modules are active but not overloadable. If you care about those improve this part
 
-        module_button = ui_tree.find_node(node_type="ModuleButton", root=node, refresh=False)
+        module_button = self.eve_ui.ui_tree.find_node(node_type="ModuleButton", root=node, refresh=False)
         if module_button and module_button.attrs.get("online", False):
             if module_button.attrs.get("ramp_active", None):
                 if glow and glow.attrs.get('_color') and glow.attrs["_color"].get("rPercent", 0) >= 100:
@@ -79,8 +82,8 @@ class ShipModule:
                 else:
                     self.active_status = ShipModule.ActiveStatus.active
             else:
-                left_ramp = ui_tree.find_node({'_name': 'leftRamp'}, root=node, refresh=False)
-                right_ramp = ui_tree.find_node({'_name': 'rightRamp'}, root=node, refresh=False)
+                left_ramp = self.eve_ui.ui_tree.find_node({'_name': 'leftRamp'}, root=node, refresh=False)
+                right_ramp = self.eve_ui.ui_tree.find_node({'_name': 'rightRamp'}, root=node, refresh=False)
                 ramp_displayed = False
                 if left_ramp and right_ramp:
                     left_rotation = float(left_ramp.attrs.get("_rotation", 0.0))
@@ -96,7 +99,7 @@ class ShipModule:
         else:
             self.active_status = ShipModule.ActiveStatus.offline
 
-        overload_button = ui_tree.find_node({'_name': 'overloadBtn'}, root=node, refresh=False)
+        overload_button = self.eve_ui.ui_tree.find_node({'_name': 'overloadBtn'}, root=node, refresh=False)
         if not overload_button or "Disabled" in overload_button.attrs["_texturePath"]:
             self.overload_status = ShipModule.OverloadStatus.not_overloadable
         elif "OverloadOff" in overload_button.attrs["_texturePath"]:
@@ -141,11 +144,14 @@ class ShipModule:
         return None
 
 
-@Singleton
 class ShipUI:
-    def __init__(self, refresh_on_init=False):
-        self.ui_tree: UITree = UITree.instance()
-        self.main_container_query = BubblingQuery(node_type="ShipUI", refresh_on_init=refresh_on_init)
+    def __init__(self, eve_ui: 'EveUI', refresh_on_init=False):
+        self.eve_ui: EveUI = eve_ui
+        self.main_container_query = BubblingQuery(
+            ui_tree=self.eve_ui.ui_tree,
+            node_type="ShipUI",
+            refresh_on_init=refresh_on_init
+        )
 
         self.high_modules: Dict[int, ShipModule] = dict()
         self.medium_modules: Dict[int, ShipModule] = dict()
@@ -164,6 +170,7 @@ class ShipUI:
         self.structure_percent: float = 0.0
 
         self.hud_readout_query = BubblingQuery(
+            self.eve_ui.ui_tree,
             node_type="HudReadout",
             parent_query=self.main_container_query,
             refresh_on_init=False
@@ -177,9 +184,9 @@ class ShipUI:
         self.update(refresh_on_init)
 
     def display_readouts(self):
-        util_menu = self.ui_tree.find_node(node_type="UtilMenu", root=self.main_container_query.result, refresh=False)
+        util_menu = self.eve_ui.ui_tree.find_node(node_type="UtilMenu", root=self.main_container_query.result, refresh=False)
         click(util_menu)
-        readout_btn = self.ui_tree.find_node({'_setText': 'Display Readout'})
+        readout_btn = self.eve_ui.ui_tree.find_node({'_setText': 'Display Readout'})
         click(readout_btn)
         click(util_menu)
 
@@ -194,6 +201,7 @@ class ShipUI:
                 return
 
         containers = BubblingQuery(
+            ui_tree=self.eve_ui.ui_tree,
             node_type="ContainerAutoSize",
             parent_query=self.hud_readout_query,
             select_many=True,
@@ -203,7 +211,7 @@ class ShipUI:
             return
 
         for container in containers:
-            label = self.ui_tree.find_node(node_type="EveLabelSmall", root=container, refresh=False)
+            label = self.eve_ui.ui_tree.find_node(node_type="EveLabelSmall", root=container, refresh=False)
             percent = int(label.attrs.get("_setText", "0").split("%")[0]) / 100
             name = container.attrs["_name"]
             if name == "shield":
@@ -215,8 +223,9 @@ class ShipUI:
 
     def update_capacitor_percent(self, refresh=True):
         capacitor_sprites = BubblingQuery(
-            {"_texturePath": "capacitorCell_2"},
-            self.main_container_query,
+            ui_tree=self.eve_ui.ui_tree,
+            query={"_texturePath": "capacitorCell_2"},
+            parent_query=self.main_container_query,
             contains=True,
             select_many=True,
             refresh_on_init=refresh,
@@ -236,8 +245,9 @@ class ShipUI:
     def update_high_slots(self, refresh=True):
         self.high_modules.clear()
         modules_nodes = BubblingQuery(
-            {'_name': 'inFlightHighSlot'},
-            self.main_container_query,
+            ui_tree=self.eve_ui.ui_tree,
+            query={'_name': 'inFlightHighSlot'},
+            parent_query=self.main_container_query,
             select_many=True,
             contains=True,
             refresh_on_init=refresh,
@@ -245,15 +255,16 @@ class ShipUI:
         modules_nodes.sort(key=lambda a: a.x)
         for module_index, slot in enumerate(modules_nodes):
             # module_index = int(slot.attrs["_name"].replace("inFlightMediumSlot", ""))
-            ship_module = ShipModule(slot)
+            ship_module = ShipModule(self.eve_ui, slot)
             self.high_modules.update({module_index: ship_module})
         return self
 
     def update_medium_slots(self, refresh=True):
         self.medium_modules.clear()
         modules_nodes = BubblingQuery(
-            {'_name': 'inFlightMediumSlot'},
-            self.main_container_query,
+            ui_tree=self.eve_ui.ui_tree,
+            query={'_name': 'inFlightMediumSlot'},
+            parent_query=self.main_container_query,
             select_many=True,
             contains=True,
             refresh_on_init=refresh,
@@ -261,15 +272,16 @@ class ShipUI:
         modules_nodes.sort(key=lambda a: a.x)
         for module_index, slot in enumerate(modules_nodes):
             # module_index = int(slot.attrs["_name"].replace("inFlightMediumSlot", ""))
-            ship_module = ShipModule(slot)
+            ship_module = ShipModule(self.eve_ui, slot)
             self.medium_modules.update({module_index: ship_module})
         return self
 
     def update_low_slots(self, refresh=True):
         self.low_modules.clear()
         modules_nodes = BubblingQuery(
-            {'_name': 'inFlightLowSlot'},
-            self.main_container_query,
+            ui_tree=self.eve_ui.ui_tree,
+            query={'_name': 'inFlightLowSlot'},
+            parent_query=self.main_container_query,
             select_many=True,
             contains=True,
             refresh_on_init=refresh,
@@ -277,7 +289,7 @@ class ShipUI:
         modules_nodes.sort(key=lambda a: a.x)
         for module_index, slot in enumerate(modules_nodes):
             # module_index = int(slot.attrs["_name"].replace("inFlightMediumSlot", ""))
-            ship_module = ShipModule(slot)
+            ship_module = ShipModule(self.eve_ui, slot)
             self.low_modules.update({module_index: ship_module})
         return self
 
@@ -289,6 +301,7 @@ class ShipUI:
 
     def update_buffs(self, refresh=True):
         self.buff_buttons = BubblingQuery(
+            ui_tree=self.eve_ui.ui_tree,
             node_type="BuffButton",
             parent_query=self.main_container_query,
             select_many=True,
@@ -296,6 +309,7 @@ class ShipUI:
         ).result
 
         self.buff_buttons += BubblingQuery(
+            ui_tree=self.eve_ui.ui_tree,
             node_type="OffensiveBuffButton",
             parent_query=self.main_container_query,
             select_many=True,
@@ -305,13 +319,14 @@ class ShipUI:
 
     def update_alert(self, refresh=True):
         indication_container = BubblingQuery(
-            {'_name': 'indicationContainer'},
+            ui_tree=self.eve_ui.ui_tree,
+            query={'_name': 'indicationContainer'},
             parent_query=self.main_container_query,
             refresh_on_init=refresh
         ).result
 
-        caption = self.ui_tree.find_node({'_name': 'indication_caption'}, root=indication_container, refresh=False)
-        line2 = self.ui_tree.find_node({'_name': 'indication_text'}, root=indication_container, refresh=False)
+        caption = self.eve_ui.ui_tree.find_node({'_name': 'indication_caption'}, root=indication_container, refresh=False)
+        line2 = self.eve_ui.ui_tree.find_node({'_name': 'indication_text'}, root=indication_container, refresh=False)
         if caption and line2:
             self.indication_text = f"{caption.attrs.get('_setText', "")} - {line2.attrs.get('_setText', "").split('>')[-1]}"
         else:
@@ -321,7 +336,8 @@ class ShipUI:
 
     def update_speed(self, refresh=True):
         speed_label_node = BubblingQuery(
-            {'_name': 'speedLabel'},
+            ui_tree=self.eve_ui.ui_tree,
+            query={'_name': 'speedLabel'},
             parent_query=self.main_container_query,
             refresh_on_init=refresh
         ).result
@@ -330,7 +346,7 @@ class ShipUI:
         self.speed = 0.0
 
         if not speed_label_node:
-            return
+            return None
 
         speed_text = speed_label_node.attrs.get("_setText", None)
         if speed_text:
@@ -352,11 +368,16 @@ class ShipUI:
         return self
 
     def full_speed(self):
-        btn_full_speed = BubblingQuery(node_type="MaxSpeedButton", parent_query=self.main_container_query).result
+        btn_full_speed = BubblingQuery(
+            ui_tree=self.eve_ui.ui_tree,
+            node_type="MaxSpeedButton",
+            parent_query=self.main_container_query
+        ).result
         click(btn_full_speed)
 
     def click_center(self):
         capacitor_container = BubblingQuery(
+            ui_tree=self.eve_ui.ui_tree,
             node_type="CapacitorContainer",
             parent_query=self.main_container_query
         ).result

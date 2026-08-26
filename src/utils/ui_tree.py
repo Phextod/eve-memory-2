@@ -6,7 +6,6 @@ import win32gui
 import win32process
 
 from src import config
-from src.utils.singleton import Singleton
 from src.utils.utils import log
 
 pyscreeze.USE_IMAGE_NOT_FOUND_EXCEPTION = False
@@ -46,7 +45,6 @@ class UITreeNode(object):
         return left, top, width, height
 
 
-@Singleton
 class UITree(object):
 
     def __init__(self):

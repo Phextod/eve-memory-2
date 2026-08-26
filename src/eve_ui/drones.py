@@ -1,15 +1,17 @@
 import copy
 from dataclasses import dataclass
 from enum import Enum
-from typing import List
+from typing import List, TYPE_CHECKING
 
 import pyautogui
 
-from src.eve_ui.context_menu import ContextMenu
 from src.utils.bubbling_query import BubblingQuery
-from src.utils.ui_tree import UITree, UITreeNode
+from src.utils.ui_tree import UITreeNode
 from src.utils.utils import click, MOUSE_RIGHT, wait_for_truthy
 
+if TYPE_CHECKING:
+    # Only imported during static type checking, ignored at runtime
+    from src.eve_ui.eve_ui import EveUI
 
 class DroneStatus(Enum):
     idle = 0
@@ -76,14 +78,18 @@ class Drone:
 
 
 class Drones:
-    def __init__(self, refresh_on_init=False):
+    def __init__(self, eve_ui: 'EveUI', refresh_on_init=False):
+        self.eve_ui: EveUI = eve_ui
+
         self.main_window_query = BubblingQuery(
+            ui_tree=self.eve_ui.ui_tree,
             node_type="DronesWindow",
             refresh_on_init=refresh_on_init
         )
 
         self.drone_entries_query = BubblingQuery(
-            {'_name': 'entry_'},
+            ui_tree=self.eve_ui.ui_tree,
+            query={'_name': 'entry_'},
             contains=True,
             select_many=True,
             parent_query=self.main_window_query,
@@ -106,7 +112,7 @@ class Drones:
         for entry_node in self.drone_entries_query.result:
             if "NoDroneIn" in entry_node.type:
                 continue
-            drone = Drone.from_entry_node(entry_node, UITree.instance())
+            drone = Drone.from_entry_node(entry_node, self.eve_ui.ui_tree)
             if drone is None:
                 continue
             if drone.quantity == 1:
@@ -125,17 +131,15 @@ class Drones:
 
         return self
 
-    @staticmethod
-    def launch_drones(drones: List[Drone]):
+    def launch_drones(self, drones: List[Drone]):
         drones.sort(key=lambda d: d.entry_node.y, reverse=True)
         for drone in drones:
             click(drone.entry_node, MOUSE_RIGHT, pos_x=0.2)
-            ContextMenu.instance().click_safe("Launch Drone")
+            self.eve_ui.context_menu.click_safe("Launch Drone")
 
-    @staticmethod
-    def recall(drone: Drone):
+    def recall(self, drone: Drone):
         click(drone.entry_node, MOUSE_RIGHT, pos_x=0.1)
-        ContextMenu.instance().click_safe("Return to Drone Bay")
+        self.eve_ui.context_menu.click_safe("Return to Drone Bay")
 
     @staticmethod
     def recall_all():

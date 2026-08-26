@@ -1,8 +1,12 @@
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 
 from src.utils.bubbling_query import BubblingQuery
-from src.utils.ui_tree import UITree, UITreeNode
+from src.utils.ui_tree import UITreeNode
+
+if TYPE_CHECKING:
+    # Only imported during static type checking, ignored at runtime
+    from src.eve_ui.eve_ui import EveUI
 
 
 @dataclass
@@ -15,10 +19,10 @@ class Target:
     tag: Optional[str]
 
     @staticmethod
-    def from_component_node(target_component):
-        ui_tree: UITree = UITree.instance()
+    def from_component_node(eve_ui: 'EveUI', target_component):
+        eve_ui: EveUI = eve_ui
 
-        labels = ui_tree.find_node(node_type="EveLabelSmall", root=target_component, select_many=True, refresh=False)
+        labels = eve_ui.ui_tree.find_node(node_type="EveLabelSmall", root=target_component, select_many=True, refresh=False)
         labels.sort(key=lambda l: l.y)
 
         label_texts = [label.attrs["_setText"].split(">")[-1] for label in labels]
@@ -38,24 +42,24 @@ class Target:
 
             distance = int(distance_text) * distance_multiplier
 
-        active_target_marker = ui_tree.find_node(
+        active_target_marker = eve_ui.ui_tree.find_node(
             node_type="ActiveTargetOnBracket",
             root=target_component,
             refresh=False
         )
         is_active_target = active_target_marker is not None
 
-        active_weapon_container = ui_tree.find_node(node_type="Weapon", root=target_component, refresh=False)
+        active_weapon_container = eve_ui.ui_tree.find_node(node_type="Weapon", root=target_component, refresh=False)
         active_weapon_icons = []
         if active_weapon_container:
-            active_weapon_icons = ui_tree.find_node(
+            active_weapon_icons = eve_ui.ui_tree.find_node(
                 node_type="Icon",
                 root=active_weapon_container,
                 select_many=True,
                 refresh=False
             )
 
-        tag_node = ui_tree.find_node(node_type="EveLabelMediumBold", root=target_component, refresh=False)
+        tag_node = eve_ui.ui_tree.find_node(node_type="EveLabelMediumBold", root=target_component, refresh=False)
         if tag_node is not None:
             tag = tag_node.attrs["_setText"]
         else:
@@ -65,9 +69,13 @@ class Target:
 
 
 class TargetBar:
-    def __init__(self, refresh_on_init=False):
-        self.ui_tree: UITree = UITree.instance()
-        self.main_window_query = BubblingQuery({"_name": "l_target"}, refresh_on_init=refresh_on_init)
+    def __init__(self, eve_ui: 'EveUI', refresh_on_init=False):
+        self.eve_ui: EveUI = eve_ui
+        self.main_window_query = BubblingQuery(
+            self.eve_ui.ui_tree,
+            {"_name": "l_target"},
+            refresh_on_init=refresh_on_init
+        )
 
         self.targets: List[Target] = []
 
@@ -77,6 +85,7 @@ class TargetBar:
         self.targets.clear()
 
         target_components = BubblingQuery(
+            self.eve_ui.ui_tree,
             node_type="TargetInBar",
             select_many=True,
             parent_query=self.main_window_query,
@@ -84,7 +93,7 @@ class TargetBar:
         ).result
 
         for target_component in target_components:
-            self.targets.append(Target.from_component_node(target_component))
+            self.targets.append(Target.from_component_node(self.eve_ui, target_component))
 
         self.targets.sort(key=lambda t: t.node.x, reverse=True)
 

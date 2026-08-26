@@ -6,14 +6,14 @@ from src import config
 from src.eve_ui.eve_ui import EveUI
 from src.eve_ui.timers import TimerNames
 from src.utils.ui_tree import UITree
-from src.utils.utils import log, click, drag_and_drop, wait_for_truthy, get_path, init_logger, \
+from src.utils.utils import log, click, drag_and_drop, wait_for_truthy, init_logger, \
     start_inactivity_watchdog, reset_inactivity_timer
 
 
 class Hauler:
     def __init__(self, ui: EveUI):
         self.ui = ui
-        self.ui_tree: UITree = UITree.instance()
+        self.ui_tree: UITree = UITree()
 
     def get_mission(self):
         btn_request = None
@@ -179,6 +179,6 @@ class Hauler:
 
 if __name__ == "__main__":
     init_logger(config.HAULER_LOG_FILE_PATH)
-    hauler = Hauler(EveUI(do_setup=False))
+    hauler = Hauler(EveUI(UITree(), do_setup=False))
     hauler.setup()
     hauler.run()

@@ -2,14 +2,18 @@ import time
 from dataclasses import dataclass
 from enum import Enum
 from threading import Event, Thread
-from typing import List, Optional
+from typing import List, TYPE_CHECKING
 
 import pyautogui
 
-from src.eve_ui.context_menu import ContextMenu, DistancePresets
+from src.eve_ui.context_menu import DistancePresets
 from src.utils.bubbling_query import BubblingQuery
 from src.utils.ui_tree import UITree, UITreeNode
 from src.utils.utils import click, MOUSE_RIGHT, move_cursor, wait_for_truthy
+
+if TYPE_CHECKING:
+    # Only imported during static type checking, ignored at runtime
+    from src.eve_ui.eve_ui import EveUI
 
 
 @dataclass
@@ -34,8 +38,8 @@ class OverviewEntry:
     is_being_targeted = False
     is_only_targeting = False
 
+    eve_ui: 'EveUI' = None
     node: UITreeNode = None
-    context_menu: ContextMenu = ContextMenu.instance(refresh_on_init=True)
 
     class Action(Enum):
         unlock_target = "Unlock Target"
@@ -44,7 +48,7 @@ class OverviewEntry:
         activate_gate = "Activate Gate"
 
     @staticmethod
-    def from_entry_node(entry_node: UITreeNode, headers: list, header_centers: list):
+    def from_entry_node(eve_ui: 'EveUI', entry_node: UITreeNode, headers: list, header_centers: list):
         decode_dict = {
             "icon": "Icon",
             "distance": "Distance",
@@ -61,7 +65,7 @@ class OverviewEntry:
             "transversal_velocity": "Transversal Velocity (m/s)",
             "angular_velocity": "Angular Velocity (deg/s)",
         }
-        ui_tree: UITree = UITree.instance()
+        ui_tree: UITree = eve_ui.ui_tree
 
         entry_labels = ui_tree.find_node(
             node_type="OverviewLabel",
@@ -120,13 +124,13 @@ class OverviewEntry:
             entry.is_only_targeting = False
 
         entry.node = entry_node
-        entry.ui_tree = ui_tree
+        entry.eve_ui = eve_ui
 
         return entry
 
     def generic_action(self, action: Action):
         click(self.node, MOUSE_RIGHT)
-        return ContextMenu.instance().click_safe(action.value)
+        return self.eve_ui.context_menu.click_safe(action.value)
 
     def target(self):
         pyautogui.keyDown("ctrl")
@@ -137,23 +141,23 @@ class OverviewEntry:
         click(self.node, MOUSE_RIGHT)
         distance_text = "Orbit"
         if distance > 0:
-            ContextMenu.instance().open_submenu(distance_text, contains=True)
+            self.eve_ui.context_menu.open_submenu(distance_text, contains=True)
             distance_text = DistancePresets.closest(distance)["text"]
-        return ContextMenu.instance().click_safe(distance_text)
+        return self.eve_ui.context_menu.click_safe(distance_text)
 
     def set_tag(self, tag_character: str):
         click(self.node, MOUSE_RIGHT)
-        self.context_menu.click_safe("Tag Item")
+        self.eve_ui.context_menu.click_safe("Tag Item")
 
         if tag_character.isnumeric():
-            self.context_menu.click_safe("Number")
+            self.eve_ui.context_menu.click_safe("Number")
         else:
-            self.context_menu.click_safe("Letter")
-        self.context_menu.click_safe(" " + tag_character.capitalize())
+            self.eve_ui.context_menu.click_safe("Letter")
+        self.eve_ui.context_menu.click_safe(" " + tag_character.capitalize())
 
     def clear_tag(self):
         click(self.node, MOUSE_RIGHT)
-        self.context_menu.click_safe("Untag Item")
+        self.eve_ui.context_menu.click_safe("Untag Item")
 
     def distance_in_meters(self):
         if not self.distance:
@@ -175,13 +179,14 @@ class OverviewEntry:
 
 
 class Overview:
-    def __init__(self, refresh_on_init=False):
+    def __init__(self, eve_ui: 'EveUI', refresh_on_init=False):
         self.order_lock_event = Event()
         self.order_lock_thread = Thread(target=self._loop_hover_entries)
 
-        self.ui_tree: UITree = UITree.instance()
+        self.eve_ui: EveUI = eve_ui
 
         self.main_window_query = BubblingQuery(
+            self.eve_ui.ui_tree,
             node_type="OverviewWindow",
             refresh_on_init=refresh_on_init,
         )
@@ -191,6 +196,7 @@ class Overview:
         self.header_centers = []
 
         self.header_component_query = BubblingQuery(
+            ui_tree=self.eve_ui.ui_tree,
             node_type="Header",
             select_many=True,
             parent_query=self.main_window_query,
@@ -198,6 +204,7 @@ class Overview:
         )
 
         self.entry_component_query = BubblingQuery(
+            ui_tree=self.eve_ui.ui_tree,
             node_type="OverviewScrollEntry",
             select_many=True,
             parent_query=self.main_window_query,
@@ -212,12 +219,12 @@ class Overview:
 
         headers = self.header_component_query.run(refresh)
         if not headers:
-            return
+            return None
 
         headers.sort(key=lambda a: a.x)
 
         for header in headers:
-            label = UITree.instance().find_node(node_type="EveLabelSmall", root=header, refresh=refresh)
+            label = self.eve_ui.ui_tree.find_node(node_type="EveLabelSmall", root=header, refresh=refresh)
             if label:
                 self.headers.append(label.attrs["_setText"])
                 self.header_centers.append(label.x + label.attrs.get("_displayWidth", 20) / 2)
@@ -238,7 +245,14 @@ class Overview:
             entry_nodes = self.entry_component_query.run(refresh)
 
             for entry_node in entry_nodes[::-1]:
-                self.entries.append(OverviewEntry.from_entry_node(entry_node, self.headers, self.header_centers))
+                self.entries.append(
+                    OverviewEntry.from_entry_node(
+                        self.eve_ui,
+                        entry_node,
+                        self.headers,
+                        self.header_centers
+                    )
+                )
 
             self.entries.sort(key=lambda e: e.node.y)
 
@@ -279,7 +293,7 @@ class Overview:
         self.order_lock_thread = Thread(target=self._loop_hover_entries)
         self.order_lock_thread.start()
         wait_for_truthy(
-            lambda: self.ui_tree.find_node(
+            lambda: self.eve_ui.ui_tree.find_node(
                 {"_texturePath": "columnLock"},
                 contains=True,
                 root=self.main_window_query.result,

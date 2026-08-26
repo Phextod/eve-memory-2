@@ -1,10 +1,12 @@
-from typing import Dict, Tuple, List
+from typing import Tuple, List, TYPE_CHECKING
 
 from src.utils.bubbling_query import BubblingQuery
-from src.utils.singleton import Singleton
 from src.utils.ui_tree import UITreeNode
 from src.utils.utils import click, wait_for_truthy, move_cursor
 
+if TYPE_CHECKING:
+    # Only imported during static type checking, ignored at runtime
+    from src.eve_ui.eve_ui import EveUI
 
 # This is so garbage. It should be an enum
 class DistancePresets:
@@ -43,11 +45,16 @@ class DistancePresets:
         return closest["text"]
 
 
-@Singleton
 class ContextMenu:
-    def __init__(self, refresh_on_init=False):
-        self.menu_container_query = BubblingQuery({'_name': 'l_menu'}, refresh_on_init=refresh_on_init)
+    def __init__(self, eve_ui: 'EveUI', refresh_on_init=False):
+        self.eve_ui: EveUI = eve_ui
+        self.menu_container_query = BubblingQuery(
+            ui_tree=self.eve_ui.ui_tree,
+            query={'_name': 'l_menu'},
+            refresh_on_init=refresh_on_init
+        )
         self.menu_entries_query = BubblingQuery(
+            ui_tree=self.eve_ui.ui_tree,
             node_type="TextBody",
             parent_query=self.menu_container_query,
             select_many=True

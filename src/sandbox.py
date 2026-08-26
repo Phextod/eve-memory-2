@@ -117,7 +117,7 @@ def format_search_data(hex_str, should_flip):
         hex_str = "0" + hex_str
 
     # Split into byte pairs, reverse order, and join back
-    reversed_hex = "".join(reversed([hex_str[i:i + 2] for i in range(0, len(hex_str), 2)]))
+    reversed_hex = "".join(reversed([hex_str[i2:i2 + 2] for i2 in range(0, len(hex_str), 2)]))
 
     # Pad with "0"s to make the length a multiple of 16
     while len(reversed_hex) % 16 != 0:
@@ -247,8 +247,8 @@ def read_tuple(_address):
     tuple_size = int(format_search_data(tuple_size_bytes, True), 16)
 
     tuple_entry_bytes = read_memory(int(_address, 16), size=8 * tuple_size, offset=3)
-    for i in range(0, len(tuple_entry_bytes), 16):
-        entry_pointer = pointer(tuple_entry_bytes[i:i+16])
+    for i2 in range(0, len(tuple_entry_bytes), 16):
+        entry_pointer = pointer(tuple_entry_bytes[i2:i2+16])
         entry_type = get_type_of(entry_pointer)
         entry_value = get_value_of(entry_pointer)
 

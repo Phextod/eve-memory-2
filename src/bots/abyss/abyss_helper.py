@@ -12,10 +12,9 @@ from src.utils.utils import get_path, log, init_logger
 
 
 class AbyssHelper:
-    def __init__(self, ui):
-        self.ui: EveUI = ui
-        self.ui_tree: UITree = UITree.instance()
-        self.abyss_fighter = AbyssFighter(ui)
+    def __init__(self, eve_ui):
+        self.eve_ui: EveUI = eve_ui
+        self.abyss_fighter = AbyssFighter(eve_ui)
         self.abyss_rooms = dict()
         with open(get_path("data/abyss_rooms.json")) as f:
             self.abyss_rooms = json.load(f)
@@ -36,7 +35,7 @@ class AbyssHelper:
     def run(self):
         log("Waiting for abyss")
         self.wait_for_abyss()
-        while TimerNames.abyssal.value in self.ui.timers.update().timers:
+        while TimerNames.abyssal.value in self.eve_ui.timers.update().timers:
             log("Analyzing room")
             self.analyze_current_room()
             log("Waiting for next room")
@@ -44,12 +43,12 @@ class AbyssHelper:
 
     def wait_for_abyss(self):
         while (
-            TimerNames.abyssal.value not in self.ui.timers.timers
+            TimerNames.abyssal.value not in self.eve_ui.timers.timers
             or not self.abyss_fighter.enemies_on_overview()
         ):
             time.sleep(2)
-            self.ui.overview.update()
-            self.ui.timers.update()
+            self.eve_ui.overview.update()
+            self.eve_ui.timers.update()
 
     def analyze_current_room(self):
         enemies_on_overview = self.abyss_fighter.enemies_on_overview()
@@ -89,18 +88,18 @@ class AbyssHelper:
                 f"{f'({id(stage.orbit_target)})' if stage.orbit_target else ''}")
 
     def wait_for_next_room(self):
-        self.ui.overview.update()
+        self.eve_ui.overview.update()
         while self.abyss_fighter.enemies_on_overview():
             time.sleep(5)
-            self.ui.overview.update()
+            self.eve_ui.overview.update()
 
         while not self.abyss_fighter.enemies_on_overview():
             time.sleep(5)
-            self.ui.overview.update()
+            self.eve_ui.overview.update()
 
 
 if __name__ == "__main__":
     init_logger(config.ABYSSAL_HELPER_LOG_FILE_PATH)
-    abyssHelper = AbyssHelper(EveUI(do_setup=False))
+    abyssHelper = AbyssHelper(EveUI(UITree(), do_setup=False))
     while True:
         abyssHelper.run()

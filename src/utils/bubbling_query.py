@@ -7,6 +7,7 @@ class BubblingQuery:
 
     def __init__(
             self,
+            ui_tree: UITree,
             query: dict = None,
             parent_query: "BubblingQuery" = None,
             node_type: str = None,
@@ -14,6 +15,7 @@ class BubblingQuery:
             contains: bool = False,
             refresh_on_init=True,
     ):
+        self.ui_tree = ui_tree
         self.query: dict = query
         self.node_type: str = node_type
         self.select_many: bool = select_many
@@ -31,7 +33,7 @@ class BubblingQuery:
             # If parent.result is a list then it shouldn't be a parent in the first place
             root_node = None if not self.parent_query else self.parent_query.result
 
-            self.result = UITree.instance().find_node(
+            self.result = self.ui_tree.find_node(
                 query=self.query,
                 node_type=self.node_type,
                 select_many=self.select_many,
@@ -42,7 +44,7 @@ class BubblingQuery:
 
         if not self.result and self.parent_query:
             if self.parent_query.run(refresh=refresh):
-                self.result = UITree.instance().find_node(
+                self.result = self.ui_tree.find_node(
                     query=self.query,
                     node_type=self.node_type,
                     select_many=self.select_many,

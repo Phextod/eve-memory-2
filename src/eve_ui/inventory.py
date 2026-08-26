@@ -1,15 +1,17 @@
 import time
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, TYPE_CHECKING
 
-import keyboard
 import pyautogui
 import pyperclip
 
-from src.eve_ui.context_menu import ContextMenu
 from src.utils.bubbling_query import BubblingQuery
-from src.utils.ui_tree import UITree, UITreeNode
-from src.utils.utils import drag_and_drop, click, MOUSE_RIGHT, get_path, wait_for_truthy
+from src.utils.ui_tree import UITreeNode
+from src.utils.utils import drag_and_drop, click, MOUSE_RIGHT, wait_for_truthy
+
+if TYPE_CHECKING:
+    # Only imported during static type checking, ignored at runtime
+    from src.eve_ui.eve_ui import EveUI
 
 
 @dataclass
@@ -21,18 +23,19 @@ class InventoryItem:
 
 
 class Inventory:
-    def __init__(self, refresh_on_init=False, do_setup=True):
+    def __init__(self, eve_ui: 'EveUI', refresh_on_init=False, do_setup=True):
+        self.eve_ui: EveUI = eve_ui
         self.currently_selected_tab_text = ""
         self.currently_selected_tab_index = -1
-        self.ui_tree: UITree = UITree.instance()
-        self.context_menu: ContextMenu = ContextMenu.instance()
 
         self.main_window_query = BubblingQuery(
+            ui_tree=self.eve_ui.ui_tree,
             node_type="InventoryPrimary",
             refresh_on_init=refresh_on_init,
         )
 
         self.item_components_query = BubblingQuery(
+            ui_tree=self.eve_ui.ui_tree,
             node_type="InvItem",
             select_many=True,
             parent_query=self.main_window_query,
@@ -54,6 +57,7 @@ class Inventory:
 
     def setup(self, refresh):
         active_ship_container = BubblingQuery(
+            ui_tree=self.eve_ui.ui_tree,
             node_type="TreeViewEntryInventoryCargo",
             parent_query=self.main_window_query,
             refresh_on_init=refresh,
@@ -61,24 +65,25 @@ class Inventory:
         if not active_ship_container:
             return
 
-        self.active_ship_hangar = self.ui_tree.find_node(
+        self.active_ship_hangar = self.eve_ui.ui_tree.find_node(
             {'_name': 'topCont_ShipHangar'},
             root=active_ship_container,
             refresh=False,
         )
 
-        self.active_ship_drone_bay = self.ui_tree.find_node(
+        self.active_ship_drone_bay = self.eve_ui.ui_tree.find_node(
             {'_name': 'topCont_ShipDroneBay'},
             root=active_ship_container,
             refresh=False,
         )
         if not self.active_ship_drone_bay:
             click(self.active_ship_hangar, MOUSE_RIGHT)
-            if not self.context_menu.click_safe("Open Drone Bay"):
+            if not self.eve_ui.context_menu.click_safe("Open Drone Bay"):
                 click(self.active_ship_hangar)
 
     def update_hangars(self, refresh=True):
         active_ship_container = BubblingQuery(
+            ui_tree=self.eve_ui.ui_tree,
             node_type="TreeViewEntryInventoryCargo",
             parent_query=self.main_window_query,
             refresh_on_init=refresh,
@@ -86,25 +91,25 @@ class Inventory:
         if not active_ship_container:
             return self
 
-        self.active_ship_hangar = self.ui_tree.find_node(
+        self.active_ship_hangar = self.eve_ui.ui_tree.find_node(
             {'_name': 'topCont_ShipHangar'},
             root=active_ship_container,
             refresh=False,
         )
 
-        self.active_ship_drone_bay = self.ui_tree.find_node(
+        self.active_ship_drone_bay = self.eve_ui.ui_tree.find_node(
             {'_name': 'topCont_ShipDroneBay'},
             root=active_ship_container,
             refresh=False,
         )
 
-        self.main_station_hangar = self.ui_tree.find_node(
+        self.main_station_hangar = self.eve_ui.ui_tree.find_node(
             {'_name': 'topCont_ItemHangar'},
             root=self.main_window_query.result,
             refresh=refresh,
         )
 
-        station_containers_containers = self.ui_tree.find_node(
+        station_containers_containers = self.eve_ui.ui_tree.find_node(
             {'_name': 'topCont_StationContainer'},
             select_many=True,
             root=self.main_window_query.result,
@@ -112,10 +117,10 @@ class Inventory:
         )
         self.station_containers.clear()
         for container_container in station_containers_containers:
-            container = self.ui_tree.find_node(node_type="TextBody", root=container_container)
+            container = self.eve_ui.ui_tree.find_node(node_type="TextBody", root=container_container)
             self.station_containers.append(container)
 
-        inventory_tabs_text_bodies = self.ui_tree.find_node(
+        inventory_tabs_text_bodies = self.eve_ui.ui_tree.find_node(
             node_type='TextBody',
             root=self.main_window_query.result,
             select_many=True,
@@ -132,7 +137,8 @@ class Inventory:
 
     def update_capacity(self, refresh=True):
         capacity_container = BubblingQuery(
-            {'_name': 'capacityText'},
+            ui_tree=self.eve_ui.ui_tree,
+            query={'_name': 'capacityText'},
             parent_query=self.main_window_query,
             refresh_on_init=refresh
         ).result
@@ -167,15 +173,15 @@ class Inventory:
             if not type_id:
                 continue
 
-            name_node = self.ui_tree.find_node({'_name': 'itemNameLabel'}, root=item_node, refresh=False)
+            name_node = self.eve_ui.ui_tree.find_node({'_name': 'itemNameLabel'}, root=item_node, refresh=False)
             if not name_node:
                 continue
             name = name_node.attrs.get("_setText","").split(">")[-1]
 
             quantity = 1
-            quantity_node_container = self.ui_tree.find_node({'_name': 'qtypar'}, root=item_node, refresh=False)
+            quantity_node_container = self.eve_ui.ui_tree.find_node({'_name': 'qtypar'}, root=item_node, refresh=False)
             if quantity_node_container:
-                quantity_node = self.ui_tree.find_node(
+                quantity_node = self.eve_ui.ui_tree.find_node(
                     node_type="EveLabelSmall",
                     root=quantity_node_container,
                     refresh=False
@@ -212,7 +218,8 @@ class Inventory:
 
     def stack_all(self):
         btn_stack_all = BubblingQuery(
-            {'_name': 'unique_UI_inventoryStackAll'},
+            ui_tree=self.eve_ui.ui_tree,
+            query={'_name': 'unique_UI_inventoryStackAll'},
             parent_query=self.main_window_query
         ).result
 
@@ -226,7 +233,8 @@ class Inventory:
         search_field = None
         while not search_field:
             search_field = BubblingQuery(
-                {'_name': 'quickFilterInputBox'},
+                ui_tree=self.eve_ui.ui_tree,
+                query={'_name': 'quickFilterInputBox'},
                 parent_query=self.main_window_query
             ).result
 
@@ -239,7 +247,7 @@ class Inventory:
             pyautogui.hotkey('ctrl', 'a', interval=0.1)
             pyautogui.hotkey('ctrl', 'v', interval=0.1)
 
-            text_label = self.ui_tree.find_node(
+            text_label = self.eve_ui.ui_tree.find_node(
                 node_type="EveLabelMedium",
                 root=search_field,
             )
@@ -250,14 +258,15 @@ class Inventory:
         if not item:
             search_field = wait_for_truthy(
                 lambda: BubblingQuery(
-                    {'_name': 'quickFilterInputBox'},
+                    ui_tree=self.eve_ui.ui_tree,
+                    query={'_name': 'quickFilterInputBox'},
                     parent_query=self.main_window_query
                 ).result,
                 5
             )
             if not search_field:
                 return None
-            search_label = self.ui_tree.find_node(node_type="EveLabelMedium", root=search_field, refresh=False)
+            search_label = self.eve_ui.ui_tree.find_node(node_type="EveLabelMedium", root=search_field, refresh=False)
             search_label_text = search_label.attrs.get("_setText", None)
             if search_label_text != item_name:
                 self.search_for(item_name)
@@ -266,7 +275,11 @@ class Inventory:
         return item
 
     def loot_all(self):
-        btn_loot_all = BubblingQuery({'_name': 'invLootAllBtn'}, self.main_window_query).result
+        btn_loot_all = BubblingQuery(
+            ui_tree=self.eve_ui.ui_tree,
+            query={'_name': 'invLootAllBtn'},
+            parent_query=self.main_window_query
+        ).result
         if not btn_loot_all:
             return False
         click(btn_loot_all)
@@ -274,15 +287,19 @@ class Inventory:
 
     def repair_active_ship(self):
         click(self.active_ship_hangar, MOUSE_RIGHT)
-        self.context_menu.click_safe("Get Repair Quote")
+        self.eve_ui.context_menu.click_safe("Get Repair Quote")
 
-        repair_window = wait_for_truthy(lambda: self.ui_tree.find_node(node_type="RepairShopWindow"), 5)
+        repair_window = wait_for_truthy(lambda: self.eve_ui.ui_tree.find_node(node_type="RepairShopWindow"), 5)
 
         no_result = None
         repair_all_btn = None
         while not (no_result or repair_all_btn):
-            no_result = self.ui_tree.find_node({'_name': 'noResultsContainer'}, root=repair_window, refresh=False)
-            repair_all_btn = self.ui_tree.find_node(
+            no_result = self.eve_ui.ui_tree.find_node(
+                {'_name': 'noResultsContainer'},
+                root=repair_window,
+                refresh=False
+            )
+            repair_all_btn = self.eve_ui.ui_tree.find_node(
                 {'_setText': "Repair All"},
                 node_type="EveLabelMedium",
                 root=repair_window,
@@ -293,5 +310,9 @@ class Inventory:
             click(repair_all_btn)
             pyautogui.press("enter")
 
-        close_btn = self.ui_tree.find_node({'_name': 'CloseButtonIcon'}, root=repair_window, refresh=False)
+        close_btn = self.eve_ui.ui_tree.find_node(
+            {'_name': 'CloseButtonIcon'},
+            root=repair_window,
+            refresh=False
+        )
         click(close_btn)

@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import pyautogui
 
 from src import config
+from src.eve_ui.eve_ui import EveUI
 from src.utils import utils
 from src.bots.autopilot.autopilot import Autopilot
 from src.utils.ui_tree import UITree
@@ -12,8 +13,10 @@ from src.utils.utils import log_console, left_click, drag_and_drop, log, start_f
 
 
 class Hauler:
-    def __init__(self):
-        self.autopilot = Autopilot()
+    def __init__(self, eve_ui: EveUI):
+        self.eve_ui: EveUI = eve_ui
+
+        self.autopilot = Autopilot(eve_ui)
 
         self.inSpace = False
         self.canComplete = False
@@ -22,24 +25,22 @@ class Hauler:
         self.connectionFailedChecker = 0
         self.missionCounter = 0
 
-    @staticmethod
-    def move_item_to_ship():
-        left_click(UITree.instance().find_node({'_name': 'ItemHangar'}, refresh=True).get_center())
+    def move_item_to_ship(self):
+        left_click(self.eve_ui.ui_tree.find_node({'_name': 'ItemHangar'}, refresh=True).get_center())
         time.sleep(0.5)
-        item = UITree.instance().find_node(node_type="InvItemIconContainer", refresh=True)
-        ship = UITree.instance().find_node({'_name': 'topCont_ShipHangar'}, refresh=True)
+        item = self.eve_ui.ui_tree.find_node(node_type="InvItemIconContainer", refresh=True)
+        ship = self.eve_ui.ui_tree.find_node({'_name': 'topCont_ShipHangar'}, refresh=True)
         drag_and_drop(item.get_center(), ship.get_center())
 
         left_click(ship.get_center())
-        wait_for_truthy(lambda: UITree.instance().find_node(node_type="InvItemIconContainer", refresh=True), 5)
+        wait_for_truthy(lambda: self.eve_ui.ui_tree.find_node(node_type="InvItemIconContainer", refresh=True), 5)
 
         log_console("Moved item to ship")
 
-    @staticmethod
-    def wait_for_location_change_timer():
+    def wait_for_location_change_timer(self):
         log_console("Waiting for location change timer")
         waiting_counter = 0
-        while not UITree.instance().find_node({'_name': 'invulnTimer'}, refresh=True):
+        while not self.eve_ui.ui_tree.find_node({'_name': 'invulnTimer'}, refresh=True):
             time.sleep(1)
             waiting_counter += 1
             if waiting_counter >= 60:
@@ -55,14 +56,14 @@ class Hauler:
 
             # Clear all waypoints
             if self.route_waypoint_count() != 0:
-                route_markers = UITree.instance().find_node(
+                route_markers = self.eve_ui.ui_tree.find_node(
                     node_type="AutopilotDestinationIcon",
                     select_many=True,
                     refresh=True
                 )
 
                 right_click(route_markers[0].get_center())
-                btn_set_destination = UITree.instance().find_node(
+                btn_set_destination = self.eve_ui.ui_tree.find_node(
                     {'_name': 'context_menu_Set Destination'},
                     refresh=True,
                 )
@@ -70,13 +71,13 @@ class Hauler:
                     left_click(btn_set_destination)
                     right_click(route_markers[0].get_center())
 
-                left_click(UITree.instance().find_node({'_name': 'context_menu_Remove Waypoint'}, refresh=True))
+                left_click(self.eve_ui.ui_tree.find_node({'_name': 'context_menu_Remove Waypoint'}, refresh=True))
 
             # Add destination waypoint
-            location_link_1 = UITree.instance().find_node({'_name': 'tablecell 1-3'}, refresh=True)
+            location_link_1 = self.eve_ui.ui_tree.find_node({'_name': 'tablecell 1-3'}, refresh=True)
             right_click(location_link_1.get_center(pos_y=0.3))
             btn_add_waypoint = wait_for_truthy(
-                lambda: UITree.instance().find_node({'_name': 'context_menu_Add Waypoint'}, refresh=True),
+                lambda: self.eve_ui.ui_tree.find_node({'_name': 'context_menu_Add Waypoint'}, refresh=True),
                 5
             )
             left_click(btn_add_waypoint)
@@ -92,9 +93,9 @@ class Hauler:
                 break
             else:
                 decline_count += 1
-                dialog_window = UITree.instance().find_node(node_type="AgentDialogueWindow", refresh=True)
-                btn_group = UITree.instance().find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
-                btn_decline = UITree.instance().find_node(
+                dialog_window = self.eve_ui.ui_tree.find_node(node_type="AgentDialogueWindow", refresh=True)
+                btn_group = self.eve_ui.ui_tree.find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
+                btn_decline = self.eve_ui.ui_tree.find_node(
                     {'_setText': "Decline"},
                     node_type="EveLabelMedium",
                     root=btn_group
@@ -105,9 +106,9 @@ class Hauler:
                 log_console("Mission decline: jumps: " + str(route_length))
                 start_failsafe()
                 while not self.can_accept():
-                    dialog_window = UITree.instance().find_node(node_type="AgentDialogueWindow", refresh=True)
-                    btn_group = UITree.instance().find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
-                    btn_request = UITree.instance().find_node(
+                    dialog_window = self.eve_ui.ui_tree.find_node(node_type="AgentDialogueWindow", refresh=True)
+                    btn_group = self.eve_ui.ui_tree.find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
+                    btn_request = self.eve_ui.ui_tree.find_node(
                         {'_setText': "Request Mission"},
                         node_type="EveLabelMedium",
                         root=btn_group
@@ -119,14 +120,14 @@ class Hauler:
                 raise Exception("To many declines")
 
         # Add origin station waypoint
-        location_link_center_2 = UITree.instance().find_node({'_name': 'tablecell 0-3'}, refresh=True).get_center()
+        location_link_center_2 = self.eve_ui.ui_tree.find_node({'_name': 'tablecell 0-3'}, refresh=True).get_center()
         right_click((location_link_center_2[0] - 20, location_link_center_2[1]))
         time.sleep(1)
-        left_click(UITree.instance().find_node({'_name': 'context_menu_Add Waypoint'}, refresh=True))
+        left_click(self.eve_ui.ui_tree.find_node({'_name': 'context_menu_Add Waypoint'}, refresh=True))
 
-        dialog_window = UITree.instance().find_node(node_type="AgentDialogueWindow", refresh=True)
-        btn_group = UITree.instance().find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
-        btn_accept = UITree.instance().find_node({'_setText': "Accept"}, node_type="EveLabelMedium", root=btn_group)
+        dialog_window = self.eve_ui.ui_tree.find_node(node_type="AgentDialogueWindow", refresh=True)
+        btn_group = self.eve_ui.ui_tree.find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
+        btn_accept = self.eve_ui.ui_tree.find_node({'_setText': "Accept"}, node_type="EveLabelMedium", root=btn_group)
         left_click(btn_accept)
 
         start_failsafe("waypoint_update")
@@ -137,11 +138,10 @@ class Hauler:
     def route_waypoint_count(self):
         return self.autopilot.get_route().count(1)
 
-    @staticmethod
-    def can_find_complete_button():
-        dialog_window = UITree.instance().find_node(node_type="AgentDialogueWindow", refresh=True)
-        btn_group = UITree.instance().find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
-        btn_complete = UITree.instance().find_node(
+    def can_find_complete_button(self):
+        dialog_window = self.eve_ui.ui_tree.find_node(node_type="AgentDialogueWindow", refresh=True)
+        btn_group = self.eve_ui.ui_tree.find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
+        btn_complete = self.eve_ui.ui_tree.find_node(
             {'_setText': "Complete Mission"},
             node_type="EveLabelMedium",
             root=btn_group
@@ -149,19 +149,17 @@ class Hauler:
 
         return btn_complete is not None
 
-    @staticmethod
-    def item_is_in_ship():
+    def item_is_in_ship(self):
         log_console("Testing if item is in ship")
-        ship = UITree.instance().find_node({'_name': 'topCont_ShipHangar'}, refresh=True)
+        ship = self.eve_ui.ui_tree.find_node({'_name': 'topCont_ShipHangar'}, refresh=True)
         left_click(ship.get_center())
-        item = UITree.instance().find_node(node_type="InvItemIconContainer", refresh=True)
+        item = self.eve_ui.ui_tree.find_node(node_type="InvItemIconContainer", refresh=True)
         return not not item
 
-    @staticmethod
-    def can_accept():
-        dialog_window = UITree.instance().find_node(node_type="AgentDialogueWindow", refresh=True)
-        btn_group = UITree.instance().find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
-        btn_accept = UITree.instance().find_node({'_setText': "Accept"}, node_type="EveLabelMedium", root=btn_group)
+    def can_accept(self):
+        dialog_window = self.eve_ui.ui_tree.find_node(node_type="AgentDialogueWindow", refresh=True)
+        btn_group = self.eve_ui.ui_tree.find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
+        btn_accept = self.eve_ui.ui_tree.find_node({'_setText': "Accept"}, node_type="EveLabelMedium", root=btn_group)
 
         return btn_accept is not None
 
@@ -169,12 +167,12 @@ class Hauler:
         self.inSpace = self.autopilot.is_in_space()
 
         if not self.inSpace:
-            dialog_window = UITree.instance().find_node(node_type="AgentDialogueWindow", refresh=True)
-            btn_group = UITree.instance().find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
+            dialog_window = self.eve_ui.ui_tree.find_node(node_type="AgentDialogueWindow", refresh=True)
+            btn_group = self.eve_ui.ui_tree.find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
             btn_view_request = wait_for_truthy(
                 lambda:
-                UITree.instance().find_node({'_setText': "Request Mission"}, node_type="EveLabelMedium", root=btn_group)
-                or UITree.instance().find_node({'_setText': "View Mission"}, node_type="EveLabelMedium", root=btn_group),
+                self.eve_ui.ui_tree.find_node({'_setText': "Request Mission"}, node_type="EveLabelMedium", root=btn_group)
+                or self.eve_ui.ui_tree.find_node({'_setText': "View Mission"}, node_type="EveLabelMedium", root=btn_group),
                 10
             )
             if btn_view_request:
@@ -215,7 +213,7 @@ class Hauler:
             self.print_state(2)
             while not self.inSpace and self.waypointCount == 2 and self.item_is_in_ship():
                 log_console("stage 3: undocking from origin")
-                btn_undock = UITree.instance().find_node(node_type="UndockButton", refresh=True)
+                btn_undock = self.eve_ui.ui_tree.find_node(node_type="UndockButton", refresh=True)
                 left_click(btn_undock.get_center())
                 self.wait_for_location_change_timer()
                 self.test_stage_criteria()
@@ -233,9 +231,9 @@ class Hauler:
             self.print_state(4)
             while not self.inSpace and self.canComplete and self.waypointCount == 1:
                 log_console("stage 5: completing mission")
-                dialog_window = UITree.instance().find_node(node_type="AgentDialogueWindow", refresh=True)
-                btn_group = UITree.instance().find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
-                btn_complete = UITree.instance().find_node(
+                dialog_window = self.eve_ui.ui_tree.find_node(node_type="AgentDialogueWindow", refresh=True)
+                btn_group = self.eve_ui.ui_tree.find_node(node_type="ButtonGroup", root=dialog_window, refresh=True)
+                btn_complete = self.eve_ui.ui_tree.find_node(
                     {'_setText': "Complete Mission"},
                     node_type="EveLabelMedium",
                     root=btn_group
@@ -251,7 +249,7 @@ class Hauler:
             self.print_state(5)
             while not self.inSpace and not self.canComplete and self.waypointCount == 1:
                 log_console("stage 6: undocking from drop-off")
-                btn_undock = UITree.instance().find_node(node_type="UndockButton", refresh=True)
+                btn_undock = self.eve_ui.ui_tree.find_node(node_type="UndockButton", refresh=True)
                 left_click(btn_undock.get_center())
                 self.wait_for_location_change_timer()
                 self.test_stage_criteria()
@@ -274,26 +272,25 @@ class Hauler:
             if self.connectionFailedChecker > 3:
                 raise Exception("Main loop can't do anything")
 
-    @staticmethod
-    def open_agent_window():
+    def open_agent_window(self):
         log_console("Opening agent window")
 
-        btn_character_sheet = UITree.instance().find_node({'_name': 'charSheetBtn'}, refresh=True)
-        window_character_sheet = UITree.instance().find_node(node_type="CharacterSheetWindow", refresh=True)
+        btn_character_sheet = self.eve_ui.ui_tree.find_node({'_name': 'charSheetBtn'}, refresh=True)
+        window_character_sheet = self.eve_ui.ui_tree.find_node(node_type="CharacterSheetWindow", refresh=True)
         if not window_character_sheet:
             left_click(btn_character_sheet.get_center())
 
-        btn_interactions = UITree.instance().find_node({'_name': 'interactions'}, node_type="Tab", refresh=True)
+        btn_interactions = self.eve_ui.ui_tree.find_node({'_name': 'interactions'}, node_type="Tab", refresh=True)
         left_click(btn_interactions.get_center())
 
-        search_bar = UITree.instance().find_node({'_name': 'searchBar'}, refresh=True)
+        search_bar = self.eve_ui.ui_tree.find_node({'_name': 'searchBar'}, refresh=True)
         left_click(search_bar.get_center())
         pyautogui.hotkey('ctrl', 'a', interval=0.2)
         pyautogui.write(config.AGENT_NAME, interval=0.25)
 
         time.sleep(1)
-        window_character_sheet = UITree.instance().find_node(node_type="CharacterSheetWindow", refresh=True)
-        btn_conversation = UITree.instance().find_node(
+        window_character_sheet = self.eve_ui.ui_tree.find_node(node_type="CharacterSheetWindow", refresh=True)
+        btn_conversation = self.eve_ui.ui_tree.find_node(
             node_type="AgentConversationIcon",
             root=window_character_sheet,
             refresh=True
@@ -305,8 +302,7 @@ class Hauler:
 
 
 if __name__ == "__main__":
-    UITree.instance()
-    hauler = Hauler()
+    hauler = Hauler(EveUI(UITree()))
     time.sleep(1)
     log("")
     while utils.fatalErrorCount < 2:

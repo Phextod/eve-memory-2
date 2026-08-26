@@ -1,11 +1,9 @@
 import copy
 import itertools
 import math
-from collections import Counter
 from typing import List
 
 import numpy as np
-from line_profiler_pycharm import profile
 
 from src.bots.abyss.abyss_ship import AbyssShip
 from src.bots.abyss.player_ship import PlayerShip

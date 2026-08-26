@@ -1,25 +1,31 @@
 import time
+from typing import TYPE_CHECKING
 
 from src.utils.bubbling_query import BubblingQuery
-from src.utils.ui_tree import UITree
 from src.utils.utils import click
+
+if TYPE_CHECKING:
+    # Only imported during static type checking, ignored at runtime
+    from src.eve_ui.eve_ui import EveUI
 
 
 class Locations:
-    def __init__(self, refresh_on_init=False, do_setup=True):
-        self.ui_tree: UITree = UITree.instance()
+    def __init__(self, eve_ui: 'EveUI', refresh_on_init=False, do_setup=True):
+        self.eve_ui: EveUI = eve_ui
 
         self.main_window_query = BubblingQuery(
+            ui_tree=self.eve_ui.ui_tree,
             node_type="LocationsWindow",
             refresh_on_init=refresh_on_init,
         )
         self.main_container_query = BubblingQuery(
-            {'_name': 'maincontainer'},
-            self.main_window_query,
+            ui_tree=self.eve_ui.ui_tree,
+            query={'_name': 'maincontainer'},
+            parent_query=self.main_window_query,
             refresh_on_init=False,
         )
 
-        should_close_groups = do_setup and self.ui_tree.find_node(
+        should_close_groups = do_setup and self.eve_ui.ui_tree.find_node(
             {'texturePath': 'res:/UI/Texture/Icons/38_16_229.png'},
             root=self.main_container_query.result,
             refresh=False,
@@ -28,18 +34,23 @@ class Locations:
             self.close_groups(refresh_on_init)
 
     def close_groups(self, refresh=True):
-        btn_close = BubblingQuery({'_name': 'collapseCont'}, self.main_window_query, refresh_on_init=refresh).result
+        btn_close = BubblingQuery(
+            ui_tree=self.eve_ui.ui_tree,
+            query={'_name': 'collapseCont'},
+            parent_query=self.main_window_query,
+            refresh_on_init=refresh
+        ).result
         click(btn_close)
 
     def get_group(self, node_type, name):
-        groups = UITree.instance().find_node(
+        groups = self.eve_ui.ui_tree.find_node(
             node_type=node_type,
             select_many=True,
             root=self.main_container_query.result,
         )
 
         for group in groups:
-            label = UITree.instance().find_node(node_type="EveLabelMedium", root=group, refresh=False)
+            label = self.eve_ui.ui_tree.find_node(node_type="EveLabelMedium", root=group, refresh=False)
 
             label_text = label.attrs['_setText'].split("<")[0].strip()
             if label_text == name:
@@ -47,9 +58,8 @@ class Locations:
 
         return None
 
-    @staticmethod
-    def _expand_if_not_expanded(root):
-        expander = UITree.instance().find_node({'_name': 'expander'}, root=root, refresh=False)
+    def _expand_if_not_expanded(self, root):
+        expander = self.eve_ui.ui_tree.find_node({'_name': 'expander'}, root=root, refresh=False)
         if expander.attrs["texturePath"] != "res:/UI/Texture/Icons/38_16_229.png":
             click(expander)
             time.sleep(0.1)

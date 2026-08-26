@@ -19,26 +19,29 @@ from src.eve_ui.overview import Overview
 
 
 class EveUI:
-    def __init__(self, do_setup=True):
+    def __init__(self, ui_tree: UITree, do_setup=True):
+        self.ui_tree: UITree = ui_tree
+
         start = time.time()
         log("initializing UI tree")
-        UITree.instance()
         log(f"UI tree initialized in {time.time() - start}")
 
         start = time.time()
         log("initializing UI components")
-        self.overview = Overview()
-        self.target_bar = TargetBar()
-        self.ship_ui: ShipUI = ShipUI.instance()
-        self.drones = Drones()
-        self.inventory = Inventory(do_setup=do_setup)
-        self.context_menu: ContextMenu = ContextMenu.instance()
-        self.locations = Locations(do_setup=do_setup)
-        self.station_window = StationWindow()
-        self.timers = Timers()
-        self.route = Route()
-        self.agent_window = AgentWindow()
-        self.fleet = Fleet()
-        self.neocom: Neocom = Neocom.instance()
-        self.view_3d: View3d = View3d()
+
+        self.overview = Overview(self)
+        self.target_bar = TargetBar(self)
+        self.ship_ui: ShipUI = ShipUI(self)
+        self.drones = Drones(self)
+        self.inventory = Inventory(self, do_setup=do_setup)
+        self.context_menu = ContextMenu(self)
+        self.locations = Locations(self, do_setup=do_setup)
+        self.station_window = StationWindow(self)
+        self.timers = Timers(self)
+        self.route = Route(self)
+        self.agent_window = AgentWindow(self)
+        self.fleet = Fleet(self)
+        self.neocom: Neocom = Neocom(self)
+        self.view_3d: View3d = View3d(self)
+
         log(f"UI components initialized in {time.time() - start}")

@@ -1,45 +1,52 @@
-from typing import List
+from typing import List, TYPE_CHECKING
 
-from src.eve_ui.context_menu import ContextMenu
 from src.utils.bubbling_query import BubblingQuery
-from src.utils.ui_tree import UITree, UITreeNode
+from src.utils.ui_tree import UITreeNode
 from src.utils.utils import click, MOUSE_RIGHT
 
+if TYPE_CHECKING:
+    # Only imported during static type checking, ignored at runtime
+    from src.eve_ui.eve_ui import EveUI
 
 class AgentWindow:
-    def __init__(self, refresh_on_init=False):
-        self.ui_tree: UITree = UITree.instance()
-        self.context_menu: ContextMenu = ContextMenu.instance()
+    def __init__(self, eve_ui: 'EveUI', refresh_on_init=False):
+        self.eve_ui: EveUI = eve_ui
         self.main_window_query = BubblingQuery(
+            ui_tree=self.eve_ui.ui_tree,
             node_type="AgentDialogueWindow",
             refresh_on_init=refresh_on_init,
         )
 
         self.button_group_query = BubblingQuery(
+            ui_tree=self.eve_ui.ui_tree,
             node_type="ButtonGroup",
             parent_query=self.main_window_query,
             refresh_on_init=refresh_on_init,
         )
 
         self.left_pane_query = BubblingQuery(
-            {'_name': 'leftPane'},
+            ui_tree=self.eve_ui.ui_tree,
+            query={'_name': 'leftPane'},
             parent_query=self.main_window_query,
             refresh_on_init=refresh_on_init
         )
 
         self.right_pane_query = BubblingQuery(
-            {'_name': 'rightPane'},
+            ui_tree=self.eve_ui.ui_tree,
+            query={'_name': 'rightPane'},
             parent_query=self.main_window_query,
             refresh_on_init=refresh_on_init
         )
 
         self.left_pane_html_container_query = BubblingQuery(
+            ui_tree=self.eve_ui.ui_tree,
             node_type="Edit",
             parent_query=self.left_pane_query,
             refresh_on_init=refresh_on_init,
         )
 
         self.right_pane_html_container_query = BubblingQuery(
+            ui_tree=self.eve_ui.ui_tree,
             node_type="Edit",
             parent_query=self.right_pane_query,
             refresh_on_init=refresh_on_init,
@@ -59,6 +66,7 @@ class AgentWindow:
     def update_buttons(self, refresh=True):
         self.button_group_query.run(refresh)
         self.button_labels = BubblingQuery(
+            ui_tree=self.eve_ui.ui_tree,
             node_type="EveLabelMedium",
             parent_query=self.button_group_query,
             select_many=True,
@@ -142,18 +150,20 @@ class AgentWindow:
 
     def add_drop_off_waypoint(self):
         location_link_1 = BubblingQuery(
-            {'_name': 'tablecell 1-3'},
+            ui_tree=self.eve_ui.ui_tree,
+            query={'_name': 'tablecell 1-3'},
             parent_query=self.main_window_query,
         ).result
         click(location_link_1, MOUSE_RIGHT, pos_y=0.3)
 
-        self.context_menu.click_safe("Add Waypoint")
+        self.eve_ui.context_menu.click_safe("Add Waypoint")
 
     def add_pickup_waypoint(self):
         location_link_1 = BubblingQuery(
-            {'_name': 'tablecell 0-3'},
+            ui_tree=self.eve_ui.ui_tree,
+            query={'_name': 'tablecell 0-3'},
             parent_query=self.main_window_query,
         ).result
         click(location_link_1, MOUSE_RIGHT, pos_y=0.3)
 
-        self.context_menu.click_safe("Add Waypoint")
+        self.eve_ui.context_menu.click_safe("Add Waypoint")

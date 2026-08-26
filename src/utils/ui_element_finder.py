@@ -1,11 +1,9 @@
 import sys
 import threading
 import time
-from typing import Optional
 
 import keyboard
 import win32gui
-from PyQt6 import QtCore
 from PyQt6.QtCore import QRect, Qt, pyqtSignal, QObject
 from PyQt6.QtGui import QPainter, QColor, QPen
 from PyQt6.QtWidgets import QApplication, QMainWindow
@@ -77,9 +75,9 @@ class RectangleWindow(QMainWindow):
         self.update()
 
 
-def dfs(parent_node: UITreeNode, _cursor_loc: tuple, bridge: SignalBridge, depth=0):
+def dfs(ui_tree: UITree, parent_node: UITreeNode, _cursor_loc: tuple, bridge: SignalBridge, depth=0):
     for children_index in parent_node.children:
-        children_node = UITree.instance().nodes[children_index]
+        children_node = ui_tree.nodes[children_index]
         width = children_node.attrs.get("_displayWidth", 0)
         height = children_node.attrs.get("_displayHeight", 0)
 
@@ -96,13 +94,12 @@ def dfs(parent_node: UITreeNode, _cursor_loc: tuple, bridge: SignalBridge, depth
                     height
                 )
 
-        dfs(children_node, _cursor_loc, bridge, depth=depth + 1)
+        dfs(ui_tree, children_node, _cursor_loc, bridge, depth=depth + 1)
 
 
 # 2. This is your background logic running in a separate thread
-def keyboard_listener(bridge: SignalBridge):
-    UITree.instance()
-    UITree.instance().refresh()
+def keyboard_listener(ui_tree: UITree, bridge: SignalBridge):
+    ui_tree.refresh()
 
     while True:
         try:
@@ -112,15 +109,15 @@ def keyboard_listener(bridge: SignalBridge):
                 bridge.clear_signal.emit()  # Safely tell GUI to clear
                 cursor_loc = win32gui.GetCursorPos()
 
-                root = next(iter(UITree.instance().nodes.values()))
-                dfs(root, cursor_loc, bridge)
+                root = next(iter(ui_tree.nodes.values()))
+                dfs(ui_tree, root, cursor_loc, bridge)
 
                 time.sleep(0.3)  # Debounce to prevent multiple triggers from a single press
 
             elif keyboard.is_pressed("r"):
                 print("----------------------")
                 print("refresh")
-                UITree.instance().refresh()
+                ui_tree.refresh()
                 time.sleep(0.3)  # Debounce
 
             elif keyboard.is_pressed("esc"):
